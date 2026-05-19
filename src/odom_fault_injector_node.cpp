@@ -12,14 +12,14 @@ int main(int argc, char **argv)
 
   auto node = std::make_shared<rclcpp::Node>("odom_fault_injector");
 
-  node->declare_parameter<std::string>("config_file", "");
+  node->declare_parameter<std::string>("scenario_file", "");
 
-  const auto config_file =
-      node->get_parameter("config_file").as_string();
+  const auto scenario_file =
+      node->get_parameter("scenario_file").as_string();
 
-  if (config_file.empty())
+  if (scenario_file.empty())
   {
-    RCLCPP_ERROR(node->get_logger(), "Missing required parameter: config_file");
+    RCLCPP_ERROR(node->get_logger(), "Missing required parameter: scenario_file");
     rclcpp::shutdown();
     return 1;
   }
@@ -28,14 +28,14 @@ int main(int argc, char **argv)
 
   try
   {
-    scenario = ros2_fault_injection::load_scenario_config(config_file);
+    scenario = ros2_fault_injection::load_scenario_config(scenario_file);
   }
   catch (const std::exception &error)
   {
     RCLCPP_ERROR(
         node->get_logger(),
         "Failed to load scenario config %s : %s",
-        config_file.c_str(),
+        scenario_file.c_str(),
         error.what());
 
     rclcpp::shutdown();
@@ -65,14 +65,18 @@ int main(int argc, char **argv)
   for (const auto &fault_id : scenario.initially_active_faults)
   {
     injector->activate_fault(fault_id);
+    RCLCPP_INFO(
+        node->get_logger(),
+        "Initially activating fault '%s'",
+        fault_id.c_str());
   }
 
   RCLCPP_INFO(
       node->get_logger(),
-      "Odom fault injector running: %s -> %s using config %s",
+      "Odom fault injector running: %s -> %s using scenario file %s",
       scenario.injector.input_topic.c_str(),
       scenario.injector.output_topic.c_str(),
-      config_file.c_str());
+      scenario_file.c_str());
 
   rclcpp::spin(node);
 

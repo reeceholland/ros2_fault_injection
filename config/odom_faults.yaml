@@ -8,7 +8,13 @@ injector:
 faults:
   - id: odom_bias
     injector_id: odom
-    active: true
+    active: false
     config:
       x_bias: 1.0
       y_bias: -0.25
+
+  - id: odom_drop
+    injector_id: odom
+    active: true
+    config:
+      drop_probability: 0.5
