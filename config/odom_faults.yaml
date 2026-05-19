@@ -22,3 +22,10 @@ faults:
     duration: 10.0
     config:
       drop_probability: 0.5
+
+  - id: odom_noise
+    injector_id: odom
+    active: true
+    config:
+      x_noise_stddev: 0.05
+      y_noise_stddev: 0.05

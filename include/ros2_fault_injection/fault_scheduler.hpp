@@ -11,6 +11,7 @@
 
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/fault_injector.hpp"
+#include "ros2_fault_injection/fault_event_publisher.hpp"
 
 namespace ros2_fault_injection
 {
@@ -18,7 +19,7 @@ namespace ros2_fault_injection
   class FaultScheduler
   {
   public:
-    explicit FaultScheduler(rclcpp::Node &node);
+    explicit FaultScheduler(rclcpp::Node &node, FaultEventPublisher &event_pub);
 
     void schedule(
         const std::vector<FaultConfig> &faults,
@@ -37,7 +38,7 @@ namespace ros2_fault_injection
 
     rclcpp::Node &node_;
     std::vector<rclcpp::TimerBase::SharedPtr> timers_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr event_pub_;
+    FaultEventPublisher &event_pub_;
   };
 
 } // namespace ros2_fault_injection

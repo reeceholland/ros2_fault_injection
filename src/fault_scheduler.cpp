@@ -7,11 +7,9 @@
 namespace ros2_fault_injection
 {
 
-  FaultScheduler::FaultScheduler(rclcpp::Node &node)
-      : node_(node)
+  FaultScheduler::FaultScheduler(rclcpp::Node &node, FaultEventPublisher &event_pub)
+      : node_(node), event_pub_(event_pub)
   {
-    event_pub_ = node_.create_publisher<std_msgs::msg::String>(
-        "fault_injection/events", 10);
   }
 
   void FaultScheduler::schedule(
@@ -24,6 +22,7 @@ namespace ros2_fault_injection
       if (is_initially_active(fault, initially_active_faults))
       {
         injector.activate_fault(fault.id);
+        publish_event(fault.id, "active");
 
         RCLCPP_INFO(
             node_.get_logger(),
@@ -114,9 +113,7 @@ namespace ros2_fault_injection
       const std::string &fault_id,
       const std::string &state)
   {
-    std_msgs::msg::String event_msg;
-    event_msg.data = fault_id + " " + state;
-    event_pub_->publish(event_msg);
+    event_pub_.publish(fault_id, state);
   }
 
 } // namespace ros2_fault_injection

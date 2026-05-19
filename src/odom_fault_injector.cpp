@@ -132,6 +132,7 @@ namespace ros2_fault_injection
     auto out = *msg;
 
     apply_bias(out);
+    apply_noise(out);
 
     const auto delay = active_delay();
     if (delay.count() > 0)
@@ -211,6 +212,41 @@ namespace ros2_fault_injection
 
     msg.pose.pose.position.x += x_bias;
     msg.pose.pose.position.y += y_bias;
+  }
+
+  void OdomFaultInjector::apply_noise(nav_msgs::msg::Odometry &msg)
+  {
+    double x_noise_stddev = 0.0;
+    double y_noise_stddev = 0.0;
+
+    for (const auto &[fault_id, is_active] : active_)
+    {
+      if (!is_active)
+      {
+        continue;
+      }
+
+      const auto &fault = faults_.at(fault_id);
+
+      x_noise_stddev = std::max(
+          x_noise_stddev,
+          get_double(fault, "x_noise_stddev", 0.0));
+      y_noise_stddev = std::max(
+          y_noise_stddev,
+          get_double(fault, "y_noise_stddev", 0.0));
+    }
+
+    if (x_noise_stddev > 0.0)
+    {
+      std::normal_distribution<double> distribution(0.0, x_noise_stddev);
+      msg.pose.pose.position.x += distribution(rng_);
+    }
+
+    if (y_noise_stddev > 0.0)
+    {
+      std::normal_distribution<double> distribution(0.0, y_noise_stddev);
+      msg.pose.pose.position.y += distribution(rng_);
+    }
   }
 
   std::chrono::milliseconds OdomFaultInjector::active_delay()
