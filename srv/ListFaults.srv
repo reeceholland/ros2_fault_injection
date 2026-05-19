@@ -1,0 +1,3 @@
+---
+string[] fault_ids
+string[] active_fault_ids

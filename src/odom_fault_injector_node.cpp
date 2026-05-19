@@ -8,6 +8,7 @@
 #include "ros2_fault_injection/fault_scheduler.hpp"
 #include "ros2_fault_injection/fault_event_publisher.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
+#include "ros2_fault_injection/srv/list_faults.hpp"
 
 int main(int argc, char **argv)
 {
@@ -113,6 +114,17 @@ int main(int argc, char **argv)
         }
 
         response->success = true;
+      });
+
+  auto list_faults_service = node->create_service<ros2_fault_injection::srv::ListFaults>(
+      "/fault_injection/list_faults",
+      [node, injector](const std::shared_ptr<ros2_fault_injection::srv::ListFaults::Request> request,
+                       std::shared_ptr<ros2_fault_injection::srv::ListFaults::Response> response)
+      {
+        (void)request; // unused
+
+        response->fault_ids = injector->fault_ids();
+        response->active_fault_ids = injector->active_fault_ids();
       });
 
   ros2_fault_injection::FaultScheduler scheduler(*node, event_pub);

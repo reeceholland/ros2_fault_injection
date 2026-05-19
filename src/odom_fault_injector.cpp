@@ -275,4 +275,31 @@ namespace ros2_fault_injection
     return faults_.find(fault_id) != faults_.end();
   }
 
+  std::vector<std::string> OdomFaultInjector::fault_ids() const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    std::vector<std::string> ids;
+    for (const auto &[id, _] : faults_)
+    {
+      ids.push_back(id);
+    }
+    return ids;
+  }
+
+  std::vector<std::string> OdomFaultInjector::active_fault_ids() const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    std::vector<std::string> ids;
+    for (const auto &[id, is_active] : active_)
+    {
+      if (is_active)
+      {
+        ids.push_back(id);
+      }
+    }
+    return ids;
+  }
+
 } // namespace ros2_fault_injection
