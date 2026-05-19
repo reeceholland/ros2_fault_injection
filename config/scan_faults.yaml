@@ -1,0 +1,27 @@
+injector:
+  id: scan
+  type: scan
+  input_topic: /scan_raw
+  output_topic: /scan
+  qos_depth: 10
+
+faults:
+  - id: scan_noise
+    injector_id: scan
+    active: true
+    config:
+      range_noise_stddev: 0.01
+
+  - id: scan_bias
+    injector_id: scan
+    active: false
+    config:
+      range_bias: 0.2
+
+  - id: scan_delay
+    injector_id: scan
+    active: false
+    start: 5.0
+    duration: 10.0
+    config:
+      delay_ms: 250

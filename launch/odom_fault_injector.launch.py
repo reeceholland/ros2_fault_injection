@@ -12,8 +12,8 @@ def generate_launch_description():
             ),
         Node(
             package="ros2_fault_injection",
-            executable="odom_fault_injector_node",
-            name="odom_fault_injector_node",
+            executable="fault_injector_node",
+            name="fault_injector_node",
             output="screen",
             parameters=[{"scenario_file": scenario_file},
             ],

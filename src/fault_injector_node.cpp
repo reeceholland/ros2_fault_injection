@@ -4,6 +4,7 @@
 
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/odom_fault_injector.hpp"
+#include "ros2_fault_injection/scan_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
 #include "ros2_fault_injection/fault_scheduler.hpp"
 #include "ros2_fault_injection/fault_event_publisher.hpp"
@@ -16,7 +17,7 @@ int main(int argc, char **argv)
 
   // This node is the first framework runner: it loads a scenario, creates the
   // odom injector, registers faults with it, and schedules activation windows.
-  auto node = std::make_shared<rclcpp::Node>("odom_fault_injector");
+  auto node = std::make_shared<rclcpp::Node>("fault_injector");
 
   node->declare_parameter<std::string>("scenario_file", "");
 
@@ -49,11 +50,31 @@ int main(int argc, char **argv)
     rclcpp::shutdown();
     return 1;
   }
-
-  auto injector =
-      std::make_shared<ros2_fault_injection::OdomFaultInjector>(
-          *node,
-          scenario.injector);
+  std::shared_ptr<ros2_fault_injection::FaultInjector> injector;
+  if (scenario.injector.type == "odom")
+  {
+    injector =
+        std::make_shared<ros2_fault_injection::OdomFaultInjector>(
+            *node,
+            scenario.injector);
+  }
+  else if (scenario.injector.type == "scan")
+  {
+    injector =
+        std::make_shared<ros2_fault_injection::ScanFaultInjector>(
+            *node,
+            scenario.injector);
+  }
+  else
+  {
+    RCLCPP_ERROR(
+        node->get_logger(),
+        "Unknown injector type '%s' in scenario file '%s'",
+        scenario.injector.type.c_str(),
+        scenario_file.c_str());
+    rclcpp::shutdown();
+    return 1;
+  }
 
   // Register every fault with the injector first. Activation is a separate
   // step so immediate and scheduled faults use the same injector interface.

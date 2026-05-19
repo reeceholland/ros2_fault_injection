@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
@@ -22,6 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 add_library(${PROJECT_NAME}_core
   src/odom_fault_injector.cpp
+  src/scan_fault_injector.cpp
   src/scenario_config.cpp
   src/fault_scheduler.cpp
   src/fault_event_publisher.cpp
@@ -41,10 +43,11 @@ ament_target_dependencies(${PROJECT_NAME}_core
   rclcpp
   nav_msgs
   std_msgs
+  sensor_msgs
 )
 
-add_executable(odom_fault_injector_node
-  src/odom_fault_injector_node.cpp
+add_executable(fault_injector_node
+  src/fault_injector_node.cpp
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -52,18 +55,18 @@ rosidl_get_typesupport_target(cpp_typesupport_target
   "rosidl_typesupport_cpp"
 )
 
-target_link_libraries(odom_fault_injector_node
+target_link_libraries(fault_injector_node
   ${PROJECT_NAME}_core
   "${cpp_typesupport_target}"
 )
 
-ament_target_dependencies(odom_fault_injector_node
+ament_target_dependencies(fault_injector_node
   rclcpp
 )
 
 install(TARGETS
   ${PROJECT_NAME}_core
-  odom_fault_injector_node
+  fault_injector_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
