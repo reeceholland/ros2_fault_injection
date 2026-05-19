@@ -1,0 +1,221 @@
+#include "ros2_fault_injection/scenario_validator.hpp"
+
+#include <algorithm>
+#include <charconv>
+#include <chrono>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+
+namespace ros2_fault_injection {
+namespace {
+
+bool is_known_injector_type(const std::string& type) {
+  return type == "odom" || type == "scan";
+}
+
+bool contains(const std::unordered_set<std::string>& values, const std::string& value) {
+  return values.find(value) != values.end();
+}
+
+bool parse_double(const std::string& text, double& value) {
+  const auto* begin = text.data();
+  const auto* end = text.data() + text.size();
+
+  const auto result = std::from_chars(begin, end, value);
+  return result.ec == std::errc{} && result.ptr == end;
+}
+
+bool parse_int(const std::string& text, int& value) {
+  const auto* begin = text.data();
+  const auto* end = text.data() + text.size();
+
+  const auto result = std::from_chars(begin, end, value);
+  return result.ec == std::errc{} && result.ptr == end;
+}
+
+std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
+  if (type == "odom") {
+    return {
+        "drop_probability", "delay_ms", "x_bias", "y_bias", "x_noise_stddev", "y_noise_stddev",
+    };
+  }
+
+  if (type == "scan") {
+    return {
+        "drop_probability",
+        "delay_ms",
+        "range_bias",
+        "range_noise_stddev",
+    };
+  }
+
+  return {};
+}
+
+void validate_injector(const InjectorConfig& injector, ValidationResult& result) {
+  if (injector.id.empty()) {
+    result.errors.push_back("injector.id must not be empty");
+  }
+
+  if (!is_known_injector_type(injector.type)) {
+    result.errors.push_back("unsupported injector.type: '" + injector.type + "'");
+  }
+
+  if (injector.input_topic.empty()) {
+    result.errors.push_back("injector.input_topic must not be empty");
+  }
+
+  if (injector.output_topic.empty()) {
+    result.errors.push_back("injector.output_topic must not be empty");
+  }
+
+  if (injector.qos_depth == 0) {
+    result.errors.push_back("injector.qos_depth must be greater than 0");
+  }
+}
+
+void validate_number_key(const FaultConfig& fault, const std::string& key,
+                         ValidationResult& result) {
+  const auto it = fault.config.find(key);
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  double value = 0.0;
+  if (!parse_double(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' must be a number");
+  }
+}
+
+void validate_non_negative_number_key(const FaultConfig& fault, const std::string& key,
+                                      ValidationResult& result) {
+  const auto it = fault.config.find(key);
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  double value = 0.0;
+  if (!parse_double(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' must be a number");
+    return;
+  }
+
+  if (value < 0.0) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' must be >= 0");
+  }
+}
+
+void validate_drop_probability(const FaultConfig& fault, ValidationResult& result) {
+  const auto it = fault.config.find("drop_probability");
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  double value = 0.0;
+  if (!parse_double(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id + "' config 'drop_probability' must be a number");
+    return;
+  }
+
+  if (value < 0.0 || value > 1.0) {
+    result.errors.push_back("fault '" + fault.id +
+                            "' config 'drop_probability' must be between 0 and 1");
+  }
+}
+
+void validate_delay_ms(const FaultConfig& fault, ValidationResult& result) {
+  const auto it = fault.config.find("delay_ms");
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  int value = 0;
+  if (!parse_int(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id + "' config 'delay_ms' must be an integer");
+    return;
+  }
+
+  if (value < 0) {
+    result.errors.push_back("fault '" + fault.id + "' config 'delay_ms' must be >= 0");
+  }
+}
+
+void validate_fault_keys(const FaultConfig& fault, const std::string& injector_type,
+                         ValidationResult& result) {
+  const auto allowed_keys = allowed_keys_for(injector_type);
+
+  for (const auto& [key, value] : fault.config) {
+    (void)value;
+
+    if (!contains(allowed_keys, key)) {
+      result.warnings.push_back("fault '" + fault.id + "' has unknown config key '" + key + "'");
+    }
+  }
+}
+
+void validate_fault_values(const FaultConfig& fault, const std::string& injector_type,
+                           ValidationResult& result) {
+  validate_drop_probability(fault, result);
+  validate_delay_ms(fault, result);
+
+  if (injector_type == "odom") {
+    validate_number_key(fault, "x_bias", result);
+    validate_number_key(fault, "y_bias", result);
+    validate_non_negative_number_key(fault, "x_noise_stddev", result);
+    validate_non_negative_number_key(fault, "y_noise_stddev", result);
+  }
+
+  if (injector_type == "scan") {
+    validate_number_key(fault, "range_bias", result);
+    validate_non_negative_number_key(fault, "range_noise_stddev", result);
+  }
+}
+
+void validate_fault(const FaultConfig& fault, const InjectorConfig& injector,
+                    ValidationResult& result) {
+  if (fault.id.empty()) {
+    result.errors.push_back("fault.id must not be empty");
+  }
+
+  if (fault.injector_id.empty()) {
+    result.errors.push_back("fault '" + fault.id + "' injector_id must not be empty");
+  }
+
+  if (fault.injector_id != injector.id) {
+    result.errors.push_back("fault '" + fault.id + "' targets injector_id '" + fault.injector_id +
+                            "' but scenario injector is '" + injector.id + "'");
+  }
+
+  if (fault.duration && !fault.start) {
+    result.warnings.push_back("fault '" + fault.id +
+                              "' has duration but no start; duration will be ignored");
+  }
+
+  if (fault.start && *fault.start < std::chrono::milliseconds(0)) {
+    result.errors.push_back("fault '" + fault.id + "' has negative start time");
+  }
+
+  if (fault.duration && *fault.duration < std::chrono::milliseconds(0)) {
+    result.errors.push_back("fault '" + fault.id + "' has negative duration");
+  }
+
+  validate_fault_keys(fault, injector.type, result);
+  validate_fault_values(fault, injector.type, result);
+}
+
+}  // namespace
+
+ValidationResult validate_scenario(const ScenarioConfig& scenario) {
+  ValidationResult result;
+
+  validate_injector(scenario.injector, result);
+
+  for (const auto& fault : scenario.faults) {
+    validate_fault(fault, scenario.injector, result);
+  }
+
+  return result;
+}
+
+}  // namespace ros2_fault_injection

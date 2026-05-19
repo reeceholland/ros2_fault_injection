@@ -16,6 +16,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+endif()
+
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetFaultState.srv"
   "srv/ListFaults.srv"
@@ -28,6 +32,7 @@ add_library(${PROJECT_NAME}_core
   src/scenario_config.cpp
   src/fault_scheduler.cpp
   src/fault_event_publisher.cpp
+  src/scenario_validator.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -83,5 +88,13 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+if(BUILD_TESTING)
+  ament_add_gtest(test_scenario_validator
+    test/test_scenario_validator.cpp
+  )
+  target_link_libraries(test_scenario_validator
+    ${PROJECT_NAME}_core
+  )
+endif()
 
 ament_package()

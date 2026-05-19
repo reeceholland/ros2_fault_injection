@@ -8,6 +8,7 @@
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scan_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
+#include "ros2_fault_injection/scenario_validator.hpp"
 #include "ros2_fault_injection/srv/list_faults.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
@@ -41,6 +42,21 @@ int main(int argc, char** argv) {
     rclcpp::shutdown();
     return 1;
   }
+
+  const auto validation_result = ros2_fault_injection::validate_scenario(scenario);
+
+  for (const auto& warning : validation_result.warnings) {
+    RCLCPP_WARN(node->get_logger(), "Scenario config warning: %s", warning.c_str());
+  }
+
+  if (!validation_result.ok()) {
+    for (const auto& error : validation_result.errors) {
+      RCLCPP_ERROR(node->get_logger(), "Scenario config error: %s", error.c_str());
+      rclcpp::shutdown();
+      return 1;
+    }
+  }
+
   std::shared_ptr<ros2_fault_injection::FaultInjector> injector;
   if (scenario.injector.type == "odom") {
     injector = std::make_shared<ros2_fault_injection::OdomFaultInjector>(*node, scenario.injector);
