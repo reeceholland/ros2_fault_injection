@@ -71,6 +71,8 @@ namespace ros2_fault_injection
 
       if (node["config"])
       {
+        // Store values as strings for now. Individual injectors decide how to
+        // interpret keys such as x_bias, drop_probability, or delay_ms.
         for (const auto &item : node["config"])
         {
           const auto key = item.first.as<std::string>();
@@ -102,6 +104,8 @@ namespace ros2_fault_injection
       {
         auto fault = parse_fault(fault_node);
 
+        // active: true is the simple immediate-start path. start/duration are
+        // handled later by the node scheduler after all faults are registered.
         const bool active =
             fault_node["active"] && fault_node["active"].as<bool>();
 

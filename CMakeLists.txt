@@ -16,6 +16,7 @@ find_package(yaml-cpp REQUIRED)
 add_library(${PROJECT_NAME}_core
   src/odom_fault_injector.cpp
   src/scenario_config.cpp
+  src/fault_scheduler.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core

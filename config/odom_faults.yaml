@@ -9,12 +9,16 @@ faults:
   - id: odom_bias
     injector_id: odom
     active: false
+    start: 10.0
+    duration: 10.0
     config:
       x_bias: 1.0
       y_bias: -0.25
 
   - id: odom_drop
     injector_id: odom
-    active: true
+    active: false
+    start: 5.0
+    duration: 10.0
     config:
       drop_probability: 0.5

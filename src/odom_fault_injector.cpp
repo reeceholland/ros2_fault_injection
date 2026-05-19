@@ -49,6 +49,8 @@ namespace ros2_fault_injection
   {
     const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.qos_depth));
 
+    // The injector sits in the odom data path: input odom is read, optionally
+    // modified or delayed, then republished on the configured output topic.
     pub_ = node_.create_publisher<nav_msgs::msg::Odometry>(
         config_.output_topic,
         qos);
@@ -61,6 +63,8 @@ namespace ros2_fault_injection
           on_odom(msg);
         });
 
+    // Delayed odom samples are released by a small periodic flush instead of
+    // creating one timer per message.
     timer_ = node_.create_wall_timer(
         std::chrono::milliseconds{10},
         [this]()
@@ -124,6 +128,7 @@ namespace ros2_fault_injection
       return;
     }
 
+    // Copy first so the original incoming message is never mutated in place.
     auto out = *msg;
 
     apply_bias(out);
@@ -158,6 +163,8 @@ namespace ros2_fault_injection
   {
     double probability = 0.0;
 
+    // If multiple active faults specify drop probability, use the strongest
+    // one. This keeps overlapping drop faults predictable.
     for (const auto &[fault_id, is_active] : active_)
     {
       if (!is_active)
@@ -187,6 +194,8 @@ namespace ros2_fault_injection
     double x_bias = 0.0;
     double y_bias = 0.0;
 
+    // Biases stack additively, so separate faults can represent separate error
+    // sources while still targeting the same odom stream.
     for (const auto &[fault_id, is_active] : active_)
     {
       if (!is_active)
@@ -208,6 +217,8 @@ namespace ros2_fault_injection
   {
     int delay_ms = 0;
 
+    // Use the largest active delay rather than summing delays. That avoids
+    // surprising growth when two delay faults overlap.
     for (const auto &[fault_id, is_active] : active_)
     {
       if (!is_active)
@@ -222,4 +233,4 @@ namespace ros2_fault_injection
     return std::chrono::milliseconds{delay_ms};
   }
 
-} // namespace ros_fault_injection
+} // namespace ros2_fault_injection

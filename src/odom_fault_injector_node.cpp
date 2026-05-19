@@ -5,11 +5,14 @@
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
+#include "ros2_fault_injection/fault_scheduler.hpp"
 
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
 
+  // This node is the first framework runner: it loads a scenario, creates the
+  // odom injector, registers faults with it, and schedules activation windows.
   auto node = std::make_shared<rclcpp::Node>("odom_fault_injector");
 
   node->declare_parameter<std::string>("scenario_file", "");
@@ -28,6 +31,8 @@ int main(int argc, char **argv)
 
   try
   {
+    // Keep file parsing separate from ROS wiring so the parser stays easy to
+    // test and the injector does not need to know YAML exists.
     scenario = ros2_fault_injection::load_scenario_config(scenario_file);
   }
   catch (const std::exception &error)
@@ -47,6 +52,8 @@ int main(int argc, char **argv)
           *node,
           scenario.injector);
 
+  // Register every fault with the injector first. Activation is a separate
+  // step so immediate and scheduled faults use the same injector interface.
   for (const auto &fault : scenario.faults)
   {
     if (fault.injector_id != scenario.injector.id)
@@ -62,14 +69,8 @@ int main(int argc, char **argv)
     injector->add_fault(fault);
   }
 
-  for (const auto &fault_id : scenario.initially_active_faults)
-  {
-    injector->activate_fault(fault_id);
-    RCLCPP_INFO(
-        node->get_logger(),
-        "Initially activating fault '%s'",
-        fault_id.c_str());
-  }
+  ros2_fault_injection::FaultScheduler scheduler(*node);
+  scheduler.schedule(scenario.faults, *injector, scenario.initially_active_faults);
 
   RCLCPP_INFO(
       node->get_logger(),
