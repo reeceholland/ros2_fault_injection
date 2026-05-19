@@ -32,6 +32,7 @@ target_include_directories(${PROJECT_NAME}_core
 ament_target_dependencies(${PROJECT_NAME}_core
   rclcpp
   nav_msgs
+  std_msgs
 )
 
 add_executable(odom_fault_injector_node

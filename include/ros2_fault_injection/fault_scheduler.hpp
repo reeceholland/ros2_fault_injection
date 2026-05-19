@@ -7,6 +7,7 @@
 
 #include <rclcpp/node.hpp>
 #include <rclcpp/timer.hpp>
+#include <std_msgs/msg/string.hpp>
 
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/fault_injector.hpp"
@@ -32,8 +33,11 @@ namespace ros2_fault_injection
     void schedule_start(FaultInjector &injector, const FaultConfig &fault);
     void schedule_stop(FaultInjector &injector, const FaultConfig &fault);
 
+    void publish_event(const std::string &fault_id, const std::string &state);
+
     rclcpp::Node &node_;
     std::vector<rclcpp::TimerBase::SharedPtr> timers_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr event_pub_;
   };
 
 } // namespace ros2_fault_injection

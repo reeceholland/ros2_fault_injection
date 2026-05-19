@@ -10,6 +10,8 @@ namespace ros2_fault_injection
   FaultScheduler::FaultScheduler(rclcpp::Node &node)
       : node_(node)
   {
+    event_pub_ = node_.create_publisher<std_msgs::msg::String>(
+        "fault_injection/events", 10);
   }
 
   void FaultScheduler::schedule(
@@ -68,6 +70,8 @@ namespace ros2_fault_injection
 
           injector.activate_fault(fault.id);
 
+          publish_event(fault.id, "active");
+
           RCLCPP_INFO(
               node_.get_logger(),
               "Activated scheduled fault '%s'",
@@ -95,6 +99,8 @@ namespace ros2_fault_injection
 
           injector.deactivate_fault(fault.id);
 
+          publish_event(fault.id, "inactive");
+
           RCLCPP_INFO(
               node_.get_logger(),
               "Deactivated scheduled fault '%s'",
@@ -102,6 +108,15 @@ namespace ros2_fault_injection
         });
 
     timers_.push_back(*timer_holder);
+  }
+
+  void FaultScheduler::publish_event(
+      const std::string &fault_id,
+      const std::string &state)
+  {
+    std_msgs::msg::String event_msg;
+    event_msg.data = fault_id + " " + state;
+    event_pub_->publish(event_msg);
   }
 
 } // namespace ros2_fault_injection
