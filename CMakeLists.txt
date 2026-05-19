@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 
 add_library(${PROJECT_NAME}_core
+  src/fault_injector_base.cpp
   src/odom_fault_injector.cpp
   src/scan_fault_injector.cpp
   src/scenario_config.cpp

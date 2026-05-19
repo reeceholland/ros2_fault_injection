@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 
   RCLCPP_INFO(
       node->get_logger(),
-      "Odom fault injector running: %s -> %s using scenario file %s",
+      "Fault injector running: %s -> %s using scenario file %s",
       scenario.injector.input_topic.c_str(),
       scenario.injector.output_topic.c_str(),
       scenario_file.c_str());
