@@ -199,7 +199,7 @@ namespace ros2_fault_injection
       }
 
       const auto &fault = faults_.at(fault_id);
-      bias = get_double(fault, "range_bias", 0.0);
+      bias += get_double(fault, "range_bias", 0.0);
     }
 
     for (auto &range : msg.ranges)
@@ -234,6 +234,10 @@ namespace ros2_fault_injection
 
     for (auto &range : msg.ranges)
     {
+      if (!std::isfinite(range))
+      {
+        continue;
+      }
       range += distribution(rng_);
     }
   }
@@ -289,6 +293,29 @@ namespace ros2_fault_injection
       }
     }
     return ids;
+  }
+
+  void ScanFaultInjector::warn_unknown_config_keys(const FaultConfig &fault_config) const
+  {
+    static constexpr std::array<const char *, 4> known_keys = {
+        "drop_probability",
+        "delay_ms",
+        "range_bias",
+        "range_noise_stddev"};
+
+    for (const auto &[key, value] : fault_config.config)
+    {
+      (void)value; // unused
+      const bool known = std::find(std::begin(known_keys), std::end(known_keys), key) != std::end(known_keys);
+      if (!known)
+      {
+        RCLCPP_WARN(
+            node_.get_logger(),
+            "Fault '%s' has unknown config key '%s'",
+            fault_config.id.c_str(),
+            key.c_str());
+      }
+    }
   }
 
 } // namespace ros2_fault_injection

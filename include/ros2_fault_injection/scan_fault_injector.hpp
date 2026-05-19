@@ -42,6 +42,7 @@ namespace ros2_fault_injection
     void apply_range_bias(sensor_msgs::msg::LaserScan &msg);
     void apply_range_noise(sensor_msgs::msg::LaserScan &msg);
     std::chrono::milliseconds active_delay();
+    void warn_unknown_config_keys(const FaultConfig &fault_config) const;
 
     rclcpp::Node &node_;
     InjectorConfig config_;
