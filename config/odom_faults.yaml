@@ -1,0 +1,14 @@
+injector:
+  id: odom
+  type: odom
+  input_topic: /odom_raw
+  output_topic: /odom
+  qos_depth: 10
+
+faults:
+  - id: odom_bias
+    injector_id: odom
+    active: true
+    config:
+      x_bias: 1.0
+      y_bias: -0.25

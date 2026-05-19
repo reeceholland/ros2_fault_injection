@@ -11,9 +11,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 add_library(${PROJECT_NAME}_core
   src/odom_fault_injector.cpp
+  src/scenario_config.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_core
+  yaml-cpp
 )
 
 target_include_directories(${PROJECT_NAME}_core
