@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ros2_fault_injection VERSION 0.1.0 LANGUAGES CXX)
+project(ros2_fault_injection VERSION 0.1.0 LANGUAGES C CXX)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,7 +11,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/SetFaultState.srv"
+)
 
 add_library(${PROJECT_NAME}_core
   src/odom_fault_injector.cpp
@@ -39,8 +45,14 @@ add_executable(odom_fault_injector_node
   src/odom_fault_injector_node.cpp
 )
 
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME}
+  "rosidl_typesupport_cpp"
+)
+
 target_link_libraries(odom_fault_injector_node
   ${PROJECT_NAME}_core
+  "${cpp_typesupport_target}"
 )
 
 ament_target_dependencies(odom_fault_injector_node

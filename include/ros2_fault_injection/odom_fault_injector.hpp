@@ -27,6 +27,7 @@ namespace ros2_fault_injection
     void add_fault(const FaultConfig &fault_config) override;
     void activate_fault(const std::string &fault_id) override;
     void deactivate_fault(const std::string &fault_id) override;
+    bool has_fault(const std::string &fault_id) const override;
 
   private:
     struct DelayedOdom
@@ -49,7 +50,7 @@ namespace ros2_fault_injection
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::unordered_map<std::string, FaultConfig> faults_;
     std::unordered_map<std::string, bool> active_;
 

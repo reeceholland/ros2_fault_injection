@@ -1,0 +1,5 @@
+string fault_id
+bool active
+---
+bool success
+string message

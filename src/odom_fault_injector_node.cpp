@@ -6,6 +6,7 @@
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
 #include "ros2_fault_injection/fault_scheduler.hpp"
+#include "ros2_fault_injection/srv/set_fault_state.hpp"
 
 int main(int argc, char **argv)
 {
@@ -68,6 +69,39 @@ int main(int argc, char **argv)
     }
     injector->add_fault(fault);
   }
+
+  auto set_fault_state_service = node->create_service<ros2_fault_injection::srv::SetFaultState>(
+      "/fault_injection/set_fault_state",
+      [injector](const std::shared_ptr<ros2_fault_injection::srv::SetFaultState::Request> request,
+                 std::shared_ptr<ros2_fault_injection::srv::SetFaultState::Response> response)
+      {
+        if (request->fault_id.empty())
+        {
+          response->success = false;
+          response->message = "fault_id cannot be empty";
+          return;
+        }
+
+        if (!injector->has_fault(request->fault_id))
+        {
+          response->success = false;
+          response->message = "unknown fault_id: " + request->fault_id;
+          return;
+        }
+
+        if (request->active)
+        {
+          injector->activate_fault(request->fault_id);
+          response->message = "activated fault: " + request->fault_id;
+        }
+        else
+        {
+          injector->deactivate_fault(request->fault_id);
+          response->message = "deactivated fault: " + request->fault_id;
+        }
+
+        response->success = true;
+      });
 
   ros2_fault_injection::FaultScheduler scheduler(*node);
   scheduler.schedule(scenario.faults, *injector, scenario.initially_active_faults);

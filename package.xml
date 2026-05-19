@@ -7,10 +7,13 @@
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
   <depend>lifecycle_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
+  <depend>rosidl_default_runtime</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
   <depend>yaml-cpp</depend>
@@ -21,4 +24,7 @@
   <export>
     <build_type>ament_cmake</build_type>
   </export>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
 </package>

@@ -233,4 +233,10 @@ namespace ros2_fault_injection
     return std::chrono::milliseconds{delay_ms};
   }
 
+  bool OdomFaultInjector::has_fault(const std::string &fault_id) const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return faults_.find(fault_id) != faults_.end();
+  }
+
 } // namespace ros2_fault_injection
