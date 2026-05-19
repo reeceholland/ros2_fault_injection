@@ -10,37 +10,32 @@
 #include <std_msgs/msg/string.hpp>
 
 #include "ros2_fault_injection/fault_config.hpp"
-#include "ros2_fault_injection/fault_injector.hpp"
 #include "ros2_fault_injection/fault_event_publisher.hpp"
+#include "ros2_fault_injection/fault_injector.hpp"
 
-namespace ros2_fault_injection
-{
+namespace ros2_fault_injection {
 
-  class FaultScheduler
-  {
-  public:
-    explicit FaultScheduler(rclcpp::Node &node, FaultEventPublisher &event_pub);
+class FaultScheduler {
+public:
+  explicit FaultScheduler(rclcpp::Node& node, FaultEventPublisher& event_pub);
 
-    void schedule(
-        const std::vector<FaultConfig> &faults,
-        FaultInjector &injector,
-        const std::vector<std::string> &initially_active_faults);
+  void schedule(const std::vector<FaultConfig>& faults, FaultInjector& injector,
+                const std::vector<std::string>& initially_active_faults);
 
-  private:
-    bool is_initially_active(
-        const FaultConfig &fault,
-        const std::vector<std::string> &initially_active_faults) const;
+private:
+  bool is_initially_active(const FaultConfig& fault,
+                           const std::vector<std::string>& initially_active_faults) const;
 
-    void schedule_start(FaultInjector &injector, const FaultConfig &fault);
-    void schedule_stop(FaultInjector &injector, const FaultConfig &fault);
+  void schedule_start(FaultInjector& injector, const FaultConfig& fault);
+  void schedule_stop(FaultInjector& injector, const FaultConfig& fault);
 
-    void publish_event(const std::string &fault_id, const std::string &state);
+  void publish_event(const std::string& fault_id, const std::string& state);
 
-    rclcpp::Node &node_;
-    std::vector<rclcpp::TimerBase::SharedPtr> timers_;
-    FaultEventPublisher &event_pub_;
-  };
+  rclcpp::Node& node_;
+  std::vector<rclcpp::TimerBase::SharedPtr> timers_;
+  FaultEventPublisher& event_pub_;
+};
 
-} // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection
 
-#endif // ROS2_FAULT_INJECTION__FAULT_SCHEDULER_HPP_
+#endif  // ROS2_FAULT_INJECTION__FAULT_SCHEDULER_HPP_

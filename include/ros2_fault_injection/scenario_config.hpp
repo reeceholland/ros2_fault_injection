@@ -6,18 +6,16 @@
 
 #include "ros2_fault_injection/fault_config.hpp"
 
-namespace ros2_fault_injection
-{
+namespace ros2_fault_injection {
 
-  struct ScenarioConfig
-  {
-    InjectorConfig injector;
-    std::vector<FaultConfig> faults;
-    std::vector<std::string> initially_active_faults;
-  };
+struct ScenarioConfig {
+  InjectorConfig injector;
+  std::vector<FaultConfig> faults;
+  std::vector<std::string> initially_active_faults;
+};
 
-  ScenarioConfig load_scenario_config(const std::string &path);
+ScenarioConfig load_scenario_config(const std::string& path);
 
-} // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection
 
-#endif // ROS2_FAULT_INJECTION__SCENARIO_CONFIG_HPP_
+#endif  // ROS2_FAULT_INJECTION__SCENARIO_CONFIG_HPP_
