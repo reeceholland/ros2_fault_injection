@@ -25,7 +25,13 @@ faults:
 
   - id: odom_noise
     injector_id: odom
-    active: true
+    active: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
+
+  - id: odom_delay
+    injector_id: odom
+    active: false
+    config:
+      delay_ms: 250

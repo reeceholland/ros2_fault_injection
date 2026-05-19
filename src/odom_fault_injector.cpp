@@ -82,6 +82,8 @@ namespace ros2_fault_injection
   {
     std::lock_guard<std::mutex> lock(mutex_);
 
+    warn_unknown_config_keys(fault_config);
+
     faults_[fault_config.id] = fault_config;
     active_[fault_config.id] = false;
   }
@@ -300,6 +302,31 @@ namespace ros2_fault_injection
       }
     }
     return ids;
+  }
+
+  void OdomFaultInjector::warn_unknown_config_keys(const FaultConfig &fault_config) const
+  {
+    static constexpr std::array<const char *, 6> known_keys = {
+        "drop_probability",
+        "x_bias",
+        "y_bias",
+        "x_noise_stddev",
+        "y_noise_stddev",
+        "delay_ms"};
+
+    for (const auto &[key, value] : fault_config.config)
+    {
+      (void)value; // unused
+      const bool known = std::find(std::begin(known_keys), std::end(known_keys), key) != std::end(known_keys);
+      if (!known)
+      {
+        RCLCPP_WARN(
+            node_.get_logger(),
+            "Fault '%s' has unknown config key '%s'",
+            fault_config.id.c_str(),
+            key.c_str());
+      }
+    }
   }
 
 } // namespace ros2_fault_injection

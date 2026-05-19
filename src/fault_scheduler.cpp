@@ -32,6 +32,15 @@ namespace ros2_fault_injection
         continue;
       }
 
+      if (!fault.start)
+      {
+        RCLCPP_INFO(
+            node_.get_logger(),
+            "Fault '%s' has no start time; leaving it inactive for manual control",
+            fault.id.c_str());
+        continue;
+      }
+
       schedule_start(injector, fault);
 
       if (fault.duration)
@@ -56,7 +65,7 @@ namespace ros2_fault_injection
       const FaultConfig &fault)
   {
     const auto start_delay =
-        std::max(fault.start, std::chrono::milliseconds{1});
+        std::max(*fault.start, std::chrono::milliseconds{1});
 
     auto timer_holder =
         std::make_shared<rclcpp::TimerBase::SharedPtr>();
@@ -85,7 +94,7 @@ namespace ros2_fault_injection
       const FaultConfig &fault)
   {
     const auto stop_delay =
-        std::max(fault.start + *fault.duration, std::chrono::milliseconds{1});
+        std::max(*fault.start + *fault.duration, std::chrono::milliseconds{1});
 
     auto timer_holder =
         std::make_shared<rclcpp::TimerBase::SharedPtr>();

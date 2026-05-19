@@ -23,7 +23,7 @@ namespace ros2_fault_injection
   {
     std::string id;
     std::string injector_id;
-    std::chrono::milliseconds start{0};
+    std::optional<std::chrono::milliseconds> start;
     std::optional<std::chrono::milliseconds> duration;
     std::unordered_map<std::string, std::string> config;
   };

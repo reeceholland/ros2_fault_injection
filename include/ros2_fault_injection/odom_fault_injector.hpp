@@ -45,6 +45,7 @@ namespace ros2_fault_injection
     void apply_bias(nav_msgs::msg::Odometry &msg);
     void apply_noise(nav_msgs::msg::Odometry &msg);
     std::chrono::milliseconds active_delay();
+    void warn_unknown_config_keys(const FaultConfig &fault_config) const;
 
     rclcpp::Node &node_;
     InjectorConfig config_;
