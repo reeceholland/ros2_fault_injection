@@ -10,13 +10,12 @@
 #include "ros2_fault_injection/fault_injector.hpp"
 #include "ros2_fault_injection/fault_injector_factory.hpp"
 #include "ros2_fault_injection/fault_scheduler.hpp"
+#include "ros2_fault_injection/fault_service_manager.hpp"
 #include "ros2_fault_injection/joint_state_fault_injector.hpp"
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scan_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
 #include "ros2_fault_injection/scenario_validator.hpp"
-#include "ros2_fault_injection/srv/list_faults.hpp"
-#include "ros2_fault_injection/srv/set_fault_state.hpp"
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
@@ -95,72 +94,8 @@ int main(int argc, char** argv) {
 
   ros2_fault_injection::FaultEventPublisher event_pub(*node);
 
-  auto find_injector_for_fault =
-      [&injectors](
-          const std::string& fault_id) -> std::shared_ptr<ros2_fault_injection::FaultInjector> {
-    for (const auto& [injector_id, injector] : injectors) {
-      (void)injector_id;
-      if (injector->has_fault(fault_id)) {
-        return injector;
-      }
-    }
-
-    return nullptr;
-  };
-
-  auto set_fault_state_service = node->create_service<ros2_fault_injection::srv::SetFaultState>(
-      "/fault_injection/set_fault_state",
-      [node, find_injector_for_fault, &event_pub](
-          const std::shared_ptr<ros2_fault_injection::srv::SetFaultState::Request> request,
-          std::shared_ptr<ros2_fault_injection::srv::SetFaultState::Response> response) {
-        if (request->fault_id.empty()) {
-          response->success = false;
-          response->message = "fault_id cannot be empty";
-          RCLCPP_WARN(node->get_logger(), "Received request with empty fault_id");
-          return;
-        }
-
-        const auto injector = find_injector_for_fault(request->fault_id);
-        if (!injector) {
-          response->success = false;
-          response->message = "unknown fault_id: " + request->fault_id;
-          RCLCPP_WARN(node->get_logger(), "Received request with unknown fault_id: %s",
-                      request->fault_id.c_str());
-          return;
-        }
-
-        if (request->active) {
-          injector->activate_fault(request->fault_id);
-          response->message = "activated fault: " + request->fault_id;
-          event_pub.publish(request->fault_id, "active");
-          RCLCPP_INFO(node->get_logger(), "Activated fault: %s", request->fault_id.c_str());
-        } else {
-          injector->deactivate_fault(request->fault_id);
-          response->message = "deactivated fault: " + request->fault_id;
-          event_pub.publish(request->fault_id, "inactive");
-          RCLCPP_INFO(node->get_logger(), "Deactivated fault: %s", request->fault_id.c_str());
-        }
-
-        response->success = true;
-      });
-
-  auto list_faults_service = node->create_service<ros2_fault_injection::srv::ListFaults>(
-      "/fault_injection/list_faults",
-      [&injectors](const std::shared_ptr<ros2_fault_injection::srv::ListFaults::Request> request,
-                   std::shared_ptr<ros2_fault_injection::srv::ListFaults::Response> response) {
-        (void)request;
-
-        for (const auto& [injector_id, injector] : injectors) {
-          (void)injector_id;
-
-          const auto fault_ids = injector->fault_ids();
-          response->fault_ids.insert(response->fault_ids.end(), fault_ids.begin(), fault_ids.end());
-
-          const auto active_fault_ids = injector->active_fault_ids();
-          response->active_fault_ids.insert(response->active_fault_ids.end(),
-                                            active_fault_ids.begin(), active_fault_ids.end());
-        }
-      });
+  auto fault_service_manager =
+      std::make_shared<ros2_fault_injection::FaultServiceManager>(*node, injectors, event_pub);
 
   ros2_fault_injection::FaultScheduler scheduler(*node, event_pub);
 

@@ -25,6 +25,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ListFaults.srv"
 )
 
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME}
+  "rosidl_typesupport_cpp"
+)
+
 add_library(${PROJECT_NAME}_core
   src/fault_injector_base.cpp
   src/odom_fault_injector.cpp
@@ -35,10 +40,12 @@ add_library(${PROJECT_NAME}_core
   src/fault_event_publisher.cpp
   src/scenario_validator.cpp
   src/fault_injector_factory.cpp
+  src/fault_service_manager.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
   yaml-cpp
+  "${cpp_typesupport_target}"
 )
 
 target_include_directories(${PROJECT_NAME}_core
@@ -65,7 +72,6 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 
 target_link_libraries(fault_injector_node
   ${PROJECT_NAME}_core
-  "${cpp_typesupport_target}"
 )
 
 ament_target_dependencies(fault_injector_node
