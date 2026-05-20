@@ -34,6 +34,7 @@ add_library(${PROJECT_NAME}_core
   src/fault_scheduler.cpp
   src/fault_event_publisher.cpp
   src/scenario_validator.cpp
+  src/fault_injector_factory.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -92,6 +93,7 @@ install(DIRECTORY
 if(BUILD_TESTING)
   ament_add_gtest(test_scenario_validator
     test/test_scenario_validator.cpp
+    test/test_scenario_config.cpp
   )
   target_link_libraries(test_scenario_validator
     ${PROJECT_NAME}_core
