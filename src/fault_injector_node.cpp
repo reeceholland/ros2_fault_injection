@@ -5,6 +5,7 @@
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/fault_event_publisher.hpp"
 #include "ros2_fault_injection/fault_scheduler.hpp"
+#include "ros2_fault_injection/joint_state_fault_injector.hpp"
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scan_fault_injector.hpp"
 #include "ros2_fault_injection/scenario_config.hpp"
@@ -62,6 +63,9 @@ int main(int argc, char** argv) {
     injector = std::make_shared<ros2_fault_injection::OdomFaultInjector>(*node, scenario.injector);
   } else if (scenario.injector.type == "scan") {
     injector = std::make_shared<ros2_fault_injection::ScanFaultInjector>(*node, scenario.injector);
+  } else if (scenario.injector.type == "joint_state") {
+    injector =
+        std::make_shared<ros2_fault_injection::JointStateFaultInjector>(*node, scenario.injector);
   } else {
     RCLCPP_ERROR(node->get_logger(), "Unknown injector type '%s' in scenario file '%s'",
                  scenario.injector.type.c_str(), scenario_file.c_str());

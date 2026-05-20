@@ -1,0 +1,25 @@
+injector:
+  id: motor_feedback
+  type: joint_state
+  input_topic: /platform/motors/feedback_raw
+  output_topic: /platform/motors/feedback
+  qos_depth: 10
+
+faults:
+  - id: motor_velocity_noise
+    injector_id: motor_feedback
+    active: false
+    config:
+      velocity_noise_stddev: 0.05
+
+  - id: motor_velocity_bias
+    injector_id: motor_feedback
+    active: false
+    config:
+      velocity_bias: 0.1
+
+  - id: motor_feedback_delay
+    injector_id: motor_feedback
+    active: false
+    config:
+      delay_ms: 250

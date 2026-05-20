@@ -29,6 +29,7 @@ add_library(${PROJECT_NAME}_core
   src/fault_injector_base.cpp
   src/odom_fault_injector.cpp
   src/scan_fault_injector.cpp
+  src/joint_state_fault_injector.cpp
   src/scenario_config.cpp
   src/fault_scheduler.cpp
   src/fault_event_publisher.cpp

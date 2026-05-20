@@ -11,7 +11,7 @@ namespace ros2_fault_injection {
 namespace {
 
 bool is_known_injector_type(const std::string& type) {
-  return type == "odom" || type == "scan";
+  return type == "odom" || type == "scan" || type == "joint_state";
 }
 
 bool contains(const std::unordered_set<std::string>& values, const std::string& value) {
@@ -47,6 +47,15 @@ std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
         "delay_ms",
         "range_bias",
         "range_noise_stddev",
+    };
+  }
+
+  if (type == "joint_state") {
+    return {
+        "drop_probability",
+        "delay_ms",
+        "velocity_bias",
+        "velocity_noise_stddev",
     };
   }
 
@@ -169,6 +178,11 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
   if (injector_type == "scan") {
     validate_number_key(fault, "range_bias", result);
     validate_non_negative_number_key(fault, "range_noise_stddev", result);
+  }
+
+  if (injector_type == "joint_state") {
+    validate_number_key(fault, "velocity_bias", result);
+    validate_non_negative_number_key(fault, "velocity_noise_stddev", result);
   }
 }
 
