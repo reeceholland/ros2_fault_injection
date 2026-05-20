@@ -72,12 +72,22 @@ FaultConfig parse_fault(const YAML::Node& node) {
 ScenarioConfig load_scenario_config(const std::string& path) {
   const auto root = YAML::LoadFile(path);
 
-  if (!root["injector"]) {
-    throw std::runtime_error("Scenario is missing required 'injector' block");
-  }
-
   ScenarioConfig scenario;
-  scenario.injector = parse_injector(root["injector"]);
+
+  if (root["injectors"]) {
+    for (const auto& injector_node : root["injectors"]) {
+      scenario.injectors.push_back(parse_injector(injector_node));
+    }
+
+    if (!scenario.injectors.empty()) {
+      scenario.injector = scenario.injectors.front();
+    }
+  } else if (root["injector"]) {
+    scenario.injector = parse_injector(root["injector"]);
+    scenario.injectors.push_back(scenario.injector);
+  } else {
+    throw std::runtime_error("Scenario is missing required 'injector' or 'injectors' block");
+  }
 
   if (root["faults"]) {
     for (const auto& fault_node : root["faults"]) {
@@ -96,6 +106,17 @@ ScenarioConfig load_scenario_config(const std::string& path) {
   }
 
   return scenario;
+}
+
+const InjectorConfig* find_injector(const ScenarioConfig& scenario,
+                                    const std::string& injector_id) {
+  for (const auto& injector : scenario.injectors) {
+    if (injector.id == injector_id) {
+      return &injector;
+    }
+  }
+
+  return nullptr;
 }
 
 }  // namespace ros2_fault_injection

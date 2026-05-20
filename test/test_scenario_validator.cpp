@@ -14,6 +14,7 @@ ros2_fault_injection::ScenarioConfig valid_odom_scenario() {
   scenario.injector.input_topic = "/odom_raw";
   scenario.injector.output_topic = "/odom";
   scenario.injector.qos_depth = 10;
+  scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
   fault.id = "odom_bias";
@@ -38,6 +39,7 @@ TEST(ScenarioValidator, AcceptsValidOdomScenario) {
 TEST(ScenarioValidator, RejectsUnsupportedInjectorType) {
   auto scenario = valid_odom_scenario();
   scenario.injector.type = "camera";
+  scenario.injectors.front().type = "camera";
 
   const auto result = ros2_fault_injection::validate_scenario(scenario);
 
@@ -86,6 +88,7 @@ TEST(ScenarioValidator, WarnsOnUnknownScanKey) {
   scenario.injector.input_topic = "/scan_raw";
   scenario.injector.output_topic = "/scan";
   scenario.injector.qos_depth = 10;
+  scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
   fault.id = "scan_fault";
@@ -99,4 +102,16 @@ TEST(ScenarioValidator, WarnsOnUnknownScanKey) {
   EXPECT_TRUE(result.ok());
   ASSERT_EQ(result.warnings.size(), 1u);
   EXPECT_NE(result.warnings.front().find("unknown config key 'x_bias'"), std::string::npos);
+}
+
+
+TEST(ScenarioValidator, RejectsDuplicateInjectorIds) {
+  auto scenario = valid_odom_scenario();
+  scenario.injectors.push_back(scenario.injector);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_FALSE(result.ok());
+  ASSERT_EQ(result.errors.size(), 1u);
+  EXPECT_NE(result.errors.front().find("duplicate injector id"), std::string::npos);
 }

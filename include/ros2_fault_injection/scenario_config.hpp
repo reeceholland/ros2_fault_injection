@@ -9,12 +9,15 @@
 namespace ros2_fault_injection {
 
 struct ScenarioConfig {
+  std::vector<InjectorConfig> injectors;
   InjectorConfig injector;
   std::vector<FaultConfig> faults;
   std::vector<std::string> initially_active_faults;
 };
 
 ScenarioConfig load_scenario_config(const std::string& path);
+
+const InjectorConfig* find_injector(const ScenarioConfig& scenario, const std::string& injector_id);
 
 }  // namespace ros2_fault_injection
 

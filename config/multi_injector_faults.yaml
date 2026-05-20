@@ -1,0 +1,56 @@
+injectors:
+  - id: odom
+    type: odom
+    input_topic: /odom_raw
+    output_topic: /odom
+    qos_depth: 10
+
+  - id: scan
+    type: scan
+    input_topic: /scan_raw
+    output_topic: /scan
+    qos_depth: 10
+
+  - id: motor_feedback
+    type: joint_state
+    input_topic: /platform/motors/feedback_raw
+    output_topic: /platform/motors/feedback
+    qos_depth: 10
+
+faults:
+  - id: odom_bias
+    injector_id: odom
+    active: true
+    start: 5.0
+    duration: 10.0
+    config:
+      x_bias: 1.0
+      y_bias: -0.25
+
+  - id: scan_noise
+    injector_id: scan
+    active: true
+    start: 8.0
+    duration: 12.0
+    config:
+      range_noise_stddev: 0.05
+
+  - id: scan_delay
+    injector_id: scan
+    active: true
+    config:
+      delay_ms: 250
+
+  - id: motor_velocity_bias
+    injector_id: motor_feedback
+    active: true
+    start: 12.0
+    duration: 8.0
+    config:
+      velocity_bias: 0.1
+
+  - id: motor_feedback_drop
+    injector_id: motor_feedback
+    active: true
+    config:
+      drop_probability: 0.25

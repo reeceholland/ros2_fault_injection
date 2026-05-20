@@ -223,10 +223,24 @@ void validate_fault(const FaultConfig& fault, const InjectorConfig& injector,
 ValidationResult validate_scenario(const ScenarioConfig& scenario) {
   ValidationResult result;
 
-  validate_injector(scenario.injector, result);
+  std::unordered_set<std::string> injector_ids;
+  for (const auto& injector : scenario.injectors) {
+    if (!injector.id.empty() && !injector_ids.insert(injector.id).second) {
+      result.errors.push_back("duplicate injector id: '" + injector.id + "'");
+    }
+
+    validate_injector(injector, result);
+  }
 
   for (const auto& fault : scenario.faults) {
-    validate_fault(fault, scenario.injector, result);
+    const auto* injector = find_injector(scenario, fault.injector_id);
+
+    if (injector == nullptr) {
+      result.errors.push_back("fault '" + fault.id + "' references unknown injector_id '" +
+                              fault.injector_id + "'");
+      continue;
+    }
+    validate_fault(fault, *injector, result);
   }
 
   return result;
