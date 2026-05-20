@@ -10,6 +10,7 @@
 
 #include "ros2_fault_injection/fault_event_publisher.hpp"
 #include "ros2_fault_injection/fault_injector.hpp"
+#include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/list_faults.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
@@ -28,12 +29,17 @@ private:
                               std::shared_ptr<srv::SetFaultState::Response> response);
   void handle_list_faults(const std::shared_ptr<srv::ListFaults::Request> request,
                           std::shared_ptr<srv::ListFaults::Response> response);
+
+  void handle_get_fault_status(const std::shared_ptr<srv::GetFaultStatus::Request> request,
+                               std::shared_ptr<srv::GetFaultStatus::Response> response);
+
   rclcpp::Node& node_;
   const InjectorMap& injectors_;
   FaultEventPublisher& events_;
 
   rclcpp::Service<srv::SetFaultState>::SharedPtr set_fault_state_service_;
   rclcpp::Service<srv::ListFaults>::SharedPtr list_faults_service_;
+  rclcpp::Service<srv::GetFaultStatus>::SharedPtr get_fault_status_service_;
 };
 
 }  // namespace ros2_fault_injection

@@ -17,6 +17,13 @@ FaultServiceManager::FaultServiceManager(rclcpp::Node& node, const InjectorMap& 
                                             std::shared_ptr<srv::ListFaults::Response> response) {
         handle_list_faults(request, response);
       });
+
+  get_fault_status_service_ = node_.create_service<srv::GetFaultStatus>(
+      "fault_injection/get_fault_status",
+      [this](const std::shared_ptr<srv::GetFaultStatus::Request> request,
+             std::shared_ptr<srv::GetFaultStatus::Response> response) {
+        handle_get_fault_status(request, response);
+      });
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
@@ -29,6 +36,31 @@ std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
   }
 
   return nullptr;
+}
+
+void FaultServiceManager::handle_get_fault_status(
+    const std::shared_ptr<srv::GetFaultStatus::Request> request,
+    std::shared_ptr<srv::GetFaultStatus::Response> response) {
+  (void)request;
+
+  for (const auto& [injector_id, injector] : injectors_) {
+    (void)injector_id;
+    const auto fault_ids = injector->fault_ids();
+    const auto active_fault_ids = injector->active_fault_ids();
+
+    for (const auto& fault_id : fault_ids) {
+      response->fault_ids.push_back(fault_id);
+      response->injector_ids.push_back(injector_id);
+      if (std::find(active_fault_ids.begin(), active_fault_ids.end(), fault_id) !=
+          active_fault_ids.end()) {
+        response->states.push_back("active");
+        response->details.push_back("Fault is currently active");
+      } else {
+        response->states.push_back("inactive");
+        response->details.push_back("Fault is currently inactive");
+      }
+    }
+  }
 }
 
 void FaultServiceManager::handle_set_fault_state(

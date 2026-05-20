@@ -54,3 +54,10 @@ faults:
     active: true
     config:
       drop_probability: 0.25
+
+  - id: odom_noise
+    injector_id: odom
+    active: true
+    config:
+      x_noise_stddev: 0.05
+      y_noise_stddev: 0.05

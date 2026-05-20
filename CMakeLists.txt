@@ -23,6 +23,7 @@ endif()
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetFaultState.srv"
   "srv/ListFaults.srv"
+  "srv/GetFaultStatus.srv"
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -41,6 +42,7 @@ add_library(${PROJECT_NAME}_core
   src/scenario_validator.cpp
   src/fault_injector_factory.cpp
   src/fault_service_manager.cpp
+  src/fault_controller.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
