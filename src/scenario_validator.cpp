@@ -16,10 +16,6 @@ bool is_known_injector_type(const std::string& type) {
   return type == "odom" || type == "scan" || type == "joint_state";
 }
 
-// bool contains(const std::unordered_set<std::string>& values, const std::string& value) {
-//   return values.find(value) != values.end();
-// }
-
 bool parse_double(const std::string& text, double& value) {
   const auto* begin = text.data();
   const auto* end = text.data() + text.size();
@@ -35,33 +31,6 @@ bool parse_int(const std::string& text, int& value) {
   const auto result = std::from_chars(begin, end, value);
   return result.ec == std::errc{} && result.ptr == end;
 }
-
-// std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
-//   if (type == "odom") {
-//     return {
-//         "drop_probability", "delay_ms",       "x_bias",       "y_bias",
-//         "x_noise_stddev",   "y_noise_stddev", "yaw_bias_deg", "yaw_noise_stddev_deg",
-//     };
-//   }
-
-//   if (type == "scan") {
-//     return {
-//         "drop_probability", "delay_ms",       "range_bias",   "range_noise_stddev",
-//         "sector_min_deg",   "sector_max_deg", "sector_value",
-//     };
-//   }
-
-//   if (type == "joint_state") {
-//     return {
-//         "drop_probability",
-//         "delay_ms",
-//         "velocity_bias",
-//         "velocity_noise_stddev",
-//     };
-//   }
-
-//   return {};
-// }
 
 void validate_injector(const InjectorConfig& injector, ValidationResult& result) {
   if (injector.id.empty()) {
