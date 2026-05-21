@@ -20,7 +20,7 @@ injectors:
 faults:
   - id: odom_bias
     injector_id: odom
-    active: false
+    active_on_startup: false
     start: 5.0
     duration: 10.0
     config:
@@ -29,7 +29,7 @@ faults:
 
   - id: scan_noise
     injector_id: scan
-    active: false
+    active_on_startup: false
     start: 8.0
     duration: 12.0
     config:
@@ -37,13 +37,13 @@ faults:
 
   - id: scan_delay
     injector_id: scan
-    active: false
+    active_on_startup: false
     config:
       delay_ms: 250
 
   - id: motor_velocity_bias
     injector_id: motor_feedback
-    active: true
+    active_on_startup: true
     start: 12.0
     duration: 8.0
     config:
@@ -51,20 +51,20 @@ faults:
 
   - id: motor_feedback_drop
     injector_id: motor_feedback
-    active: false
+    active_on_startup: false
     config:
       drop_probability: 0.25
 
   - id: odom_noise
     injector_id: odom
-    active: false
+    active_on_startup: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
 
   - id: scan_front_blind
     injector_id: scan
-    active: false
+    active_on_startup: false
     config:
       sector_min_deg: -20.0
       sector_max_deg: 20.0
@@ -72,12 +72,12 @@ faults:
   
   - id: odom_yaw_bias
     injector_id: odom
-    active: false
+    active_on_startup: false
     config:
       yaw_bias_deg: 10.0
 
   - id: odom_yaw_noise
     injector_id: odom
-    active: true
+    active_on_startup: false
     config:
       yaw_noise_stddev_deg: 2.0

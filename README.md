@@ -75,7 +75,7 @@ injectors:
 faults:
   - id: odom_bias
     injector_id: odom
-    active: false
+    active_on_startup: false
     start: 5.0
     duration: 10.0
     config:
@@ -84,7 +84,7 @@ faults:
 
   - id: scan_noise
     injector_id: scan
-    active: true
+    active_on_startup: true
     config:
       range_noise_stddev: 0.05
 ```
@@ -93,10 +93,10 @@ faults:
 
 | YAML fields | Behavior |
 | --- | --- |
-| `active: true` | Fault starts active immediately. |
-| `active: false` with `start` | Fault is scheduled to activate after `start` seconds. |
+| `active_on_startup: true` | Fault is active as soon as the framework starts. |
+| `active_on_startup: false` with `start` | Fault is scheduled to activate after `start` seconds. |
 | `duration` with `start` | Fault is deactivated after the duration expires. |
-| `active: false` without `start` | Fault is manual-only and can be enabled with the service API. |
+| `active_on_startup: false` without `start` | Fault starts inactive and can be enabled with the service API. |
 
 `start` and `duration` are written in seconds in YAML and stored internally as milliseconds.
 
@@ -154,14 +154,14 @@ Activate:
 
 ```bash
 ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetFaultState \
-  "{fault_id: odom_bias, active: true}"
+  "{fault_id: odom_bias, active_on_startup: true}"
 ```
 
 Deactivate:
 
 ```bash
 ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetFaultState \
-  "{fault_id: odom_bias, active: false}"
+  "{fault_id: odom_bias, active_on_startup: false}"
 ```
 
 ## Events

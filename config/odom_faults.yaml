@@ -8,7 +8,7 @@ injector:
 faults:
   - id: odom_bias
     injector_id: odom
-    active: false
+    active_on_startup: false
     start: 10.0
     duration: 10.0
     config:
@@ -17,7 +17,7 @@ faults:
 
   - id: odom_drop
     injector_id: odom
-    active: false
+    active_on_startup: false
     start: 5.0
     duration: 10.0
     config:
@@ -25,13 +25,13 @@ faults:
 
   - id: odom_noise
     injector_id: odom
-    active: false
+    active_on_startup: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
 
   - id: odom_delay
     injector_id: odom
-    active: false
+    active_on_startup: false
     config:
       delay_ms: 250

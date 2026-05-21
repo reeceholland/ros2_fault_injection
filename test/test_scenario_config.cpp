@@ -39,6 +39,11 @@ faults:
     config:
       x_bias: 1.0
       drop_probability: 0.25
+  - id: startup_fault
+    injector_id: odom
+    active_on_startup: true
+    config:
+      x_bias: 2.0
   - id: scan_noise
     injector_id: scan
     config:
@@ -55,8 +60,11 @@ faults:
   EXPECT_EQ(scenario.injectors[1].id, "scan");
   EXPECT_EQ(scenario.injectors[2].id, "motor_feedback");
 
-  ASSERT_EQ(scenario.faults.size(), 3u);
+  ASSERT_EQ(scenario.faults.size(), 4u);
   EXPECT_EQ(scenario.faults[0].injector_id, "odom");
-  EXPECT_EQ(scenario.faults[1].injector_id, "scan");
-  EXPECT_EQ(scenario.faults[2].injector_id, "motor_feedback");
+  ASSERT_EQ(scenario.initially_active_faults.size(), 1u);
+  EXPECT_EQ(scenario.initially_active_faults.front(), "startup_fault");
+  EXPECT_EQ(scenario.faults[1].injector_id, "odom");
+  EXPECT_EQ(scenario.faults[2].injector_id, "scan");
+  EXPECT_EQ(scenario.faults[3].injector_id, "motor_feedback");
 }

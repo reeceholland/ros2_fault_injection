@@ -8,18 +8,18 @@ injector:
 faults:
   - id: motor_velocity_noise
     injector_id: motor_feedback
-    active: false
+    active_on_startup: false
     config:
       velocity_noise_stddev: 0.05
 
   - id: motor_velocity_bias
     injector_id: motor_feedback
-    active: false
+    active_on_startup: false
     config:
       velocity_bias: 0.1
 
   - id: motor_feedback_delay
     injector_id: motor_feedback
-    active: false
+    active_on_startup: false
     config:
       delay_ms: 250

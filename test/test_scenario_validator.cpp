@@ -115,3 +115,39 @@ TEST(ScenarioValidator, RejectsDuplicateInjectorIds) {
   ASSERT_EQ(result.errors.size(), 1u);
   EXPECT_NE(result.errors.front().find("duplicate injector id"), std::string::npos);
 }
+
+
+TEST(ScenarioValidator, AllowsStartupActiveDurationWithoutStartWarning) {
+  auto scenario = valid_odom_scenario();
+  scenario.initially_active_faults.push_back("odom_bias");
+  scenario.faults.front().duration = std::chrono::seconds{10};
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(result.warnings.empty());
+}
+
+TEST(ScenarioValidator, WarnsWhenStartupActiveFaultAlsoHasStart) {
+  auto scenario = valid_odom_scenario();
+  scenario.initially_active_faults.push_back("odom_bias");
+  scenario.faults.front().start = std::chrono::seconds{12};
+  scenario.faults.front().duration = std::chrono::seconds{8};
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_TRUE(result.ok());
+  ASSERT_EQ(result.warnings.size(), 1u);
+  EXPECT_NE(result.warnings.front().find("active_on_startup=true and start"), std::string::npos);
+}
+
+TEST(ScenarioValidator, RejectsNegativeYawNoiseStddevDeg) {
+  auto scenario = valid_odom_scenario();
+  scenario.faults.front().config["yaw_noise_stddev_deg"] = "-1.0";
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_FALSE(result.ok());
+  ASSERT_EQ(result.errors.size(), 1u);
+  EXPECT_NE(result.errors.front().find("yaw_noise_stddev_deg"), std::string::npos);
+}

@@ -93,11 +93,13 @@ ScenarioConfig load_scenario_config(const std::string& path) {
     for (const auto& fault_node : root["faults"]) {
       auto fault = parse_fault(fault_node);
 
-      // active: true is the simple immediate-start path. start/duration are
-      // handled later by the node scheduler after all faults are registered.
-      const bool active = fault_node["active"] && fault_node["active"].as<bool>();
+      // active_on_startup: true means the fault is active as soon as the
+      // framework starts. Keep active as a deprecated alias for older scenarios.
+      const bool active_on_startup =
+          (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
+          (fault_node["active"] && fault_node["active"].as<bool>());
 
-      if (active) {
+      if (active_on_startup) {
         scenario.initially_active_faults.push_back(fault.id);
       }
 

@@ -8,19 +8,19 @@ injector:
 faults:
   - id: scan_noise
     injector_id: scan
-    active: true
+    active_on_startup: true
     config:
       range_noise_stddev: 0.01
 
   - id: scan_bias
     injector_id: scan
-    active: false
+    active_on_startup: false
     config:
       range_bias: 0.2
 
   - id: scan_delay
     injector_id: scan
-    active: false
+    active_on_startup: false
     start: 5.0
     duration: 10.0
     config:
@@ -29,7 +29,7 @@ faults:
 
   - id: scan_front_blind
     injector_id: scan
-    active: false
+    active_on_startup: false
     config:
       sector_min_deg: -20.0
       sector_max_deg: 20.0

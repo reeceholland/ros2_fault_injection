@@ -190,7 +190,7 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
     validate_non_negative_number_key(fault, "x_noise_stddev", result);
     validate_non_negative_number_key(fault, "y_noise_stddev", result);
     validate_number_key(fault, "yaw_bias_deg", result);
-    validate_non_negative_number_key(fault, "yaw_noise_stddev", result);
+    validate_non_negative_number_key(fault, "yaw_noise_stddev_deg", result);
   }
 
   if (injector_type == "scan") {
@@ -207,8 +207,14 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
   }
 }
 
-void validate_fault(const FaultConfig& fault, const InjectorConfig& injector,
-                    ValidationResult& result) {
+bool is_initially_active(const ScenarioConfig& scenario, const FaultConfig& fault) {
+  return std::find(scenario.initially_active_faults.begin(), scenario.initially_active_faults.end(),
+                   fault.id) != scenario.initially_active_faults.end();
+}
+
+void validate_fault(const ScenarioConfig& scenario, const FaultConfig& fault,
+                    const InjectorConfig& injector, ValidationResult& result) {
+  const bool active_on_startup = is_initially_active(scenario, fault);
   if (fault.id.empty()) {
     result.errors.push_back("fault.id must not be empty");
   }
@@ -222,7 +228,12 @@ void validate_fault(const FaultConfig& fault, const InjectorConfig& injector,
                             "' but scenario injector is '" + injector.id + "'");
   }
 
-  if (fault.duration && !fault.start) {
+  if (active_on_startup && fault.start) {
+    result.warnings.push_back("fault '" + fault.id +
+                              "' has active_on_startup=true and start; start will be ignored");
+  }
+
+  if (!active_on_startup && fault.duration && !fault.start) {
     result.warnings.push_back("fault '" + fault.id +
                               "' has duration but no start; duration will be ignored");
   }
@@ -261,7 +272,7 @@ ValidationResult validate_scenario(const ScenarioConfig& scenario) {
                               fault.injector_id + "'");
       continue;
     }
-    validate_fault(fault, *injector, result);
+    validate_fault(scenario, fault, *injector, result);
   }
 
   return result;
