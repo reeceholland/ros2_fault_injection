@@ -28,6 +28,8 @@ private:
 
   void schedule_start(FaultInjector& injector, const FaultConfig& fault);
   void schedule_stop(FaultInjector& injector, const FaultConfig& fault);
+  void schedule_stop_after(FaultInjector& injector, const FaultConfig& fault,
+                           std::chrono::milliseconds delay);
 
   void publish_event(const std::string& fault_id, const std::string& state);
 

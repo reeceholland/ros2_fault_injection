@@ -18,6 +18,10 @@ void FaultScheduler::schedule(const std::vector<FaultConfig>& faults, FaultInjec
 
       RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately", fault.id.c_str());
 
+      if (fault.duration) {
+        schedule_stop_after(injector, fault, *fault.duration);
+      }
+
       continue;
     }
 
@@ -61,7 +65,12 @@ void FaultScheduler::schedule_start(FaultInjector& injector, const FaultConfig& 
 }
 
 void FaultScheduler::schedule_stop(FaultInjector& injector, const FaultConfig& fault) {
-  const auto stop_delay = std::max(*fault.start + *fault.duration, std::chrono::milliseconds{1});
+  schedule_stop_after(injector, fault, *fault.start + *fault.duration);
+}
+
+void FaultScheduler::schedule_stop_after(FaultInjector& injector, const FaultConfig& fault,
+                                         std::chrono::milliseconds delay) {
+  const auto stop_delay = std::max(delay, std::chrono::milliseconds{1});
 
   auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
