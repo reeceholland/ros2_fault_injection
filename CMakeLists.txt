@@ -46,6 +46,7 @@ add_library(${PROJECT_NAME}_core
   src/fault_injector_factory.cpp
   src/fault_service_manager.cpp
   src/fault_controller.cpp
+  src/fault_config_schema.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core

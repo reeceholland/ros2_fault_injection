@@ -7,6 +7,8 @@
 #include <string_view>
 #include <unordered_set>
 
+#include "ros2_fault_injection/fault_config_schema.hpp"
+
 namespace ros2_fault_injection {
 namespace {
 
@@ -14,9 +16,9 @@ bool is_known_injector_type(const std::string& type) {
   return type == "odom" || type == "scan" || type == "joint_state";
 }
 
-bool contains(const std::unordered_set<std::string>& values, const std::string& value) {
-  return values.find(value) != values.end();
-}
+// bool contains(const std::unordered_set<std::string>& values, const std::string& value) {
+//   return values.find(value) != values.end();
+// }
 
 bool parse_double(const std::string& text, double& value) {
   const auto* begin = text.data();
@@ -34,32 +36,32 @@ bool parse_int(const std::string& text, int& value) {
   return result.ec == std::errc{} && result.ptr == end;
 }
 
-std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
-  if (type == "odom") {
-    return {
-        "drop_probability", "delay_ms",       "x_bias",       "y_bias",
-        "x_noise_stddev",   "y_noise_stddev", "yaw_bias_deg", "yaw_noise_stddev_deg",
-    };
-  }
+// std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
+//   if (type == "odom") {
+//     return {
+//         "drop_probability", "delay_ms",       "x_bias",       "y_bias",
+//         "x_noise_stddev",   "y_noise_stddev", "yaw_bias_deg", "yaw_noise_stddev_deg",
+//     };
+//   }
 
-  if (type == "scan") {
-    return {
-        "drop_probability", "delay_ms",       "range_bias",   "range_noise_stddev",
-        "sector_min_deg",   "sector_max_deg", "sector_value",
-    };
-  }
+//   if (type == "scan") {
+//     return {
+//         "drop_probability", "delay_ms",       "range_bias",   "range_noise_stddev",
+//         "sector_min_deg",   "sector_max_deg", "sector_value",
+//     };
+//   }
 
-  if (type == "joint_state") {
-    return {
-        "drop_probability",
-        "delay_ms",
-        "velocity_bias",
-        "velocity_noise_stddev",
-    };
-  }
+//   if (type == "joint_state") {
+//     return {
+//         "drop_probability",
+//         "delay_ms",
+//         "velocity_bias",
+//         "velocity_noise_stddev",
+//     };
+//   }
 
-  return {};
-}
+//   return {};
+// }
 
 void validate_injector(const InjectorConfig& injector, ValidationResult& result) {
   if (injector.id.empty()) {
@@ -168,12 +170,10 @@ void validate_delay_ms(const FaultConfig& fault, ValidationResult& result) {
 
 void validate_fault_keys(const FaultConfig& fault, const std::string& injector_type,
                          ValidationResult& result) {
-  const auto allowed_keys = allowed_keys_for(injector_type);
-
   for (const auto& [key, value] : fault.config) {
     (void)value;
 
-    if (!contains(allowed_keys, key)) {
+    if (!is_allowed_config_key(injector_type, key)) {
       result.warnings.push_back("fault '" + fault.id + "' has unknown config key '" + key + "'");
     }
   }
