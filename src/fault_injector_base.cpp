@@ -37,8 +37,6 @@ std::string FaultInjectorBase::id() const {
 void FaultInjectorBase::add_fault(const FaultConfig& fault_config) {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  warn_unknown_config_keys(fault_config);
-
   faults_[fault_config.id] = fault_config;
   active_[fault_config.id] = false;
 }
@@ -70,8 +68,7 @@ bool FaultInjectorBase::has_fault(const std::string& fault_id) const {
   return faults_.find(fault_id) != faults_.end();
 }
 
-std::optional<FaultConfig> FaultInjectorBase::get_fault_config(
-    const std::string& fault_id) const {
+std::optional<FaultConfig> FaultInjectorBase::get_fault_config(const std::string& fault_id) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
   const auto it = faults_.find(fault_id);
@@ -103,8 +100,6 @@ std::vector<std::string> FaultInjectorBase::active_fault_ids() const {
   }
   return ids;
 }
-
-void FaultInjectorBase::warn_unknown_config_keys(const FaultConfig&) const {}
 
 double FaultInjectorBase::active_max_double(const std::string& key, double fallback) const {
   double value = fallback;

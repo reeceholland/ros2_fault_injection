@@ -28,8 +28,6 @@ public:
   std::vector<std::string> active_fault_ids() const override;
 
 protected:
-  virtual void warn_unknown_config_keys(const FaultConfig& fault_config) const;
-
   double active_max_double(const std::string& key, double fallback = 0.0) const;
   double active_sum_double(const std::string& key, double fallback = 0.0) const;
   int active_max_int(const std::string& key, int fallback = 0) const;

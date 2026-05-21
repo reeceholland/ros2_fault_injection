@@ -72,18 +72,4 @@ void JointStateFaultInjector::apply_noise(sensor_msgs::msg::JointState& msg) {
   }
 }
 
-void JointStateFaultInjector::warn_unknown_config_keys(const FaultConfig& fault_config) const {
-  static constexpr std::array<const char*, 4> known_keys = {"drop_probability", "velocity_bias",
-                                                            "velocity_noise_stddev", "delay_ms"};
-
-  for (const auto& [key, value] : fault_config.config) {
-    (void)value;  // unused
-    if (std::find(known_keys.begin(), known_keys.end(), key) == known_keys.end()) {
-      RCLCPP_WARN(node_.get_logger(),
-                  "Fault '%s' has unknown config key '%s'; this may indicate a typo",
-                  fault_config.id.c_str(), key.c_str());
-    }
-  }
-}
-
 }  // namespace ros2_fault_injection

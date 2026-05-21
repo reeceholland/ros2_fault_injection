@@ -155,21 +155,4 @@ void OdomFaultInjector::apply_yaw_noise(nav_msgs::msg::Odometry& msg) {
   msg.pose.pose.orientation = tf2::toMsg(q);
 }
 
-void OdomFaultInjector::warn_unknown_config_keys(const FaultConfig& fault_config) const {
-  static constexpr std::array<const char*, 8> known_keys = {
-      "drop_probability",     "x_bias",         "y_bias",
-      "x_noise_stddev",       "y_noise_stddev", "yaw_bias_deg",
-      "yaw_noise_stddev_deg", "delay_ms"};
-
-  for (const auto& [key, value] : fault_config.config) {
-    (void)value;
-    const bool known =
-        std::find(std::begin(known_keys), std::end(known_keys), key) != std::end(known_keys);
-    if (!known) {
-      RCLCPP_WARN(node_.get_logger(), "Fault '%s' has unknown config key '%s'",
-                  fault_config.id.c_str(), key.c_str());
-    }
-  }
-}
-
 }  // namespace ros2_fault_injection

@@ -187,20 +187,4 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
   }
 }
 
-void ScanFaultInjector::warn_unknown_config_keys(const FaultConfig& fault_config) const {
-  static constexpr std::array<const char*, 7> known_keys = {
-      "drop_probability", "delay_ms",       "range_bias",     "range_noise_stddev",
-      "sector_min_deg",  "sector_max_deg", "sector_value"};
-
-  for (const auto& [key, value] : fault_config.config) {
-    (void)value;
-    const bool known =
-        std::find(std::begin(known_keys), std::end(known_keys), key) != std::end(known_keys);
-    if (!known) {
-      RCLCPP_WARN(node_.get_logger(), "Fault '%s' has unknown config key '%s'",
-                  fault_config.id.c_str(), key.c_str());
-    }
-  }
-}
-
 }  // namespace ros2_fault_injection

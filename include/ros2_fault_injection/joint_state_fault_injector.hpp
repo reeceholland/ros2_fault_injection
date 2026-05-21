@@ -28,7 +28,6 @@ private:
 
   void apply_bias(sensor_msgs::msg::JointState& msg);
   void apply_noise(sensor_msgs::msg::JointState& msg);
-  void warn_unknown_config_keys(const FaultConfig& fault_config) const override;
 
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_;
