@@ -154,14 +154,14 @@ Activate:
 
 ```bash
 ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetFaultState \
-  "{fault_id: odom_bias, active_on_startup: true}"
+  "{fault_id: odom_bias, active: true}"
 ```
 
 Deactivate:
 
 ```bash
 ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetFaultState \
-  "{fault_id: odom_bias, active_on_startup: false}"
+  "{fault_id: odom_bias, active: false}"
 ```
 
 ## Events
@@ -185,6 +185,21 @@ Unity motor feedback  -> /platform/motors/feedback_raw -> joint_state injector -
 ```
 
 This keeps the normal ROS topic names stable for Nav2, SLAM, and controllers while letting fault injection sit in the middle.
+
+## Config Schema
+
+Allowed fault config keys are centralized in `fault_config_schema`.
+
+When adding a new fault config key, update:
+
+- `fault_config_schema` so the key is recognized for the correct injector type
+- `scenario_validator` if the key needs value checks such as numeric range or non-negative validation
+- the typed injector implementation that applies the behavior
+- the example YAML files in `config/`
+- this README
+- tests for the schema, validator, or injector behavior as appropriate
+
+Keeping config-key ownership centralized avoids drift between validation and runtime behavior.
 
 ## Tests
 
