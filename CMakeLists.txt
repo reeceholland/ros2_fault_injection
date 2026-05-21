@@ -119,6 +119,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_injector_base
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_fault_config_schema
+    test/test_fault_config_schema.cpp
+  )
+  target_link_libraries(test_fault_config_schema
+    ${PROJECT_NAME}_core
+  )
 endif()
 
 ament_package()
