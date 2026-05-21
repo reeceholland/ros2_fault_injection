@@ -33,6 +33,8 @@ private:
   void handle_get_fault_status(const std::shared_ptr<srv::GetFaultStatus::Request> request,
                                std::shared_ptr<srv::GetFaultStatus::Response> response);
 
+  std::string describe_fault(const FaultConfig& fault);
+
   rclcpp::Node& node_;
   const InjectorMap& injectors_;
   FaultEventPublisher& events_;

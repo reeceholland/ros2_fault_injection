@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetFaultState.srv"
   "srv/ListFaults.srv"
   "srv/GetFaultStatus.srv"
+  "msg/FaultStatus.msg"
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target

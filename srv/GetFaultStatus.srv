@@ -1,5 +1,3 @@
+# srv/GetFaultStatus.srv
 ---
-string[] fault_ids
-string[] injector_ids
-string[] states
-string[] details
+ros2_fault_injection/FaultStatus[] faults

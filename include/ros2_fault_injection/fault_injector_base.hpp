@@ -23,6 +23,7 @@ public:
   void activate_fault(const std::string& fault_id) override;
   void deactivate_fault(const std::string& fault_id) override;
   bool has_fault(const std::string& fault_id) const override;
+  std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const override;
   std::vector<std::string> fault_ids() const override;
   std::vector<std::string> active_fault_ids() const override;
 

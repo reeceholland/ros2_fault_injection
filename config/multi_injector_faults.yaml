@@ -20,7 +20,7 @@ injectors:
 faults:
   - id: odom_bias
     injector_id: odom
-    active: true
+    active: false
     start: 5.0
     duration: 10.0
     config:
@@ -29,7 +29,7 @@ faults:
 
   - id: scan_noise
     injector_id: scan
-    active: true
+    active: false
     start: 8.0
     duration: 12.0
     config:
@@ -51,7 +51,7 @@ faults:
 
   - id: motor_feedback_drop
     injector_id: motor_feedback
-    active: true
+    active: false
     config:
       drop_probability: 0.25
 

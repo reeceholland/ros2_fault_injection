@@ -2,6 +2,7 @@
 #define ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,6 +19,7 @@ public:
   virtual void activate_fault(const std::string& fault_id) = 0;
   virtual void deactivate_fault(const std::string& fault_id) = 0;
   virtual bool has_fault(const std::string& fault_id) const = 0;
+  virtual std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const = 0;
   virtual std::vector<std::string> fault_ids() const = 0;
   virtual std::vector<std::string> active_fault_ids() const = 0;
 };

@@ -70,6 +70,18 @@ bool FaultInjectorBase::has_fault(const std::string& fault_id) const {
   return faults_.find(fault_id) != faults_.end();
 }
 
+std::optional<FaultConfig> FaultInjectorBase::get_fault_config(
+    const std::string& fault_id) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  const auto it = faults_.find(fault_id);
+  if (it == faults_.end()) {
+    return std::nullopt;
+  }
+
+  return it->second;
+}
+
 std::vector<std::string> FaultInjectorBase::fault_ids() const {
   std::lock_guard<std::mutex> lock(mutex_);
 

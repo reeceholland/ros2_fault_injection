@@ -1,6 +1,30 @@
 #include "ros2_fault_injection/fault_service_manager.hpp"
 
+#include <algorithm>
+#include <sstream>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+#include "ros2_fault_injection/msg/fault_status.hpp"
+
 namespace ros2_fault_injection {
+
+namespace {
+std::string join_strings(const std::vector<std::string>& parts, const std::string& separator) {
+  std::ostringstream out;
+
+  for (size_t i = 0; i < parts.size(); ++i) {
+    if (i > 0) {
+      out << separator;
+    }
+
+    out << parts[i];
+  }
+
+  return out.str();
+}
+}  // namespace
 
 FaultServiceManager::FaultServiceManager(rclcpp::Node& node, const InjectorMap& injectors,
                                          FaultEventPublisher& events)
@@ -43,22 +67,25 @@ void FaultServiceManager::handle_get_fault_status(
     std::shared_ptr<srv::GetFaultStatus::Response> response) {
   (void)request;
 
+  response->faults.clear();
+
   for (const auto& [injector_id, injector] : injectors_) {
-    (void)injector_id;
     const auto fault_ids = injector->fault_ids();
     const auto active_fault_ids = injector->active_fault_ids();
+    const std::unordered_set<std::string> active_faults(active_fault_ids.begin(),
+                                                        active_fault_ids.end());
 
     for (const auto& fault_id : fault_ids) {
-      response->fault_ids.push_back(fault_id);
-      response->injector_ids.push_back(injector_id);
-      if (std::find(active_fault_ids.begin(), active_fault_ids.end(), fault_id) !=
-          active_fault_ids.end()) {
-        response->states.push_back("active");
-        response->details.push_back("Fault is currently active");
-      } else {
-        response->states.push_back("inactive");
-        response->details.push_back("Fault is currently inactive");
-      }
+      ros2_fault_injection::msg::FaultStatus status;
+      status.fault_id = fault_id;
+      status.injector_id = injector_id;
+      status.state = active_faults.count(fault_id) > 0 ? "active" : "inactive";
+
+      const auto fault_config = injector->get_fault_config(fault_id);
+      status.details =
+          fault_config.has_value() ? describe_fault(fault_config.value()) : "config unavailable";
+
+      response->faults.push_back(status);
     }
   }
 }
@@ -111,6 +138,26 @@ void FaultServiceManager::handle_list_faults(
     response->active_fault_ids.insert(response->active_fault_ids.end(), active_fault_ids.begin(),
                                       active_fault_ids.end());
   }
+}
+
+std::string FaultServiceManager::describe_fault(const FaultConfig& fault) {
+  // This function can be expanded to provide more detailed descriptions based on the fault
+  // configuration
+  std::vector<std::string> details;
+  if (fault.start.has_value()) {
+    details.push_back("scheduled");
+    details.push_back("start: " + std::to_string(fault.start->count()) + "ms");
+  } else {
+    details.push_back("manual-only");
+  }
+  if (fault.duration.has_value()) {
+    details.push_back("duration: " + std::to_string(fault.duration->count()) + "ms");
+  }
+  if (!fault.config.empty()) {
+    details.push_back("config_keys: " + std::to_string(fault.config.size()));
+  }
+
+  return join_strings(details, ", ");
 }
 
 }  // namespace ros2_fault_injection
