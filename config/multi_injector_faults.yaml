@@ -37,7 +37,7 @@ faults:
 
   - id: scan_delay
     injector_id: scan
-    active: true
+    active: false
     config:
       delay_ms: 250
 
@@ -57,7 +57,27 @@ faults:
 
   - id: odom_noise
     injector_id: odom
-    active: true
+    active: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
+
+  - id: scan_front_blind
+    injector_id: scan
+    active: false
+    config:
+      sector_min_deg: -20.0
+      sector_max_deg: 20.0
+      sector_value: inf
+  
+  - id: odom_yaw_bias
+    injector_id: odom
+    active: false
+    config:
+      yaw_bias_deg: 10.0
+
+  - id: odom_yaw_noise
+    injector_id: odom
+    active: true
+    config:
+      yaw_noise_stddev_deg: 2.0

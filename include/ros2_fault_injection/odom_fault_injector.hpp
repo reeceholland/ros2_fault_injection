@@ -28,6 +28,8 @@ private:
 
   void apply_bias(nav_msgs::msg::Odometry& msg);
   void apply_noise(nav_msgs::msg::Odometry& msg);
+  void apply_yaw_bias(nav_msgs::msg::Odometry& msg);
+  void apply_yaw_noise(nav_msgs::msg::Odometry& msg);
   void warn_unknown_config_keys(const FaultConfig& fault_config) const override;
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;

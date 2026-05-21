@@ -28,6 +28,7 @@ private:
 
   void apply_range_bias(sensor_msgs::msg::LaserScan& msg);
   void apply_range_noise(sensor_msgs::msg::LaserScan& msg);
+  void apply_sector_dropout(sensor_msgs::msg::LaserScan& msg);
   void warn_unknown_config_keys(const FaultConfig& fault_config) const override;
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_;

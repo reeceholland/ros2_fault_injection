@@ -154,7 +154,11 @@ std::string FaultServiceManager::describe_fault(const FaultConfig& fault) {
     details.push_back("duration: " + std::to_string(fault.duration->count()) + "ms");
   }
   if (!fault.config.empty()) {
-    details.push_back("config_keys: " + std::to_string(fault.config.size()));
+    std::vector<std::string> config_parts;
+    for (const auto& [key, value] : fault.config) {
+      config_parts.push_back(key + "=" + value);
+    }
+    details.push_back("config_keys={" + join_strings(config_parts, ", ") + "}");
   }
 
   return join_strings(details, ", ");

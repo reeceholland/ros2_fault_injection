@@ -37,16 +37,15 @@ bool parse_int(const std::string& text, int& value) {
 std::unordered_set<std::string> allowed_keys_for(const std::string& type) {
   if (type == "odom") {
     return {
-        "drop_probability", "delay_ms", "x_bias", "y_bias", "x_noise_stddev", "y_noise_stddev",
+        "drop_probability", "delay_ms",       "x_bias",       "y_bias",
+        "x_noise_stddev",   "y_noise_stddev", "yaw_bias_deg", "yaw_noise_stddev_deg",
     };
   }
 
   if (type == "scan") {
     return {
-        "drop_probability",
-        "delay_ms",
-        "range_bias",
-        "range_noise_stddev",
+        "drop_probability", "delay_ms",       "range_bias",   "range_noise_stddev",
+        "sector_min_deg",   "sector_max_deg", "sector_value",
     };
   }
 
@@ -115,6 +114,23 @@ void validate_non_negative_number_key(const FaultConfig& fault, const std::strin
   }
 }
 
+bool is_special_float_value(const std::string& value) {
+  return value == "inf" || value == "+inf" || value == "-inf" || value == "nan";
+}
+
+void validate_sector_value(const FaultConfig& fault, ValidationResult& result) {
+  const auto it = fault.config.find("sector_value");
+  if (it == fault.config.end() || is_special_float_value(it->second)) {
+    return;
+  }
+
+  double value = 0.0;
+  if (!parse_double(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id +
+                            "' config 'sector_value' must be a number, inf, -inf, or nan");
+  }
+}
+
 void validate_drop_probability(const FaultConfig& fault, ValidationResult& result) {
   const auto it = fault.config.find("drop_probability");
   if (it == fault.config.end()) {
@@ -173,11 +189,16 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
     validate_number_key(fault, "y_bias", result);
     validate_non_negative_number_key(fault, "x_noise_stddev", result);
     validate_non_negative_number_key(fault, "y_noise_stddev", result);
+    validate_number_key(fault, "yaw_bias_deg", result);
+    validate_non_negative_number_key(fault, "yaw_noise_stddev", result);
   }
 
   if (injector_type == "scan") {
     validate_number_key(fault, "range_bias", result);
     validate_non_negative_number_key(fault, "range_noise_stddev", result);
+    validate_number_key(fault, "sector_min_deg", result);
+    validate_number_key(fault, "sector_max_deg", result);
+    validate_sector_value(fault, result);
   }
 
   if (injector_type == "joint_state") {

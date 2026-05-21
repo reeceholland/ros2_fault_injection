@@ -25,3 +25,12 @@ faults:
     duration: 10.0
     config:
       delay_ms: 250
+
+
+  - id: scan_front_blind
+    injector_id: scan
+    active: false
+    config:
+      sector_min_deg: -20.0
+      sector_max_deg: 20.0
+      sector_value: inf

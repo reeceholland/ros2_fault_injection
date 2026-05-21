@@ -15,6 +15,8 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -62,6 +64,8 @@ ament_target_dependencies(${PROJECT_NAME}_core
   nav_msgs
   std_msgs
   sensor_msgs
+  tf2
+  tf2_geometry_msgs
 )
 
 add_executable(fault_injector_node
@@ -105,6 +109,13 @@ if(BUILD_TESTING)
     test/test_scenario_config.cpp
   )
   target_link_libraries(test_scenario_validator
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_fault_injector_base
+    test/test_fault_injector_base.cpp
+  )
+  target_link_libraries(test_fault_injector_base
     ${PROJECT_NAME}_core
   )
 endif()

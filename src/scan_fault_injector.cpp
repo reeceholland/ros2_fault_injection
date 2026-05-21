@@ -4,9 +4,59 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <random>
 
 namespace ros2_fault_injection {
+
+namespace {
+constexpr double kRadiansToDegrees = 180.0 / M_PI;
+
+double normalize_degrees(double degrees) {
+  while (degrees > 180.0) {
+    degrees -= 360.0;
+  }
+  while (degrees < -180.0) {
+    degrees += 360.0;
+  }
+  return degrees;
+}
+
+bool parse_double(const std::string& text, double& value) {
+  try {
+    value = std::stod(text);
+    return true;
+  } catch (const std::exception&) {
+    return false;
+  }
+}
+
+bool angle_in_sector(double angle_deg, double min_deg, double max_deg) {
+  angle_deg = normalize_degrees(angle_deg);
+  min_deg = normalize_degrees(min_deg);
+  max_deg = normalize_degrees(max_deg);
+
+  if (min_deg <= max_deg) {
+    return angle_deg >= min_deg && angle_deg <= max_deg;
+  }
+
+  return angle_deg >= min_deg || angle_deg <= max_deg;
+}
+
+double parse_sector_value(const std::string& value) {
+  if (value == "inf" || value == "+inf") {
+    return std::numeric_limits<double>::infinity();
+  }
+  if (value == "-inf") {
+    return -std::numeric_limits<double>::infinity();
+  }
+  if (value == "nan") {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  return std::stod(value);
+}
+}  // namespace
 
 ScanFaultInjector::ScanFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
     : FaultInjectorBase(node, config) {
@@ -31,6 +81,7 @@ void ScanFaultInjector::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg
   auto out = *msg;
   apply_range_bias(out);
   apply_range_noise(out);
+  apply_sector_dropout(out);
 
   const auto delay = active_delay();
   if (delay.count() > 0) {
@@ -86,9 +137,60 @@ void ScanFaultInjector::apply_range_noise(sensor_msgs::msg::LaserScan& msg) {
   }
 }
 
+void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
+  if (msg.angle_increment == 0.0F) {
+    return;
+  }
+
+  for (const auto& [fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto& fault = faults_.at(fault_id);
+
+    const auto min_it = fault.config.find("sector_min_deg");
+    const auto max_it = fault.config.find("sector_max_deg");
+    if (min_it == fault.config.end() || max_it == fault.config.end()) {
+      continue;
+    }
+
+    double sector_min_deg = 0.0;
+    double sector_max_deg = 0.0;
+    if (!parse_double(min_it->second, sector_min_deg) ||
+        !parse_double(max_it->second, sector_max_deg)) {
+      RCLCPP_WARN(node_.get_logger(), "Fault '%s' has invalid sector bounds", fault.id.c_str());
+      continue;
+    }
+
+    double replacement = std::numeric_limits<double>::infinity();
+    const auto value_it = fault.config.find("sector_value");
+    if (value_it != fault.config.end()) {
+      try {
+        replacement = parse_sector_value(value_it->second);
+      } catch (const std::exception&) {
+        RCLCPP_WARN(node_.get_logger(), "Fault '%s' has invalid sector_value '%s'",
+                    fault.id.c_str(), value_it->second.c_str());
+        continue;
+      }
+    }
+
+    for (size_t i = 0; i < msg.ranges.size(); ++i) {
+      const double angle_rad =
+          static_cast<double>(msg.angle_min) + static_cast<double>(i) * msg.angle_increment;
+      const double angle_deg = angle_rad * kRadiansToDegrees;
+
+      if (angle_in_sector(angle_deg, sector_min_deg, sector_max_deg)) {
+        msg.ranges[i] = static_cast<float>(replacement);
+      }
+    }
+  }
+}
+
 void ScanFaultInjector::warn_unknown_config_keys(const FaultConfig& fault_config) const {
-  static constexpr std::array<const char*, 4> known_keys = {"drop_probability", "delay_ms",
-                                                            "range_bias", "range_noise_stddev"};
+  static constexpr std::array<const char*, 7> known_keys = {
+      "drop_probability", "delay_ms",       "range_bias",     "range_noise_stddev",
+      "sector_min_deg",  "sector_max_deg", "sector_value"};
 
   for (const auto& [key, value] : fault_config.config) {
     (void)value;
