@@ -172,6 +172,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_service_manager
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_fault_description
+    test/test_fault_description.cpp
+  )
+  target_link_libraries(test_fault_description
+    ${PROJECT_NAME}_core
+  )
 endif()
 
 ament_package()
