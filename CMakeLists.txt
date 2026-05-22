@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
@@ -28,6 +29,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultStatus.srv"
   "srv/SetFaultConfig.srv"
   "msg/FaultStatus.msg"
+  "msg/FaultEvent.msg"
+  DEPENDENCIES builtin_interfaces
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -67,6 +70,7 @@ ament_target_dependencies(${PROJECT_NAME}_core
   nav_msgs
   std_msgs
   sensor_msgs
+  builtin_interfaces
   tf2
   tf2_geometry_msgs
 )
@@ -132,6 +136,13 @@ if(BUILD_TESTING)
     test/test_fault_scheduler.cpp
   )
   target_link_libraries(test_fault_scheduler
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_fault_service_manager
+    test/test_fault_service_manager.cpp
+  )
+  target_link_libraries(test_fault_service_manager
     ${PROJECT_NAME}_core
   )
 endif()

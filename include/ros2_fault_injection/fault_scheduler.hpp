@@ -7,8 +7,6 @@
 
 #include <rclcpp/node.hpp>
 #include <rclcpp/timer.hpp>
-#include <std_msgs/msg/string.hpp>
-
 #include "ros2_fault_injection/fault_config.hpp"
 #include "ros2_fault_injection/fault_event_publisher.hpp"
 #include "ros2_fault_injection/fault_injector.hpp"
@@ -31,7 +29,7 @@ private:
   void schedule_stop_after(FaultInjector& injector, const FaultConfig& fault,
                            std::chrono::milliseconds delay);
 
-  void publish_event(const std::string& fault_id, const std::string& state);
+  void publish_event(const FaultEvent& event);
 
   rclcpp::Node& node_;
   std::vector<rclcpp::TimerBase::SharedPtr> timers_;

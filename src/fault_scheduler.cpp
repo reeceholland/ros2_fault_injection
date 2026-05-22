@@ -3,8 +3,31 @@
 #include <algorithm>
 #include <chrono>
 #include <memory>
+#include <sstream>
 
 namespace ros2_fault_injection {
+
+std::string describe_config(const std::unordered_map<std::string, std::string>& config) {
+  if (config.empty()) {
+    return "config={}";
+  }
+
+  std::ostringstream out;
+  out << "config={";
+
+  bool first = true;
+  for (const auto& [key, value] : config) {
+    if (!first) {
+      out << ", ";
+    }
+
+    out << key << "=" << value;
+    first = false;
+  }
+
+  out << "}";
+  return out.str();
+}
 
 FaultScheduler::FaultScheduler(rclcpp::Node& node, FaultEventPublisher& event_pub)
     : node_(node), event_pub_(event_pub) {}
@@ -14,7 +37,13 @@ void FaultScheduler::schedule(const std::vector<FaultConfig>& faults, FaultInjec
   for (const auto& fault : faults) {
     if (is_initially_active(fault, initially_active_faults)) {
       injector.activate_fault(fault.id);
-      publish_event(fault.id, "active");
+      FaultEvent event;
+      event.fault_id = fault.id;
+      event.state = "active";
+      event.injector_id = injector.id();
+      event.source = "startup";
+      event.details = describe_config(fault.config);
+      publish_event(event);
 
       RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately", fault.id.c_str());
 
@@ -56,7 +85,13 @@ void FaultScheduler::schedule_start(FaultInjector& injector, const FaultConfig& 
 
     injector.activate_fault(fault.id);
 
-    publish_event(fault.id, "active");
+    FaultEvent event;
+    event.fault_id = fault.id;
+    event.state = "active";
+    event.injector_id = injector.id();
+    event.source = "scheduled";
+    event.details = describe_config(fault.config);
+    publish_event(event);
 
     RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str());
   });
@@ -79,7 +114,13 @@ void FaultScheduler::schedule_stop_after(FaultInjector& injector, const FaultCon
 
     injector.deactivate_fault(fault.id);
 
-    publish_event(fault.id, "inactive");
+    FaultEvent event;
+    event.fault_id = fault.id;
+    event.state = "inactive";
+    event.injector_id = injector.id();
+    event.source = "scheduled";
+    event.details = describe_config(fault.config);
+    publish_event(event);
 
     RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str());
   });
@@ -87,8 +128,8 @@ void FaultScheduler::schedule_stop_after(FaultInjector& injector, const FaultCon
   timers_.push_back(*timer_holder);
 }
 
-void FaultScheduler::publish_event(const std::string& fault_id, const std::string& state) {
-  event_pub_.publish(fault_id, state);
+void FaultScheduler::publish_event(const FaultEvent& event) {
+  event_pub_.publish(event);
 }
 
 }  // namespace ros2_fault_injection
