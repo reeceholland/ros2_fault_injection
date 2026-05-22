@@ -17,10 +17,24 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Owns runtime control services for fault injection.
+ *
+ * The service manager exposes APIs for listing faults, reading status,
+ * activating/deactivating faults, and changing runtime config values.
+ */
 class FaultServiceManager {
 public:
+  /// Map of injector id to injector instance.
   using InjectorMap = std::unordered_map<std::string, std::shared_ptr<FaultInjector>>;
 
+  /**
+   * @brief Create all fault control services.
+   *
+   * @param node Node used to create services.
+   * @param injectors Runtime injectors indexed by id.
+   * @param events Publisher used for manual state/config events.
+   */
   FaultServiceManager(rclcpp::Node& node, const InjectorMap& injectors,
                       FaultEventPublisher& events);
 

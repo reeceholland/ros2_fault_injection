@@ -13,10 +13,29 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Schedules startup and timed fault activation.
+ *
+ * The scheduler is message-type agnostic. It activates/deactivates faults
+ * through the FaultInjector interface and publishes lifecycle events.
+ */
 class FaultScheduler {
 public:
+  /**
+   * @brief Construct a scheduler.
+   *
+   * @param node Node used to create wall timers.
+   * @param event_pub Publisher used for scheduled fault events.
+   */
   explicit FaultScheduler(rclcpp::Node& node, FaultEventPublisher& event_pub);
 
+  /**
+   * @brief Schedule all faults belonging to one injector.
+   *
+   * @param faults Faults assigned to the injector.
+   * @param injector Injector to activate and deactivate.
+   * @param initially_active_faults Fault ids that should start active.
+   */
   void schedule(const std::vector<FaultConfig>& faults, FaultInjector& injector,
                 const std::vector<std::string>& initially_active_faults);
 

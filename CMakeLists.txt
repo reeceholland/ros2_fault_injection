@@ -18,6 +18,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(Doxygen)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -108,6 +109,31 @@ install(DIRECTORY
   config
   launch
   DESTINATION share/${PROJECT_NAME}
+)
+
+
+if(DOXYGEN_FOUND)
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in
+    ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+    @ONLY
+  )
+
+  set(DOXYGEN_DOCS_COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+  set(DOXYGEN_DOCS_COMMENT "Generating API documentation with Doxygen")
+else()
+  set(DOXYGEN_DOCS_COMMAND
+    ${CMAKE_COMMAND} -E echo "Doxygen not found. Install doxygen to generate API documentation."
+    COMMAND ${CMAKE_COMMAND} -E false
+  )
+  set(DOXYGEN_DOCS_COMMENT "Doxygen is required to generate API documentation")
+endif()
+
+add_custom_target(generate_doxygen_api
+  COMMAND ${DOXYGEN_DOCS_COMMAND}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT ${DOXYGEN_DOCS_COMMENT}
+  VERBATIM
 )
 
 if(BUILD_TESTING)

@@ -9,18 +9,46 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Internal representation of a fault lifecycle event.
+ *
+ * The publisher adds the timestamp when converting this struct to
+ * `ros2_fault_injection/msg/FaultEvent`.
+ */
 struct FaultEvent {
+  /// Fault identifier associated with the event.
   std::string fault_id;
+
+  /// Injector identifier that owns the fault.
   std::string injector_id;
+
+  /// Fault state, for example `active`, `inactive`, or `config_updated`.
   std::string state;
+
+  /// Source of the event, for example `startup`, `scheduled`, or `manual`.
   std::string source;
+
+  /// Human-readable event details.
   std::string details;
 };
 
+/**
+ * @brief Publishes structured fault events on `fault_injection/events`.
+ */
 class FaultEventPublisher {
 public:
+  /**
+   * @brief Create the event publisher.
+   *
+   * @param node Node used for publisher creation and event timestamps.
+   */
   explicit FaultEventPublisher(rclcpp::Node& node);
 
+  /**
+   * @brief Publish a fault event with the node's current time.
+   *
+   * @param event Event payload to publish.
+   */
   void publish(const FaultEvent& event);
 
 private:

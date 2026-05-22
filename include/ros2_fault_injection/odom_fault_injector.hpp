@@ -13,8 +13,20 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Fault injector for `nav_msgs/msg/Odometry` streams.
+ *
+ * Subscribes to the configured input topic, applies active odometry faults,
+ * and republishes the result on the configured output topic.
+ */
 class OdomFaultInjector : public FaultInjectorBase {
 public:
+  /**
+   * @brief Create the odometry fault injector.
+   *
+   * @param node Node used to create publishers, subscriptions, and timers.
+   * @param config Injector topic and QoS configuration.
+   */
   explicit OdomFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
 
 private:
