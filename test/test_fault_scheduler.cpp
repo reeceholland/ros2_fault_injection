@@ -68,6 +68,17 @@ public:
     return active_.find(fault_id) != active_.end();
   }
 
+  bool set_fault_config_value(const std::string& fault_id, const std::string& key,
+                              const std::string& value) override {
+    const auto it = faults_.find(fault_id);
+    if (it == faults_.end()) {
+      return false;
+    }
+
+    it->second.config[key] = value;
+    return true;
+  }
+
 private:
   std::unordered_map<std::string, FaultConfig> faults_;
   std::unordered_set<std::string> active_;

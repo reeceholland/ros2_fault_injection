@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ros2_fault_injection/fault_config_schema.hpp"
 #include "ros2_fault_injection/msg/fault_status.hpp"
 
 namespace ros2_fault_injection {
@@ -47,6 +48,12 @@ FaultServiceManager::FaultServiceManager(rclcpp::Node& node, const InjectorMap& 
       [this](const std::shared_ptr<srv::GetFaultStatus::Request> request,
              std::shared_ptr<srv::GetFaultStatus::Response> response) {
         handle_get_fault_status(request, response);
+      });
+  set_fault_config_service_ = node_.create_service<srv::SetFaultConfig>(
+      "fault_injection/set_fault_config",
+      [this](const std::shared_ptr<srv::SetFaultConfig::Request> request,
+             std::shared_ptr<srv::SetFaultConfig::Response> response) {
+        handle_set_fault_config(request, response);
       });
 }
 
@@ -138,6 +145,61 @@ void FaultServiceManager::handle_list_faults(
     response->active_fault_ids.insert(response->active_fault_ids.end(), active_fault_ids.begin(),
                                       active_fault_ids.end());
   }
+}
+
+void FaultServiceManager::handle_set_fault_config(
+    const std::shared_ptr<srv::SetFaultConfig::Request> request,
+    std::shared_ptr<srv::SetFaultConfig::Response> response) {
+  if (request->fault_id.empty()) {
+    response->success = false;
+    response->message = "fault_id cannot be empty";
+    RCLCPP_WARN(node_.get_logger(), "Received SetFaultConfig request with empty fault_id");
+    return;
+  }
+
+  const auto injector = find_injector_for_fault(request->fault_id);
+  if (!injector) {
+    response->success = false;
+    response->message = "unknown fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(), "Received SetFaultConfig request with unknown fault_id: %s",
+                request->fault_id.c_str());
+    return;
+  }
+
+  const auto fault_config = injector->get_fault_config(request->fault_id);
+  if (!fault_config.has_value()) {
+    response->success = false;
+    response->message = "unable to retrieve config for fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(),
+                "Unable to retrieve config for fault_id: %s when handling SetFaultConfig request",
+                request->fault_id.c_str());
+    return;
+  }
+
+  if (!is_allowed_config_key(fault_config->injector_id, request->key)) {
+    response->success = false;
+    response->message = "key '" + request->key + "' is not valid for injector_id '" +
+                        fault_config->injector_id + "'";
+    RCLCPP_WARN(node_.get_logger(), "Rejected config update for fault '%s': invalid key '%s'",
+                request->fault_id.c_str(), request->key.c_str());
+    return;
+  }
+
+  if (!injector->set_fault_config_value(request->fault_id, request->key, request->value)) {
+    response->success = false;
+    response->message =
+        "failed to set config key '" + request->key + "' for fault_id '" + request->fault_id + "'";
+    RCLCPP_ERROR(node_.get_logger(), "Failed to set config key '%s' for fault '%s'",
+                 request->key.c_str(), request->fault_id.c_str());
+    return;
+  }
+
+  response->success = true;
+  response->message = "updated fault '" + request->fault_id + "' config '" + request->key +
+                      "' to '" + request->value + "'";
+
+  RCLCPP_INFO(node_.get_logger(), "Updated fault '%s' config '%s' to '%s'",
+              request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
 }
 
 std::string FaultServiceManager::describe_fault(const FaultConfig& fault) {

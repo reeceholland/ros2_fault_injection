@@ -203,4 +203,56 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
   rclcpp::shutdown();
 }
 
+TEST(FaultInjectorBase, SetFaultConfigValueUpdatesExistingFault) {
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
+
+  InjectorConfig injector_config;
+  injector_config.id = "odom";
+  injector_config.type = "odom";
+  injector_config.input_topic = "/odom_raw";
+  injector_config.output_topic = "/odom";
+
+  TestFaultInjector injector(*node, injector_config);
+
+  FaultConfig fault;
+  fault.id = "odom_yaw_bias";
+  fault.injector_id = "odom";
+  fault.config["yaw_bias_deg"] = "10.0";
+
+  injector.add_fault(fault);
+
+  const bool updated = injector.set_fault_config_value("odom_yaw_bias", "yaw_bias_deg", "20.0");
+
+  EXPECT_TRUE(updated);
+
+  const auto result = injector.get_fault_config("odom_yaw_bias");
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->config.at("yaw_bias_deg"), "20.0");
+
+  rclcpp::shutdown();
+}
+
+TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
+
+  InjectorConfig injector_config;
+  injector_config.id = "odom";
+  injector_config.type = "odom";
+  injector_config.input_topic = "/odom_raw";
+  injector_config.output_topic = "/odom";
+
+  TestFaultInjector injector(*node, injector_config);
+
+  const bool updated = injector.set_fault_config_value("missing_fault", "yaw_bias_deg", "20.0");
+
+  EXPECT_FALSE(updated);
+  EXPECT_FALSE(injector.has_fault("missing_fault"));
+
+  rclcpp::shutdown();
+}
+
 }  // namespace ros2_fault_injection

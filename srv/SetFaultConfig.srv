@@ -1,0 +1,7 @@
+# srv/SetFaultConfig.srv
+string fault_id
+string key
+string value
+---
+bool success
+string message

@@ -20,6 +20,8 @@ public:
   virtual void deactivate_fault(const std::string& fault_id) = 0;
   virtual bool has_fault(const std::string& fault_id) const = 0;
   virtual std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const = 0;
+  virtual bool set_fault_config_value(const std::string& fault_id, const std::string& key,
+                                      const std::string& value) = 0;
   virtual std::vector<std::string> fault_ids() const = 0;
   virtual std::vector<std::string> active_fault_ids() const = 0;
 };
