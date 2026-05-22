@@ -98,6 +98,16 @@ void FaultServiceManager::handle_set_fault_state(
     return;
   }
 
+  const auto fault_config = injector->get_fault_config(request->fault_id);
+  if (!fault_config.has_value()) {
+    response->success = false;
+    response->message = "unable to retrieve config for fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(),
+                "Unable to retrieve config for fault_id: %s when handling request",
+                request->fault_id.c_str());
+    return;
+  }
+
   if (request->active) {
     injector->activate_fault(request->fault_id);
     response->message = "activated fault: " + request->fault_id;
@@ -106,7 +116,7 @@ void FaultServiceManager::handle_set_fault_state(
     event.injector_id = injector->id();
     event.state = "active";
     event.source = "manual";
-    event.details = describe_fault(injector->get_fault_config(request->fault_id).value());
+    event.details = describe_fault(fault_config.value());
     events_.publish(event);
     RCLCPP_INFO(node_.get_logger(), "Activated fault: %s", request->fault_id.c_str());
   } else {
@@ -117,7 +127,7 @@ void FaultServiceManager::handle_set_fault_state(
     event.injector_id = injector->id();
     event.state = "inactive";
     event.source = "manual";
-    event.details = describe_fault(injector->get_fault_config(request->fault_id).value());
+    event.details = describe_fault(fault_config.value());
     events_.publish(event);
     RCLCPP_INFO(node_.get_logger(), "Deactivated fault: %s", request->fault_id.c_str());
   }
