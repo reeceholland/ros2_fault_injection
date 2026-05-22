@@ -171,7 +171,7 @@ faults:
 - fault_id: odom_bias
   injector_id: odom
   state: inactive
-  details: scheduled, start=5000ms, duration=10000ms, config={x_bias=1.0, y_bias=-0.25}
+  details: "scheduled, start: 5000ms, duration: 10000ms, config_keys={x_bias=1.0, y_bias=-0.25}"
 ```
 
 ### Activate Or Deactivate A Fault
@@ -190,12 +190,44 @@ ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetF
   "{fault_id: odom_bias, active: false}"
 ```
 
+Successful state changes publish a `FaultEvent` with `state` set to `active` or `inactive` and `source` set to `manual`.
+
+### Update A Fault Config Value
+
+```bash
+ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/SetFaultConfig \
+  "{fault_id: odom_bias, key: x_bias, value: '2.0'}"
+```
+
+This updates one entry inside the fault's `config` map at runtime. It does not change top-level scheduling fields such as `start`, `duration`, `active_on_startup`, `id`, or `injector_id`.
+
+The key must be valid for that injector's fault config schema. For example, `x_bias` is valid for an `odom` fault, while `range_bias` is valid for a `scan` fault.
+
+Successful config updates publish a `FaultEvent` with:
+
+```yaml
+state: config_updated
+source: manual
+details: updated config key 'x_bias' to '2.0'
+```
+
 ## Events
 
-Fault state changes are published as string events:
+Fault changes are published as typed events:
 
 ```bash
 ros2 topic echo /fault_injection/events
+```
+
+The event message is `ros2_fault_injection/msg/FaultEvent`:
+
+```text
+builtin_interfaces/Time stamp
+string fault_id
+string injector_id
+string state
+string source
+string details
 ```
 
 Events are published when scheduled faults activate/deactivate and when faults are changed through the service API.
@@ -239,7 +271,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, and shared `FaultInjectorBase` behavior.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, and service/event behavior in `FaultServiceManager`.
 
 ## Development Notes
 
