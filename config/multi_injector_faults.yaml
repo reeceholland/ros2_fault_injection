@@ -17,6 +17,12 @@ injectors:
     output_topic: /platform/motors/feedback
     qos_depth: 10
 
+  - id: imu
+    type: imu
+    input_topic: /sensors/imu_raw
+    output_topic: /sensors/imu
+    qos_depth: 10
+
 faults:
   - id: odom_bias
     injector_id: odom
@@ -81,3 +87,11 @@ faults:
     active_on_startup: false
     config:
       yaw_noise_stddev_deg: 2.0
+
+  - id: imu_accel_noise
+    injector_id: imu
+    active_on_startup: true
+    config:
+      linear_acceleration_x_noise_stddev: 0.15
+      linear_acceleration_y_noise_stddev: 0.15
+      linear_acceleration_z_noise_stddev: 0.05

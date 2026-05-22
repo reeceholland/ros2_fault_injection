@@ -1,5 +1,6 @@
 #include "ros2_fault_injection/fault_injector_factory.hpp"
 
+#include "ros2_fault_injection/imu_fault_injector.hpp"
 #include "ros2_fault_injection/joint_state_fault_injector.hpp"
 #include "ros2_fault_injection/odom_fault_injector.hpp"
 #include "ros2_fault_injection/scan_fault_injector.hpp"
@@ -19,6 +20,10 @@ std::shared_ptr<FaultInjector> FaultInjectorFactory::create(const InjectorConfig
 
   if (config.type == "joint_state") {
     return std::make_shared<JointStateFaultInjector>(node_, config);
+  }
+
+  if (config.type == "imu") {
+    return std::make_shared<ImuFaultInjector>(node_, config);
   }
 
   return nullptr;

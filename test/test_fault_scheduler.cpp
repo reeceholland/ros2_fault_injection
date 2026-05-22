@@ -143,4 +143,25 @@ TEST(FaultScheduler, ScheduledFaultStartsAndStops) {
 
   rclcpp::shutdown();
 }
+
+TEST(FaultScheduler, ManualOnlyTestStaysInactive) {
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
+  FaultEventPublisher events(*node);
+  FaultScheduler scheduler(*node, events);
+
+  FakeFaultInjector injector;
+  auto fault = make_fault("manual_only_fault");
+
+  injector.add_fault(fault);
+
+  scheduler.schedule({fault}, injector, {});
+
+  spin_for(node, 50ms);
+
+  EXPECT_FALSE(injector.is_active("manual_only_fault"));
+
+  rclcpp::shutdown();
+}
 }  // namespace ros2_fault_injection

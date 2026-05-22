@@ -20,6 +20,14 @@ const std::unordered_set<std::string> kJointStateKeys = {
     "velocity_noise_stddev",
 };
 
+const std::unordered_set<std::string> kImuKeys = {
+    "drop_probability",           "delay_ms",
+    "angular_velocity_z_bias",    "angular_velocity_z_noise_stddev",
+    "linear_acceleration_x_bias", "linear_acceleration_x_noise_stddev",
+    "linear_acceleration_y_bias", "linear_acceleration_y_noise_stddev",
+    "linear_acceleration_z_bias", "linear_acceleration_z_noise_stddev",
+};
+
 const std::unordered_set<std::string> kEmptyKeys = {};
 
 }  // namespace
@@ -36,6 +44,10 @@ const std::unordered_set<std::string>& allowed_config_keys_for_injector_type(
 
   if (injector_type == "joint_state") {
     return kJointStateKeys;
+  }
+
+  if (injector_type == "imu") {
+    return kImuKeys;
   }
 
   return kEmptyKeys;

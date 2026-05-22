@@ -17,6 +17,7 @@ This keeps the framework understandable and testable without doing DDS packet ma
 | `odom` | `nav_msgs/msg/Odometry` | `/odom_raw` | `/odom` |
 | `scan` | `sensor_msgs/msg/LaserScan` | `/scan_raw` | `/scan` |
 | `joint_state` | `sensor_msgs/msg/JointState` | `/platform/motors/feedback_raw` | `/platform/motors/feedback` |
+| `imu` | `sensor_msgs/msg/Imu` | `/sensors/imu_raw` | `/sensors/imu` |
 
 ## Fault Types
 
@@ -30,6 +31,8 @@ The supported config keys depend on the injector type.
 | `y_bias` | Add a constant offset to odometry Y position. |
 | `x_noise_stddev` | Add Gaussian noise to odometry X position. |
 | `y_noise_stddev` | Add Gaussian noise to odometry Y position. |
+| `yaw_bias_deg` | Add a constant yaw offset, in degrees. |
+| `yaw_noise_stddev_deg` | Add Gaussian noise to yaw, in degrees. |
 | `drop_probability` | Randomly drop odometry messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay odometry messages by this many milliseconds. |
 
@@ -53,6 +56,21 @@ The supported config keys depend on the injector type.
 | `velocity_noise_stddev` | Add Gaussian noise to every joint velocity. |
 | `drop_probability` | Randomly drop joint state messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay joint state messages by this many milliseconds. |
+
+### IMU
+
+| Key | Meaning |
+| --- | --- |
+| `angular_velocity_z_bias` | Add a constant yaw-rate offset in `rad/s`. |
+| `angular_velocity_z_noise_stddev` | Add Gaussian yaw-rate noise in `rad/s`. |
+| `linear_acceleration_x_bias` | Add a constant X acceleration offset in `m/s^2`. |
+| `linear_acceleration_y_bias` | Add a constant Y acceleration offset in `m/s^2`. |
+| `linear_acceleration_z_bias` | Add a constant Z acceleration offset in `m/s^2`. |
+| `linear_acceleration_x_noise_stddev` | Add Gaussian X acceleration noise in `m/s^2`. |
+| `linear_acceleration_y_noise_stddev` | Add Gaussian Y acceleration noise in `m/s^2`. |
+| `linear_acceleration_z_noise_stddev` | Add Gaussian Z acceleration noise in `m/s^2`. |
+| `drop_probability` | Randomly drop IMU messages. Range: `0.0` to `1.0`. |
+| `delay_ms` | Delay IMU messages by this many milliseconds. |
 
 ## Scenario YAML
 
@@ -87,6 +105,14 @@ faults:
     active_on_startup: true
     config:
       range_noise_stddev: 0.05
+
+  - id: imu_accel_noise
+    injector_id: imu
+    active_on_startup: false
+    config:
+      linear_acceleration_x_noise_stddev: 0.15
+      linear_acceleration_y_noise_stddev: 0.15
+      linear_acceleration_z_noise_stddev: 0.05
 ```
 
 ### Fault Activation Rules
@@ -182,6 +208,7 @@ For the rover stack, use fault injection as a boundary between raw producer topi
 diff_drive_controller -> /odom_raw -> odom injector -> /odom -> Nav2
 lidar or simulator    -> /scan_raw -> scan injector -> /scan -> Nav2/SLAM
 Unity motor feedback  -> /platform/motors/feedback_raw -> joint_state injector -> /platform/motors/feedback -> ros2_control
+Unity or IMU driver  -> /sensors/imu_raw -> imu injector -> /sensors/imu -> consumers
 ```
 
 This keeps the normal ROS topic names stable for Nav2, SLAM, and controllers while letting fault injection sit in the middle.
@@ -212,7 +239,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, and shared `FaultInjectorBase` behavior.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, and shared `FaultInjectorBase` behavior.
 
 ## Development Notes
 

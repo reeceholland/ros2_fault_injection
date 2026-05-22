@@ -151,3 +151,50 @@ TEST(ScenarioValidator, RejectsNegativeYawNoiseStddevDeg) {
   ASSERT_EQ(result.errors.size(), 1u);
   EXPECT_NE(result.errors.front().find("yaw_noise_stddev_deg"), std::string::npos);
 }
+
+
+TEST(ScenarioValidator, AcceptsValidImuScenario) {
+  ros2_fault_injection::ScenarioConfig scenario;
+  scenario.injector.id = "imu";
+  scenario.injector.type = "imu";
+  scenario.injector.input_topic = "/sensors/imu_raw";
+  scenario.injector.output_topic = "/sensors/imu";
+  scenario.injector.qos_depth = 10;
+  scenario.injectors.push_back(scenario.injector);
+
+  ros2_fault_injection::FaultConfig fault;
+  fault.id = "imu_accel_noise";
+  fault.injector_id = "imu";
+  fault.config["linear_acceleration_x_noise_stddev"] = "0.15";
+  fault.config["linear_acceleration_y_noise_stddev"] = "0.15";
+  fault.config["linear_acceleration_z_noise_stddev"] = "0.05";
+  scenario.faults.push_back(fault);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(result.errors.empty());
+  EXPECT_TRUE(result.warnings.empty());
+}
+
+TEST(ScenarioValidator, RejectsNegativeImuNoiseStddev) {
+  ros2_fault_injection::ScenarioConfig scenario;
+  scenario.injector.id = "imu";
+  scenario.injector.type = "imu";
+  scenario.injector.input_topic = "/sensors/imu_raw";
+  scenario.injector.output_topic = "/sensors/imu";
+  scenario.injector.qos_depth = 10;
+  scenario.injectors.push_back(scenario.injector);
+
+  ros2_fault_injection::FaultConfig fault;
+  fault.id = "imu_accel_noise";
+  fault.injector_id = "imu";
+  fault.config["linear_acceleration_x_noise_stddev"] = "-0.15";
+  scenario.faults.push_back(fault);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+
+  EXPECT_FALSE(result.ok());
+  ASSERT_EQ(result.errors.size(), 1u);
+  EXPECT_NE(result.errors.front().find("linear_acceleration_x_noise_stddev"), std::string::npos);
+}

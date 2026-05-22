@@ -1,0 +1,27 @@
+injector:
+  id: imu
+  type: imu
+  input_topic: /sensors/imu_raw
+  output_topic: /sensors/imu
+  qos_depth: 10
+
+faults:
+  - id: imu_accel_noise
+    injector_id: imu
+    active_on_startup: false
+    config:
+      linear_acceleration_x_noise_stddev: 0.15
+      linear_acceleration_y_noise_stddev: 0.15
+      linear_acceleration_z_noise_stddev: 0.05
+
+  - id: imu_yaw_rate_bias
+    injector_id: imu
+    active_on_startup: false
+    config:
+      angular_velocity_z_bias: 0.05
+
+  - id: imu_delay
+    injector_id: imu
+    active_on_startup: false
+    config:
+      delay_ms: 100

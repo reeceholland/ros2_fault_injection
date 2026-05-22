@@ -13,7 +13,7 @@ namespace ros2_fault_injection {
 namespace {
 
 bool is_known_injector_type(const std::string& type) {
-  return type == "odom" || type == "scan" || type == "joint_state";
+  return type == "odom" || type == "scan" || type == "joint_state" || type == "imu";
 }
 
 bool parse_double(const std::string& text, double& value) {
@@ -173,6 +173,17 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
   if (injector_type == "joint_state") {
     validate_number_key(fault, "velocity_bias", result);
     validate_non_negative_number_key(fault, "velocity_noise_stddev", result);
+  }
+
+  if (injector_type == "imu") {
+    validate_number_key(fault, "angular_velocity_z_bias", result);
+    validate_non_negative_number_key(fault, "angular_velocity_z_noise_stddev", result);
+    validate_number_key(fault, "linear_acceleration_x_bias", result);
+    validate_number_key(fault, "linear_acceleration_y_bias", result);
+    validate_number_key(fault, "linear_acceleration_z_bias", result);
+    validate_non_negative_number_key(fault, "linear_acceleration_x_noise_stddev", result);
+    validate_non_negative_number_key(fault, "linear_acceleration_y_noise_stddev", result);
+    validate_non_negative_number_key(fault, "linear_acceleration_z_noise_stddev", result);
   }
 }
 
