@@ -13,8 +13,20 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Fault injector for `sensor_msgs/msg/LaserScan` streams.
+ *
+ * Subscribes to the configured input topic, applies active laser scan faults,
+ * and republishes the result on the configured output topic.
+ */
 class ScanFaultInjector : public FaultInjectorBase {
 public:
+  /**
+   * @brief Create the laser scan fault injector.
+   *
+   * @param node Node used to create publishers, subscriptions, and timers.
+   * @param config Injector topic and QoS configuration.
+   */
   explicit ScanFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
 
 private:

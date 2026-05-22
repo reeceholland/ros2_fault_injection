@@ -13,8 +13,20 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Fault injector for `sensor_msgs/msg/Imu` streams.
+ *
+ * Subscribes to the configured input topic, applies active IMU faults,
+ * and republishes the result on the configured output topic.
+ */
 class ImuFaultInjector : public FaultInjectorBase {
 public:
+  /**
+   * @brief Create the IMU fault injector.
+   *
+   * @param node Node used to create publishers, subscriptions, and timers.
+   * @param config Injector topic and QoS configuration.
+   */
   explicit ImuFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
 
 private:

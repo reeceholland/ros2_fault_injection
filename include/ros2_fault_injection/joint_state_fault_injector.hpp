@@ -13,8 +13,20 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Fault injector for `sensor_msgs/msg/JointState` streams.
+ *
+ * Subscribes to the configured input topic, applies active joint state faults,
+ * and republishes the result on the configured output topic.
+ */
 class JointStateFaultInjector : public FaultInjectorBase {
 public:
+  /**
+   * @brief Create the joint state fault injector.
+   *
+   * @param node Node used to create publishers, subscriptions, and timers.
+   * @param config Injector topic and QoS configuration.
+   */
   explicit JointStateFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
 
 private:

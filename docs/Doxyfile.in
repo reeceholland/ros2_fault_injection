@@ -1,0 +1,40 @@
+PROJECT_NAME           = "@PROJECT_NAME@"
+PROJECT_NUMBER         = "@PROJECT_VERSION@"
+PROJECT_BRIEF          = "ROS 2 fault injection framework"
+
+OUTPUT_DIRECTORY       = "@CMAKE_CURRENT_BINARY_DIR@/docs"
+CREATE_SUBDIRS         = NO
+
+INPUT                  = "@CMAKE_CURRENT_SOURCE_DIR@/include" \
+                         "@CMAKE_CURRENT_SOURCE_DIR@/src" \
+                         "@CMAKE_CURRENT_SOURCE_DIR@/README.md" \
+                         "@CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md"
+FILE_PATTERNS          = *.hpp *.cpp *.md
+RECURSIVE              = YES
+
+USE_MDFILE_AS_MAINPAGE = "@CMAKE_CURRENT_SOURCE_DIR@/docs/mainpage.md"
+MARKDOWN_SUPPORT       = YES
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+
+FULL_PATH_NAMES        = YES
+STRIP_FROM_PATH        = "@CMAKE_CURRENT_SOURCE_DIR@"
+STRIP_FROM_INC_PATH    = "@CMAKE_CURRENT_SOURCE_DIR@/include"
+
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = NO
+MULTILINE_CPP_IS_BRIEF = NO
+
+EXCLUDE_PATTERNS       = */build/* */install/* */log/*

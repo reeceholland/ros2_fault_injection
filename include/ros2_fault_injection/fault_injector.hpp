@@ -10,22 +10,92 @@
 #include "ros2_fault_injection/fault_config.hpp"
 
 namespace ros2_fault_injection {
+
+/**
+ * @brief Common interface implemented by all typed fault injectors.
+ *
+ * The interface keeps scheduling and services independent of message type. A
+ * typed injector owns the ROS subscription/publisher pair for a specific
+ * message type and applies the active faults during message callbacks.
+ */
 class FaultInjector {
 public:
   virtual ~FaultInjector() = default;
 
+  /**
+   * @brief Get the injector id from the scenario.
+   *
+   * @return Injector identifier.
+   */
   virtual std::string id() const = 0;
+
+  /**
+   * @brief Register or replace a fault owned by this injector.
+   *
+   * @param fault_config Fault configuration to store.
+   */
   virtual void add_fault(const FaultConfig& fault_config) = 0;
+
+  /**
+   * @brief Mark a known fault active.
+   *
+   * @param fault_id Fault identifier to activate.
+   */
   virtual void activate_fault(const std::string& fault_id) = 0;
+
+  /**
+   * @brief Mark a fault inactive.
+   *
+   * @param fault_id Fault identifier to deactivate.
+   */
   virtual void deactivate_fault(const std::string& fault_id) = 0;
+
+  /**
+   * @brief Check whether this injector owns a fault id.
+   *
+   * @param fault_id Fault identifier to look up.
+   * @return true when the fault is registered.
+   */
   virtual bool has_fault(const std::string& fault_id) const = 0;
+
+  /**
+   * @brief Get the stored configuration for a fault.
+   *
+   * @param fault_id Fault identifier to look up.
+   * @return Fault configuration when found, otherwise std::nullopt.
+   */
   virtual std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const = 0;
+
+  /**
+   * @brief Update one runtime config value for a registered fault.
+   *
+   * This updates entries inside `FaultConfig::config`; it does not mutate
+   * top-level scheduling fields such as `start` or `duration`.
+   *
+   * @param fault_id Fault identifier to update.
+   * @param key Config key to set.
+   * @param value New value stored as text.
+   * @return true when the fault exists and the value was stored.
+   */
   virtual bool set_fault_config_value(const std::string& fault_id, const std::string& key,
                                       const std::string& value) = 0;
+
+  /**
+   * @brief List all fault ids registered with this injector.
+   *
+   * @return Fault identifiers.
+   */
   virtual std::vector<std::string> fault_ids() const = 0;
+
+  /**
+   * @brief List currently active fault ids.
+   *
+   * @return Active fault identifiers.
+   */
   virtual std::vector<std::string> active_fault_ids() const = 0;
 };
 
+/// Map of injector id to injector instance.
 using InjectorMap = std::unordered_map<std::string, std::shared_ptr<FaultInjector>>;
 }  // namespace ros2_fault_injection
 

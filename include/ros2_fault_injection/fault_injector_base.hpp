@@ -14,8 +14,21 @@
 
 namespace ros2_fault_injection {
 
+/**
+ * @brief Shared implementation for typed fault injectors.
+ *
+ * This base class stores fault configuration, active state, random number
+ * generation, and common helpers for drop/delay/config aggregation. Derived
+ * classes provide the message-specific ROS subscriptions and mutation logic.
+ */
 class FaultInjectorBase : public FaultInjector {
 public:
+  /**
+   * @brief Construct a base injector.
+   *
+   * @param node ROS node used by derived classes.
+   * @param config Injector configuration from the scenario.
+   */
   explicit FaultInjectorBase(rclcpp::Node& node, InjectorConfig config);
 
   std::string id() const override;
@@ -30,10 +43,45 @@ public:
                               const std::string& value) override;
 
 protected:
+  /**
+   * @brief Get the largest active numeric config value for a key.
+   *
+   * @param key Config key to scan across active faults.
+   * @param fallback Value returned when no active fault provides the key.
+   * @return Largest parsed value or fallback.
+   */
   double active_max_double(const std::string& key, double fallback = 0.0) const;
+
+  /**
+   * @brief Sum active numeric config values for a key.
+   *
+   * @param key Config key to scan across active faults.
+   * @param fallback Value returned when no active fault provides the key.
+   * @return Sum of parsed values or fallback.
+   */
   double active_sum_double(const std::string& key, double fallback = 0.0) const;
+
+  /**
+   * @brief Get the largest active integer config value for a key.
+   *
+   * @param key Config key to scan across active faults.
+   * @param fallback Value returned when no active fault provides the key.
+   * @return Largest parsed value or fallback.
+   */
   int active_max_int(const std::string& key, int fallback = 0) const;
+
+  /**
+   * @brief Decide whether the current message should be dropped.
+   *
+   * @return true when an active `drop_probability` fault drops the message.
+   */
   bool should_drop();
+
+  /**
+   * @brief Get the current active delay.
+   *
+   * @return Delay duration from active `delay_ms` faults.
+   */
   std::chrono::milliseconds active_delay() const;
 
   rclcpp::Node& node_;

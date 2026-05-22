@@ -260,6 +260,27 @@ When adding a new fault config key, update:
 
 Keeping config-key ownership centralized avoids drift between validation and runtime behavior.
 
+For a full walkthrough, see `docs/adding_an_injector.md`.
+
+
+## API Documentation
+
+API docs are generated with Doxygen when Doxygen is installed:
+
+```bash
+cd /home/reece/fault_injection_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select ros2_fault_injection --cmake-target generate_doxygen_api
+```
+
+The generated HTML is written under:
+
+```text
+/home/reece/fault_injection_ws/build/ros2_fault_injection/docs/html/index.html
+```
+
+The docs target is optional. Normal package builds and tests do not require Doxygen.
+
 ## Tests
 
 Run package tests:
