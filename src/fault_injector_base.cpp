@@ -79,6 +79,20 @@ std::optional<FaultConfig> FaultInjectorBase::get_fault_config(const std::string
   return it->second;
 }
 
+bool FaultInjectorBase::set_fault_config_value(const std::string& fault_id, const std::string& key,
+                                               const std::string& value) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  auto it = faults_.find(fault_id);
+  if (it == faults_.end()) {
+    RCLCPP_WARN(node_.get_logger(), "Cannot set config for unknown fault '%s'", fault_id.c_str());
+    return false;
+  }
+
+  it->second.config[key] = value;
+  return true;
+}
+
 std::vector<std::string> FaultInjectorBase::fault_ids() const {
   std::lock_guard<std::mutex> lock(mutex_);
 

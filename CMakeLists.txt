@@ -26,6 +26,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetFaultState.srv"
   "srv/ListFaults.srv"
   "srv/GetFaultStatus.srv"
+  "srv/SetFaultConfig.srv"
   "msg/FaultStatus.msg"
 )
 

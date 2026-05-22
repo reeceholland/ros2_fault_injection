@@ -12,6 +12,7 @@
 #include "ros2_fault_injection/fault_injector.hpp"
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/list_faults.hpp"
+#include "ros2_fault_injection/srv/set_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
 namespace ros2_fault_injection {
@@ -32,6 +33,8 @@ private:
 
   void handle_get_fault_status(const std::shared_ptr<srv::GetFaultStatus::Request> request,
                                std::shared_ptr<srv::GetFaultStatus::Response> response);
+  void handle_set_fault_config(const std::shared_ptr<srv::SetFaultConfig::Request> request,
+                               std::shared_ptr<srv::SetFaultConfig::Response> response);
 
   std::string describe_fault(const FaultConfig& fault);
 
@@ -42,6 +45,7 @@ private:
   rclcpp::Service<srv::SetFaultState>::SharedPtr set_fault_state_service_;
   rclcpp::Service<srv::ListFaults>::SharedPtr list_faults_service_;
   rclcpp::Service<srv::GetFaultStatus>::SharedPtr get_fault_status_service_;
+  rclcpp::Service<srv::SetFaultConfig>::SharedPtr set_fault_config_service_;
 };
 
 }  // namespace ros2_fault_injection

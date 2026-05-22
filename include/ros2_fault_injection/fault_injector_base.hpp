@@ -26,6 +26,8 @@ public:
   std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const override;
   std::vector<std::string> fault_ids() const override;
   std::vector<std::string> active_fault_ids() const override;
+  bool set_fault_config_value(const std::string& fault_id, const std::string& key,
+                              const std::string& value) override;
 
 protected:
   double active_max_double(const std::string& key, double fallback = 0.0) const;
