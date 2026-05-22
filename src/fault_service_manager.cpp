@@ -119,12 +119,24 @@ void FaultServiceManager::handle_set_fault_state(
   if (request->active) {
     injector->activate_fault(request->fault_id);
     response->message = "activated fault: " + request->fault_id;
-    events_.publish(request->fault_id, "active");
+    FaultEvent event;
+    event.fault_id = request->fault_id;
+    event.injector_id = injector->id();
+    event.state = "active";
+    event.source = "manual";
+    event.details = describe_fault(injector->get_fault_config(request->fault_id).value());
+    events_.publish(event);
     RCLCPP_INFO(node_.get_logger(), "Activated fault: %s", request->fault_id.c_str());
   } else {
     injector->deactivate_fault(request->fault_id);
     response->message = "deactivated fault: " + request->fault_id;
-    events_.publish(request->fault_id, "inactive");
+    FaultEvent event;
+    event.fault_id = request->fault_id;
+    event.injector_id = injector->id();
+    event.state = "inactive";
+    event.source = "manual";
+    event.details = describe_fault(injector->get_fault_config(request->fault_id).value());
+    events_.publish(event);
     RCLCPP_INFO(node_.get_logger(), "Deactivated fault: %s", request->fault_id.c_str());
   }
 
@@ -197,6 +209,13 @@ void FaultServiceManager::handle_set_fault_config(
   response->success = true;
   response->message = "updated fault '" + request->fault_id + "' config '" + request->key +
                       "' to '" + request->value + "'";
+  FaultEvent event;
+  event.fault_id = request->fault_id;
+  event.injector_id = injector->id();
+  event.state = "config_updated";
+  event.source = "manual";
+  event.details = "updated config key '" + request->key + "' to '" + request->value + "'";
+  events_.publish(event);
 
   RCLCPP_INFO(node_.get_logger(), "Updated fault '%s' config '%s' to '%s'",
               request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
