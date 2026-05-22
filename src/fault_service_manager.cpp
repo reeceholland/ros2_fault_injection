@@ -1,31 +1,13 @@
 #include "ros2_fault_injection/fault_service_manager.hpp"
 
-#include <algorithm>
-#include <sstream>
 #include <string>
 #include <unordered_set>
-#include <vector>
 
 #include "ros2_fault_injection/fault_config_schema.hpp"
+#include "ros2_fault_injection/fault_descriptions.hpp"
 #include "ros2_fault_injection/msg/fault_status.hpp"
 
 namespace ros2_fault_injection {
-
-namespace {
-std::string join_strings(const std::vector<std::string>& parts, const std::string& separator) {
-  std::ostringstream out;
-
-  for (size_t i = 0; i < parts.size(); ++i) {
-    if (i > 0) {
-      out << separator;
-    }
-
-    out << parts[i];
-  }
-
-  return out.str();
-}
-}  // namespace
 
 FaultServiceManager::FaultServiceManager(rclcpp::Node& node, const InjectorMap& injectors,
                                          FaultEventPublisher& events)
@@ -214,35 +196,11 @@ void FaultServiceManager::handle_set_fault_config(
   event.injector_id = injector->id();
   event.state = "config_updated";
   event.source = "manual";
-  event.details = "updated config key '" + request->key + "' to '" + request->value + "'";
+  event.details = describe_config_update(request->key, request->value);
   events_.publish(event);
 
   RCLCPP_INFO(node_.get_logger(), "Updated fault '%s' config '%s' to '%s'",
               request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
-}
-
-std::string FaultServiceManager::describe_fault(const FaultConfig& fault) {
-  // This function can be expanded to provide more detailed descriptions based on the fault
-  // configuration
-  std::vector<std::string> details;
-  if (fault.start.has_value()) {
-    details.push_back("scheduled");
-    details.push_back("start: " + std::to_string(fault.start->count()) + "ms");
-  } else {
-    details.push_back("manual-only");
-  }
-  if (fault.duration.has_value()) {
-    details.push_back("duration: " + std::to_string(fault.duration->count()) + "ms");
-  }
-  if (!fault.config.empty()) {
-    std::vector<std::string> config_parts;
-    for (const auto& [key, value] : fault.config) {
-      config_parts.push_back(key + "=" + value);
-    }
-    details.push_back("config_keys={" + join_strings(config_parts, ", ") + "}");
-  }
-
-  return join_strings(details, ", ");
 }
 
 }  // namespace ros2_fault_injection

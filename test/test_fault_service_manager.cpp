@@ -247,7 +247,7 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent) {
   EXPECT_EQ(latest_event->injector_id, "odom");
   EXPECT_EQ(latest_event->state, "config_updated");
   EXPECT_EQ(latest_event->source, "manual");
-  EXPECT_NE(latest_event->details.find("updated config key 'x_bias' to '2.0'"), std::string::npos);
+  EXPECT_NE(latest_event->details.find("config_update={x_bias=2.0}"), std::string::npos);
 
   (void)subscription;
   rclcpp::shutdown();

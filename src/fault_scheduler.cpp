@@ -5,29 +5,9 @@
 #include <memory>
 #include <sstream>
 
+#include "ros2_fault_injection/fault_descriptions.hpp"
+
 namespace ros2_fault_injection {
-
-std::string describe_config(const std::unordered_map<std::string, std::string>& config) {
-  if (config.empty()) {
-    return "config={}";
-  }
-
-  std::ostringstream out;
-  out << "config={";
-
-  bool first = true;
-  for (const auto& [key, value] : config) {
-    if (!first) {
-      out << ", ";
-    }
-
-    out << key << "=" << value;
-    first = false;
-  }
-
-  out << "}";
-  return out.str();
-}
 
 FaultScheduler::FaultScheduler(rclcpp::Node& node, FaultEventPublisher& event_pub)
     : node_(node), event_pub_(event_pub) {}

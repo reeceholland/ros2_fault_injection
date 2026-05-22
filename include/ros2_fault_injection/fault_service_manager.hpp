@@ -50,8 +50,6 @@ private:
   void handle_set_fault_config(const std::shared_ptr<srv::SetFaultConfig::Request> request,
                                std::shared_ptr<srv::SetFaultConfig::Response> response);
 
-  std::string describe_fault(const FaultConfig& fault);
-
   rclcpp::Node& node_;
   const InjectorMap& injectors_;
   FaultEventPublisher& events_;
