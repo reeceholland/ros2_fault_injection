@@ -19,3 +19,4 @@ See the project README for runtime usage, YAML scenario format, and service exam
 ## Contributor Guides
 
 - `docs/adding_an_injector.md`
+- `docs/adding_a_fault_type.md`
