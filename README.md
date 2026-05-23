@@ -33,6 +33,10 @@ The supported config keys depend on the injector type.
 | `y_noise_stddev` | Add Gaussian noise to odometry Y position. |
 | `yaw_bias_deg` | Add a constant yaw offset, in degrees. |
 | `yaw_noise_stddev_deg` | Add Gaussian noise to yaw, in degrees. |
+| `pose_covariance_scale` | Multiply every pose covariance entry by this value. |
+| `pose_covariance_floor` | Clamp every pose covariance entry to at least this value after scaling. |
+| `twist_covariance_scale` | Multiply every twist covariance entry by this value. |
+| `twist_covariance_floor` | Clamp every twist covariance entry to at least this value after scaling. |
 | `drop_probability` | Randomly drop odometry messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay odometry messages by this many milliseconds. |
 
@@ -99,6 +103,15 @@ faults:
     config:
       x_bias: 1.0
       y_bias: -0.25
+
+  - id: odom_covariance_inflation
+    injector_id: odom
+    active_on_startup: false
+    config:
+      pose_covariance_scale: 10.0
+      pose_covariance_floor: 0.05
+      twist_covariance_scale: 10.0
+      twist_covariance_floor: 0.05
 
   - id: scan_noise
     injector_id: scan
@@ -171,7 +184,7 @@ faults:
 - fault_id: odom_bias
   injector_id: odom
   state: inactive
-  details: "scheduled, start: 5000ms, duration: 10000ms, config_keys={x_bias=1.0, y_bias=-0.25}"
+  details: "scheduled, start=5000ms, duration=10000ms, config={x_bias=1.0, y_bias=-0.25}"
 ```
 
 ### Activate Or Deactivate A Fault
@@ -208,7 +221,7 @@ Successful config updates publish a `FaultEvent` with:
 ```yaml
 state: config_updated
 source: manual
-details: updated config key 'x_bias' to '2.0'
+details: config_update={x_bias=2.0}
 ```
 
 ## Events
@@ -260,7 +273,10 @@ When adding a new fault config key, update:
 
 Keeping config-key ownership centralized avoids drift between validation and runtime behavior.
 
-For a full walkthrough, see `docs/adding_an_injector.md`.
+For full walkthroughs, see:
+
+- `docs/adding_an_injector.md`
+- `docs/adding_a_fault_type.md`
 
 
 ## API Documentation
