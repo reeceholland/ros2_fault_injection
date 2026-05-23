@@ -40,6 +40,7 @@ void OdomFaultInjector::on_odom(const nav_msgs::msg::Odometry::SharedPtr msg) {
   apply_noise(out);
   apply_yaw_bias(out);
   apply_yaw_noise(out);
+  apply_covariance_scale(out);
 
   const auto delay = active_delay();
   if (delay.count() > 0) {
@@ -153,6 +154,25 @@ void OdomFaultInjector::apply_yaw_noise(nav_msgs::msg::Odometry& msg) {
 
   // Convert back to ROS geometry message and update the odom message.
   msg.pose.pose.orientation = tf2::toMsg(q);
+}
+
+void OdomFaultInjector::apply_covariance_scale(nav_msgs::msg::Odometry& msg) {
+  const double pose_scale = active_max_double("pose_covariance_scale", 1.0);
+  const double twist_scale = active_max_double("twist_covariance_scale", 1.0);
+  const double pose_floor = active_max_double("pose_covariance_floor", 0.0);
+  const double twist_floor = active_max_double("twist_covariance_floor", 0.0);
+
+  if (pose_scale != 1.0 || pose_floor > 0.0) {
+    for (auto& value : msg.pose.covariance) {
+      value = std::max(value * pose_scale, pose_floor);
+    }
+  }
+
+  if (twist_scale != 1.0 || twist_floor > 0.0) {
+    for (auto& value : msg.twist.covariance) {
+      value = std::max(value * twist_scale, twist_floor);
+    }
+  }
 }
 
 }  // namespace ros2_fault_injection

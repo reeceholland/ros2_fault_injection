@@ -160,6 +160,10 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
     validate_non_negative_number_key(fault, "y_noise_stddev", result);
     validate_number_key(fault, "yaw_bias_deg", result);
     validate_non_negative_number_key(fault, "yaw_noise_stddev_deg", result);
+    validate_non_negative_number_key(fault, "pose_covariance_scale", result);
+    validate_non_negative_number_key(fault, "twist_covariance_scale", result);
+    validate_non_negative_number_key(fault, "pose_covariance_floor", result);
+    validate_non_negative_number_key(fault, "twist_covariance_floor", result);
   }
 
   if (injector_type == "scan") {
