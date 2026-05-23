@@ -3,12 +3,12 @@
 namespace ros2_fault_injection {
 JointStateFaultInjector::JointStateFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
     : FaultInjectorBase(node, config) {
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.qos_depth));
+  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
 
-  pub_ = node_.create_publisher<sensor_msgs::msg::JointState>(config_.output_topic, qos);
+  pub_ = node_.create_publisher<sensor_msgs::msg::JointState>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::JointState>(
-      config_.input_topic, qos,
+      config_.topic->input_topic, qos,
       [this](sensor_msgs::msg::JointState::SharedPtr msg) { on_joint_state(msg); });
 
   timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() { flush_delayed(); });

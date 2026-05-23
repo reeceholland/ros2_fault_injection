@@ -12,14 +12,15 @@ namespace ros2_fault_injection {
 
 OdomFaultInjector::OdomFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
     : FaultInjectorBase(node, config) {
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.qos_depth));
+  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
 
   // The injector sits in the odom data path: input odom is read, optionally
   // modified or delayed, then republished on the configured output topic.
-  pub_ = node_.create_publisher<nav_msgs::msg::Odometry>(config_.output_topic, qos);
+  pub_ = node_.create_publisher<nav_msgs::msg::Odometry>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<nav_msgs::msg::Odometry>(
-      config_.input_topic, qos, [this](nav_msgs::msg::Odometry::SharedPtr msg) { on_odom(msg); });
+      config_.topic->input_topic, qos,
+      [this](nav_msgs::msg::Odometry::SharedPtr msg) { on_odom(msg); });
 
   // Delayed odom samples are released by a small periodic flush instead of
   // creating one timer per message.

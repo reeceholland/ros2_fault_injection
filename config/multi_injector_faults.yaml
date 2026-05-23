@@ -23,6 +23,11 @@ injectors:
     output_topic: /sensors/imu
     qos_depth: 10
 
+  - id: enable_motors
+    type: trigger_service
+    proxy_service: /enable_motors
+    target_service: /enable_motors_raw
+
 faults:
   - id: odom_bias
     injector_id: odom
@@ -104,3 +109,25 @@ faults:
       pose_covariance_floor: 0.05
       twist_covariance_scale: 10.0
       twist_covariance_floor: 0.05
+  
+  - id: enable_motors_failure
+    injector_id: enable_motors
+    active_on_startup: false
+    start: 5.0
+    duration: 10.0
+    config:
+      force_failure: true
+      failure_message: "Injected scheduled service failure"
+
+  - id: enable_motors_failure
+    injector_id: enable_motors
+    active_on_startup: false
+    config:
+      force_failure: true
+      failure_message: "Injected enable_motors failure"
+
+  - id: enable_motors_delay
+    injector_id: enable_motors
+    active_on_startup: false
+    config:
+      delay_ms: 2000

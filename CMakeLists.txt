@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -54,6 +55,7 @@ add_library(${PROJECT_NAME}_core
   src/fault_controller.cpp
   src/fault_config_schema.cpp
   src/fault_descriptions.cpp
+  src/trigger_service_fault_injector.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -71,6 +73,7 @@ ament_target_dependencies(${PROJECT_NAME}_core
   rclcpp
   nav_msgs
   std_msgs
+  std_srvs
   sensor_msgs
   builtin_interfaces
   tf2
@@ -181,9 +184,16 @@ if(BUILD_TESTING)
   )
 
   ament_add_gtest(test_odom_fault_injector
-  test/test_odom_fault_injector.cpp
+    test/test_odom_fault_injector.cpp
   )
   target_link_libraries(test_odom_fault_injector
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_trigger_service_fault_injector
+    test/test_trigger_service_fault_injector.cpp
+  )
+  target_link_libraries(test_trigger_service_fault_injector
     ${PROJECT_NAME}_core
   )
 endif()

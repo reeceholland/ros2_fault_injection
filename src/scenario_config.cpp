@@ -29,13 +29,24 @@ InjectorConfig parse_injector(const YAML::Node& node) {
   InjectorConfig config;
   config.id = required_string(node, "id");
   config.type = required_string(node, "type");
-  config.input_topic = required_string(node, "input_topic");
-  config.output_topic = required_string(node, "output_topic");
 
-  if (node["qos_depth"]) {
-    config.qos_depth = node["qos_depth"].as<std::size_t>();
+  if (config.type == "trigger_service") {
+    TriggerServiceEndpointConfig service;
+    service.proxy_service = required_string(node, "proxy_service");
+    service.target_service = required_string(node, "target_service");
+    config.trigger_service = service;
+    return config;
   }
 
+  TopicEndpointConfig topic;
+  topic.input_topic = required_string(node, "input_topic");
+  topic.output_topic = required_string(node, "output_topic");
+
+  if (node["qos_depth"]) {
+    topic.qos_depth = node["qos_depth"].as<std::size_t>();
+  }
+
+  config.topic = topic;
   return config;
 }
 

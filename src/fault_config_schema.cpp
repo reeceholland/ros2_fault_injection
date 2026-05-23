@@ -40,6 +40,12 @@ const std::unordered_set<std::string> kImuKeys = {
 
 const std::unordered_set<std::string> kEmptyKeys = {};
 
+const std::unordered_set<std::string> kTriggerServiceKeys = {
+    "delay_ms",
+    "force_failure",
+    "failure_message",
+};
+
 }  // namespace
 
 const std::unordered_set<std::string>& allowed_config_keys_for_injector_type(
@@ -58,6 +64,10 @@ const std::unordered_set<std::string>& allowed_config_keys_for_injector_type(
 
   if (injector_type == "imu") {
     return kImuKeys;
+  }
+
+  if (injector_type == "trigger_service") {
+    return kTriggerServiceKeys;
   }
 
   return kEmptyKeys;

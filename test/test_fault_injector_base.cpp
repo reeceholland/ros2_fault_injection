@@ -19,8 +19,11 @@ TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -51,8 +54,11 @@ TEST(FaultInjectorBase, StartsWithNoFaults) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -71,8 +77,11 @@ TEST(FaultInjectorBase, AddFaultRegistersItInactive) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -97,8 +106,11 @@ TEST(FaultInjectorBase, ActivateKnownFault) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -124,8 +136,11 @@ TEST(FaultInjectorBase, DeactivateKnownFault) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -152,8 +167,11 @@ TEST(FaultInjectorBase, UnknownActivateDoesNotCreateFault) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -173,8 +191,11 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -211,8 +232,11 @@ TEST(FaultInjectorBase, SetFaultConfigValueUpdatesExistingFault) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 
@@ -242,8 +266,11 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
   InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.input_topic = "/odom_raw";
-  injector_config.output_topic = "/odom";
+  injector_config.topic = TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
 
   TestFaultInjector injector(*node, injector_config);
 

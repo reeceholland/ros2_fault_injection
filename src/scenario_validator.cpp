@@ -13,7 +13,8 @@ namespace ros2_fault_injection {
 namespace {
 
 bool is_known_injector_type(const std::string& type) {
-  return type == "odom" || type == "scan" || type == "joint_state" || type == "imu";
+  return type == "odom" || type == "scan" || type == "joint_state" || type == "imu" ||
+         type == "trigger_service";
 }
 
 bool parse_double(const std::string& text, double& value) {
@@ -41,15 +42,15 @@ void validate_injector(const InjectorConfig& injector, ValidationResult& result)
     result.errors.push_back("unsupported injector.type: '" + injector.type + "'");
   }
 
-  if (injector.input_topic.empty()) {
+  if (injector.topic->input_topic.empty()) {
     result.errors.push_back("injector.input_topic must not be empty");
   }
 
-  if (injector.output_topic.empty()) {
+  if (injector.topic->output_topic.empty()) {
     result.errors.push_back("injector.output_topic must not be empty");
   }
 
-  if (injector.qos_depth == 0) {
+  if (injector.topic->qos_depth == 0) {
     result.errors.push_back("injector.qos_depth must be greater than 0");
   }
 }
@@ -137,6 +138,19 @@ void validate_delay_ms(const FaultConfig& fault, ValidationResult& result) {
   }
 }
 
+void validate_bool_key(const FaultConfig& fault, const std::string& key, ValidationResult& result) {
+  const auto it = fault.config.find(key);
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  const std::string& value = it->second;
+  if (value != "true" && value != "false") {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key +
+                            "' must be 'true' or 'false'");
+  }
+}
+
 void validate_fault_keys(const FaultConfig& fault, const std::string& injector_type,
                          ValidationResult& result) {
   for (const auto& [key, value] : fault.config) {
@@ -188,6 +202,11 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
     validate_non_negative_number_key(fault, "linear_acceleration_x_noise_stddev", result);
     validate_non_negative_number_key(fault, "linear_acceleration_y_noise_stddev", result);
     validate_non_negative_number_key(fault, "linear_acceleration_z_noise_stddev", result);
+  }
+
+  if (injector_type == "trigger_service") {
+    validate_bool_key(fault, "force_failure", result);
+    validate_delay_ms(fault, result);
   }
 }
 

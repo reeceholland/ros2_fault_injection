@@ -9,6 +9,17 @@
 
 namespace ros2_fault_injection {
 
+struct TopicEndpointConfig {
+  std::string input_topic;
+  std::string output_topic;
+  size_t qos_depth{10};
+};
+
+struct TriggerServiceEndpointConfig {
+  std::string proxy_service;
+  std::string target_service;
+};
+
 /**
  * @brief Runtime configuration for one topic injector.
  *
@@ -23,14 +34,9 @@ struct InjectorConfig {
   /// Injector implementation type, for example `odom`, `scan`, `joint_state`, or `imu`.
   std::string type;
 
-  /// Topic subscribed to by the injector.
-  std::string input_topic;
+  std::optional<TopicEndpointConfig> topic;
 
-  /// Topic published by the injector after applying active faults.
-  std::string output_topic;
-
-  /// Publisher and subscription queue depth.
-  size_t qos_depth{10};
+  std::optional<TriggerServiceEndpointConfig> trigger_service;
 };
 
 /**

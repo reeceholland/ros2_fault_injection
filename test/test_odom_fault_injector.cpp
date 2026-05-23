@@ -50,9 +50,13 @@ InjectorConfig make_injector_config() {
   InjectorConfig config;
   config.id = "odom";
   config.type = "odom";
-  config.input_topic = "/test/odom_raw";
-  config.output_topic = "/test/odom";
-  config.qos_depth = 10;
+
+  TopicEndpointConfig topic;
+  topic.input_topic = "/test/odom_raw";
+  topic.output_topic = "/test/odom";
+  topic.qos_depth = 10;
+
+  config.topic = topic;
   return config;
 }
 

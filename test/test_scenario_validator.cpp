@@ -5,15 +5,19 @@
 
 #include <gtest/gtest.h>
 
+#include "ros2_fault_injection/fault_config.hpp"
+
 namespace {
 
 ros2_fault_injection::ScenarioConfig valid_odom_scenario() {
   ros2_fault_injection::ScenarioConfig scenario;
   scenario.injector.id = "odom";
   scenario.injector.type = "odom";
-  scenario.injector.input_topic = "/odom_raw";
-  scenario.injector.output_topic = "/odom";
-  scenario.injector.qos_depth = 10;
+  scenario.injector.topic = ros2_fault_injection::TopicEndpointConfig{
+      "/odom_raw",
+      "/odom",
+      10,
+  };
   scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
@@ -27,6 +31,8 @@ ros2_fault_injection::ScenarioConfig valid_odom_scenario() {
 }
 
 }  // namespace
+
+namespace ros2_fault_injection {
 
 TEST(ScenarioValidator, AcceptsValidOdomScenario) {
   const auto result = ros2_fault_injection::validate_scenario(valid_odom_scenario());
@@ -85,9 +91,11 @@ TEST(ScenarioValidator, WarnsOnUnknownScanKey) {
   ros2_fault_injection::ScenarioConfig scenario;
   scenario.injector.id = "scan";
   scenario.injector.type = "scan";
-  scenario.injector.input_topic = "/scan_raw";
-  scenario.injector.output_topic = "/scan";
-  scenario.injector.qos_depth = 10;
+  scenario.injector.topic = TopicEndpointConfig{
+      "/scan_raw",
+      "/scan",
+      10,
+  };
   scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
@@ -104,7 +112,6 @@ TEST(ScenarioValidator, WarnsOnUnknownScanKey) {
   EXPECT_NE(result.warnings.front().find("unknown config key 'x_bias'"), std::string::npos);
 }
 
-
 TEST(ScenarioValidator, RejectsDuplicateInjectorIds) {
   auto scenario = valid_odom_scenario();
   scenario.injectors.push_back(scenario.injector);
@@ -115,7 +122,6 @@ TEST(ScenarioValidator, RejectsDuplicateInjectorIds) {
   ASSERT_EQ(result.errors.size(), 1u);
   EXPECT_NE(result.errors.front().find("duplicate injector id"), std::string::npos);
 }
-
 
 TEST(ScenarioValidator, AllowsStartupActiveDurationWithoutStartWarning) {
   auto scenario = valid_odom_scenario();
@@ -152,14 +158,16 @@ TEST(ScenarioValidator, RejectsNegativeYawNoiseStddevDeg) {
   EXPECT_NE(result.errors.front().find("yaw_noise_stddev_deg"), std::string::npos);
 }
 
-
 TEST(ScenarioValidator, AcceptsValidImuScenario) {
   ros2_fault_injection::ScenarioConfig scenario;
   scenario.injector.id = "imu";
   scenario.injector.type = "imu";
-  scenario.injector.input_topic = "/sensors/imu_raw";
-  scenario.injector.output_topic = "/sensors/imu";
-  scenario.injector.qos_depth = 10;
+  scenario.injector.topic = TopicEndpointConfig{
+      "/sensors/imu_raw",
+      "/sensors/imu",
+      10,
+  };
+  scenario.injector.topic->qos_depth = 10;
   scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
@@ -181,9 +189,11 @@ TEST(ScenarioValidator, RejectsNegativeImuNoiseStddev) {
   ros2_fault_injection::ScenarioConfig scenario;
   scenario.injector.id = "imu";
   scenario.injector.type = "imu";
-  scenario.injector.input_topic = "/sensors/imu_raw";
-  scenario.injector.output_topic = "/sensors/imu";
-  scenario.injector.qos_depth = 10;
+  scenario.injector.topic = TopicEndpointConfig{
+      "/sensors/imu_raw",
+      "/sensors/imu",
+      10,
+  };
   scenario.injectors.push_back(scenario.injector);
 
   ros2_fault_injection::FaultConfig fault;
@@ -198,3 +208,4 @@ TEST(ScenarioValidator, RejectsNegativeImuNoiseStddev) {
   ASSERT_EQ(result.errors.size(), 1u);
   EXPECT_NE(result.errors.front().find("linear_acceleration_x_noise_stddev"), std::string::npos);
 }
+}  // namespace ros2_fault_injection

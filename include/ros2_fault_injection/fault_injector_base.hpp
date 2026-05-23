@@ -70,6 +70,10 @@ protected:
    */
   int active_max_int(const std::string& key, int fallback = 0) const;
 
+  bool active_bool(const std::string& key, bool fallback = false) const;
+
+  std::string active_string(const std::string& key, const std::string& fallback = "") const;
+
   /**
    * @brief Decide whether the current message should be dropped.
    *

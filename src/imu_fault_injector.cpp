@@ -4,12 +4,13 @@ namespace ros2_fault_injection {
 
 ImuFaultInjector::ImuFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
     : FaultInjectorBase(node, config) {
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.qos_depth));
+  const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
 
-  pub_ = node_.create_publisher<sensor_msgs::msg::Imu>(config_.output_topic, qos);
+  pub_ = node_.create_publisher<sensor_msgs::msg::Imu>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::Imu>(
-      config_.input_topic, qos, [this](sensor_msgs::msg::Imu::SharedPtr msg) { on_imu(msg); });
+      config_.topic->input_topic, qos,
+      [this](sensor_msgs::msg::Imu::SharedPtr msg) { on_imu(msg); });
 
   timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() { flush_delayed(); });
 }

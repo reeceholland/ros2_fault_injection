@@ -2,13 +2,19 @@
 
 `ros2_fault_injection` is a C++ ROS 2 framework for inserting controlled faults into robot data streams.
 
-The package is designed around proxy injectors. A real publisher is remapped to a `*_raw` topic, the injector subscribes to that raw topic, applies configured faults, and republishes on the normal topic used by the rest of the ROS graph.
+The package is designed around proxy injectors. For topics, a real publisher is remapped to a `*_raw` topic, the injector subscribes to that raw topic, applies configured faults, and republishes on the normal topic used by the rest of the ROS graph.
 
 ```text
 producer -> /topic_raw -> fault injector -> /topic -> consumers
 ```
 
-This keeps the framework understandable and testable without doing DDS packet manipulation.
+Service injectors use the same proxy idea:
+
+```text
+client -> /service -> fault injector -> /service_raw -> real server
+```
+
+This keeps the framework understandable and testable while covering both data streams and command/control interactions.
 
 ## Supported Injectors
 
@@ -18,6 +24,7 @@ This keeps the framework understandable and testable without doing DDS packet ma
 | `scan` | `sensor_msgs/msg/LaserScan` | `/scan_raw` | `/scan` |
 | `joint_state` | `sensor_msgs/msg/JointState` | `/platform/motors/feedback_raw` | `/platform/motors/feedback` |
 | `imu` | `sensor_msgs/msg/Imu` | `/sensors/imu_raw` | `/sensors/imu` |
+| `trigger_service` | `std_srvs/srv/Trigger` | `/enable_motors_raw` | `/enable_motors` |
 
 ## Fault Types
 
@@ -76,6 +83,14 @@ The supported config keys depend on the injector type.
 | `drop_probability` | Randomly drop IMU messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay IMU messages by this many milliseconds. |
 
+### Trigger Service
+
+| Key | Meaning |
+| --- | --- |
+| `force_failure` | Return `success: false` from the proxy service without calling the target service. |
+| `failure_message` | Response message used when `force_failure` is active. |
+| `delay_ms` | Delay the service response by this many milliseconds. |
+
 ## Scenario YAML
 
 A scenario defines one or more injectors and the faults assigned to them.
@@ -93,6 +108,11 @@ injectors:
     input_topic: /scan_raw
     output_topic: /scan
     qos_depth: 10
+
+  - id: enable_motors
+    type: trigger_service
+    proxy_service: /enable_motors
+    target_service: /enable_motors_raw
 
 faults:
   - id: odom_bias
@@ -126,6 +146,13 @@ faults:
       linear_acceleration_x_noise_stddev: 0.15
       linear_acceleration_y_noise_stddev: 0.15
       linear_acceleration_z_noise_stddev: 0.05
+
+  - id: enable_motors_failure
+    injector_id: enable_motors
+    active_on_startup: false
+    config:
+      force_failure: true
+      failure_message: "Injected enable_motors failure"
 ```
 
 ### Fault Activation Rules
@@ -138,6 +165,8 @@ faults:
 | `active_on_startup: false` without `start` | Fault starts inactive and can be enabled with the service API. |
 
 `start` and `duration` are written in seconds in YAML and stored internally as milliseconds.
+
+Topic injectors use `input_topic`, `output_topic`, and `qos_depth`. Service injectors use `proxy_service` and `target_service` instead.
 
 ## Build
 
@@ -254,9 +283,10 @@ diff_drive_controller -> /odom_raw -> odom injector -> /odom -> Nav2
 lidar or simulator    -> /scan_raw -> scan injector -> /scan -> Nav2/SLAM
 Unity motor feedback  -> /platform/motors/feedback_raw -> joint_state injector -> /platform/motors/feedback -> ros2_control
 Unity or IMU driver  -> /sensors/imu_raw -> imu injector -> /sensors/imu -> consumers
+client               -> /enable_motors -> trigger_service injector -> /enable_motors_raw -> real server
 ```
 
-This keeps the normal ROS topic names stable for Nav2, SLAM, and controllers while letting fault injection sit in the middle.
+This keeps the normal ROS topic and service names stable for Nav2, SLAM, controllers, and callers while letting fault injection sit in the middle.
 
 ## Config Schema
 

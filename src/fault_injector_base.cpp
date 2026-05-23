@@ -157,6 +157,37 @@ int FaultInjectorBase::active_max_int(const std::string& key, int fallback) cons
   return value;
 }
 
+bool FaultInjectorBase::active_bool(const std::string& key, bool fallback) const {
+  for (const auto& [fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto it = faults_.at(fault_id).config.find(key);
+    if (it != faults_.at(fault_id).config.end()) {
+      return it->second == "true";
+    }
+  }
+
+  return fallback;
+}
+
+std::string FaultInjectorBase::active_string(const std::string& key,
+                                             const std::string& fallback) const {
+  for (const auto& [fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto it = faults_.at(fault_id).config.find(key);
+    if (it != faults_.at(fault_id).config.end()) {
+      return it->second;
+    }
+  }
+
+  return fallback;
+}
+
 bool FaultInjectorBase::should_drop() {
   double probability = active_max_double("drop_probability", 0.0);
   if (probability <= 0.0) {
