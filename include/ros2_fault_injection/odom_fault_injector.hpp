@@ -42,6 +42,7 @@ private:
   void apply_noise(nav_msgs::msg::Odometry& msg);
   void apply_yaw_bias(nav_msgs::msg::Odometry& msg);
   void apply_yaw_noise(nav_msgs::msg::Odometry& msg);
+  void apply_covariance_scale(nav_msgs::msg::Odometry& msg);
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_;

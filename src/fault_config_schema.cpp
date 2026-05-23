@@ -4,8 +4,18 @@ namespace ros2_fault_injection {
 namespace {
 
 const std::unordered_set<std::string> kOdomKeys = {
-    "drop_probability", "delay_ms",       "x_bias",       "y_bias",
-    "x_noise_stddev",   "y_noise_stddev", "yaw_bias_deg", "yaw_noise_stddev_deg",
+    "drop_probability",
+    "delay_ms",
+    "x_bias",
+    "y_bias",
+    "x_noise_stddev",
+    "y_noise_stddev",
+    "yaw_bias_deg",
+    "yaw_noise_stddev_deg",
+    "pose_covariance_scale",
+    "twist_covariance_scale",
+    "pose_covariance_floor",
+    "twist_covariance_floor",
 };
 
 const std::unordered_set<std::string> kScanKeys = {

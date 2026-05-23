@@ -179,6 +179,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_description
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_odom_fault_injector
+  test/test_odom_fault_injector.cpp
+  )
+  target_link_libraries(test_odom_fault_injector
+    ${PROJECT_NAME}_core
+  )
 endif()
 
 ament_package()

@@ -49,7 +49,7 @@ faults:
 
   - id: motor_velocity_bias
     injector_id: motor_feedback
-    active_on_startup: true
+    active_on_startup: false
     start: 12.0
     duration: 8.0
     config:
@@ -90,8 +90,17 @@ faults:
 
   - id: imu_accel_noise
     injector_id: imu
-    active_on_startup: true
+    active_on_startup: false
     config:
       linear_acceleration_x_noise_stddev: 0.15
       linear_acceleration_y_noise_stddev: 0.15
       linear_acceleration_z_noise_stddev: 0.05
+
+  - id: odom_covariance_inflation
+    injector_id: odom
+    active_on_startup: false
+    config:
+      pose_covariance_scale: 10.0
+      pose_covariance_floor: 0.05
+      twist_covariance_scale: 10.0
+      twist_covariance_floor: 0.05
