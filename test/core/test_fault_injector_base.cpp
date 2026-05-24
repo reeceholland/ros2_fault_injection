@@ -1,14 +1,21 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 class TestFaultInjector : public FaultInjectorBase {
 public:
-  TestFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
-      : FaultInjectorBase(node, config) {}
+  TestFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
+  : FaultInjectorBase(node, config) {}
 };
 
 TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
@@ -20,9 +27,9 @@ TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -55,9 +62,9 @@ TEST(FaultInjectorBase, StartsWithNoFaults) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -78,9 +85,9 @@ TEST(FaultInjectorBase, AddFaultRegistersItInactive) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -107,9 +114,9 @@ TEST(FaultInjectorBase, ActivateKnownFault) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -137,9 +144,9 @@ TEST(FaultInjectorBase, DeactivateKnownFault) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -168,9 +175,9 @@ TEST(FaultInjectorBase, UnknownActivateDoesNotCreateFault) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -192,9 +199,9 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -233,9 +240,9 @@ TEST(FaultInjectorBase, SetFaultConfigValueUpdatesExistingFault) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);
@@ -267,9 +274,9 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
   injector_config.id = "odom";
   injector_config.type = "odom";
   injector_config.topic = TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
 
   TestFaultInjector injector(*node, injector_config);

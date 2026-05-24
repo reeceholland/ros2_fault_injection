@@ -28,6 +28,12 @@ injectors:
     proxy_service: /enable_motors
     target_service: /enable_motors_raw
 
+  - id: tf_odom_base
+    type: tf
+    input_topic: /tf_raw
+    output_topic: /tf
+    qos_depth: 50
+
 faults:
   - id: odom_bias
     injector_id: odom
@@ -131,3 +137,11 @@ faults:
     active_on_startup: false
     config:
       delay_ms: 2000
+
+  - id: tf_x_bias
+    injector_id: tf_odom_base
+    active_on_startup: true
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      x_bias: 0.25

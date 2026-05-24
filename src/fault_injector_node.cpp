@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -14,7 +20,8 @@
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/config/scenario_validator.hpp"
 
-int main(int argc, char** argv) {
+int main(int argc, char ** argv)
+{
   rclcpp::init(argc, argv);
 
   // This node is the framework runner: it loads a scenario, creates every
@@ -38,7 +45,7 @@ int main(int argc, char** argv) {
     // Keep file parsing separate from ROS wiring so the parser stays easy to
     // test and injectors do not need to know YAML exists.
     scenario = ros2_fault_injection::load_scenario_config(scenario_file);
-  } catch (const std::exception& error) {
+  } catch (const std::exception & error) {
     RCLCPP_ERROR(node->get_logger(), "Failed to load scenario config %s : %s",
                  scenario_file.c_str(), error.what());
 
@@ -48,12 +55,12 @@ int main(int argc, char** argv) {
 
   const auto validation_result = ros2_fault_injection::validate_scenario(scenario);
 
-  for (const auto& warning : validation_result.warnings) {
+  for (const auto & warning : validation_result.warnings) {
     RCLCPP_WARN(node->get_logger(), "Scenario config warning: %s", warning.c_str());
   }
 
   if (!validation_result.ok()) {
-    for (const auto& error : validation_result.errors) {
+    for (const auto & error : validation_result.errors) {
       RCLCPP_ERROR(node->get_logger(), "Scenario config error: %s", error.c_str());
     }
 

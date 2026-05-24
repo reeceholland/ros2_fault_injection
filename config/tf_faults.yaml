@@ -1,0 +1,104 @@
+# Example scenario for TF fault injection.
+#
+# The TF injector proxies TFMessage traffic from /tf_raw to /tf. Remap the real
+# TF publisher to /tf_raw, then let this injector publish the mutated transforms
+# back onto /tf.
+injector:
+  id: tf_odom_base
+  type: tf
+  input_topic: /tf_raw
+  output_topic: /tf
+  qos_depth: 50
+
+faults:
+  # Adds a positive X translation offset, in metres, to odom -> base_link.
+  - id: tf_x_bias
+    injector_id: tf_odom_base
+    active_on_startup: true
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      x_bias: 0.25
+
+  # Adds a Y translation offset, in metres, to odom -> base_link.
+  - id: tf_y_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      y_bias: -0.10
+
+  # Adds a Z translation offset, in metres, to odom -> base_link.
+  - id: tf_z_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      z_bias: 0.05
+
+  # Adds roll error, in degrees, to odom -> base_link.
+  - id: tf_roll_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      roll_bias_deg: 5.0
+
+  # Adds pitch error, in degrees, to odom -> base_link.
+  - id: tf_pitch_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      pitch_bias_deg: 5.0
+
+  # Adds yaw error, in degrees, to odom -> base_link.
+  - id: tf_yaw_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      yaw_bias_deg: 10.0
+
+  # Drops every matching odom -> base_link transform while active.
+  - id: tf_dropout
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      drop_probability: 1.0
+
+  # Randomly drops around 25 percent of matching odom -> base_link transforms.
+  - id: tf_intermittent_dropout
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      drop_probability: 0.25
+
+  # Delays republishing TF messages by 250 ms while active.
+  - id: tf_delay
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      delay_ms: 250
+
+  # Demonstrates stacking multiple TF errors in one fault.
+  - id: tf_pose_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      x_bias: 0.20
+      y_bias: -0.10
+      yaw_bias_deg: 15.0

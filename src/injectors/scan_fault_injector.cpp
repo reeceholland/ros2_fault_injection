@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
 
 #include <algorithm>
@@ -7,12 +13,15 @@
 #include <limits>
 #include <random>
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-namespace {
+namespace
+{
 constexpr double kRadiansToDegrees = 180.0 / M_PI;
 
-double normalize_degrees(double degrees) {
+double normalize_degrees(double degrees)
+{
   while (degrees > 180.0) {
     degrees -= 360.0;
   }
@@ -22,16 +31,18 @@ double normalize_degrees(double degrees) {
   return degrees;
 }
 
-bool parse_double(const std::string& text, double& value) {
+bool parse_double(const std::string & text, double & value)
+{
   try {
     value = std::stod(text);
     return true;
-  } catch (const std::exception&) {
+  } catch (const std::exception &) {
     return false;
   }
 }
 
-bool angle_in_sector(double angle_deg, double min_deg, double max_deg) {
+bool angle_in_sector(double angle_deg, double min_deg, double max_deg)
+{
   angle_deg = normalize_degrees(angle_deg);
   min_deg = normalize_degrees(min_deg);
   max_deg = normalize_degrees(max_deg);
@@ -43,7 +54,8 @@ bool angle_in_sector(double angle_deg, double min_deg, double max_deg) {
   return angle_deg >= min_deg || angle_deg <= max_deg;
 }
 
-double parse_sector_value(const std::string& value) {
+double parse_sector_value(const std::string & value)
+{
   if (value == "inf" || value == "+inf") {
     return std::numeric_limits<double>::infinity();
   }
@@ -58,20 +70,22 @@ double parse_sector_value(const std::string& value) {
 }
 }  // namespace
 
-ScanFaultInjector::ScanFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
-    : FaultInjectorBase(node, config) {
+ScanFaultInjector::ScanFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
+: FaultInjectorBase(node, config)
+{
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
 
   pub_ = node_.create_publisher<sensor_msgs::msg::LaserScan>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::LaserScan>(
       config_.topic->input_topic, qos,
-      [this](sensor_msgs::msg::LaserScan::SharedPtr msg) { on_scan(msg); });
+    [this](sensor_msgs::msg::LaserScan::SharedPtr msg) {on_scan(msg);});
 
-  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() { flush_delayed(); });
+  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() {flush_delayed();});
 }
 
-void ScanFaultInjector::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+void ScanFaultInjector::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (should_drop()) {
@@ -92,7 +106,8 @@ void ScanFaultInjector::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg
   pub_->publish(out);
 }
 
-void ScanFaultInjector::flush_delayed() {
+void ScanFaultInjector::flush_delayed()
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   const auto now = node_.now();
@@ -103,13 +118,14 @@ void ScanFaultInjector::flush_delayed() {
   }
 }
 
-void ScanFaultInjector::apply_range_bias(sensor_msgs::msg::LaserScan& msg) {
+void ScanFaultInjector::apply_range_bias(sensor_msgs::msg::LaserScan & msg)
+{
   const double bias = active_sum_double("range_bias", 0.0);
   if (bias == 0.0) {
     return;
   }
 
-  for (auto& range : msg.ranges) {
+  for (auto & range : msg.ranges) {
     if (!std::isfinite(range)) {
       continue;
     }
@@ -119,7 +135,8 @@ void ScanFaultInjector::apply_range_bias(sensor_msgs::msg::LaserScan& msg) {
   }
 }
 
-void ScanFaultInjector::apply_range_noise(sensor_msgs::msg::LaserScan& msg) {
+void ScanFaultInjector::apply_range_noise(sensor_msgs::msg::LaserScan & msg)
+{
   const double noise_stddev = active_max_double("range_noise_stddev", 0.0);
   if (noise_stddev <= 0.0) {
     return;
@@ -127,7 +144,7 @@ void ScanFaultInjector::apply_range_noise(sensor_msgs::msg::LaserScan& msg) {
 
   std::normal_distribution<double> distribution(0.0, noise_stddev);
 
-  for (auto& range : msg.ranges) {
+  for (auto & range : msg.ranges) {
     if (!std::isfinite(range)) {
       continue;
     }
@@ -137,17 +154,18 @@ void ScanFaultInjector::apply_range_noise(sensor_msgs::msg::LaserScan& msg) {
   }
 }
 
-void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
+void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan & msg)
+{
   if (msg.angle_increment == 0.0F) {
     return;
   }
 
-  for (const auto& [fault_id, is_active] : active_) {
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
 
-    const auto& fault = faults_.at(fault_id);
+    const auto & fault = faults_.at(fault_id);
 
     const auto min_it = fault.config.find("sector_min_deg");
     const auto max_it = fault.config.find("sector_max_deg");
@@ -158,7 +176,8 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
     double sector_min_deg = 0.0;
     double sector_max_deg = 0.0;
     if (!parse_double(min_it->second, sector_min_deg) ||
-        !parse_double(max_it->second, sector_max_deg)) {
+      !parse_double(max_it->second, sector_max_deg))
+    {
       RCLCPP_WARN(node_.get_logger(), "Fault '%s' has invalid sector bounds", fault.id.c_str());
       continue;
     }
@@ -168,7 +187,7 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
     if (value_it != fault.config.end()) {
       try {
         replacement = parse_sector_value(value_it->second);
-      } catch (const std::exception&) {
+      } catch (const std::exception &) {
         RCLCPP_WARN(node_.get_logger(), "Fault '%s' has invalid sector_value '%s'",
                     fault.id.c_str(), value_it->second.c_str());
         continue;
@@ -177,7 +196,7 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan& msg) {
 
     for (size_t i = 0; i < msg.ranges.size(); ++i) {
       const double angle_rad =
-          static_cast<double>(msg.angle_min) + static_cast<double>(i) * msg.angle_increment;
+        static_cast<double>(msg.angle_min) + static_cast<double>(i) * msg.angle_increment;
       const double angle_deg = angle_rad * kRadiansToDegrees;
 
       if (angle_in_sector(angle_deg, sector_min_deg, sector_max_deg)) {

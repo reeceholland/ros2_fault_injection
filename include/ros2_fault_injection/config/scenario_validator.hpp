@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__SCENARIO_VALIDATOR_HPP_
 #define ROS2_FAULT_INJECTION__SCENARIO_VALIDATOR_HPP_
 
@@ -6,12 +12,14 @@
 
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Result of scenario validation.
  */
-struct ValidationResult {
+struct ValidationResult
+{
   /// Validation failures that should prevent startup.
   std::vector<std::string> errors;
 
@@ -23,7 +31,8 @@ struct ValidationResult {
    *
    * @return true when `errors` is empty.
    */
-  bool ok() const {
+  bool ok() const
+  {
     return errors.empty();
   }
 };
@@ -34,7 +43,7 @@ struct ValidationResult {
  * @param scenario Scenario to validate.
  * @return Validation errors and warnings.
  */
-ValidationResult validate_scenario(const ScenarioConfig& scenario);
+ValidationResult validate_scenario(const ScenarioConfig & scenario);
 
 }  // namespace ros2_fault_injection
 

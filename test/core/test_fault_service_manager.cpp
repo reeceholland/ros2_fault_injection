@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -16,39 +22,48 @@
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
 using namespace std::chrono_literals;
 
 class FakeFaultInjector : public FaultInjector {
 public:
-  explicit FakeFaultInjector(std::string id) : id_(std::move(id)) {}
+  explicit FakeFaultInjector(std::string id)
+  : id_(std::move(id)) {}
 
-  std::string id() const override {
+  std::string id() const override
+  {
     return id_;
   }
 
-  void add_fault(const FaultConfig& fault_config) override {
+  void add_fault(const FaultConfig & fault_config) override
+  {
     faults_[fault_config.id] = fault_config;
     active_.erase(fault_config.id);
   }
 
-  void activate_fault(const std::string& fault_id) override {
+  void activate_fault(const std::string & fault_id) override
+  {
     if (has_fault(fault_id)) {
       active_.insert(fault_id);
     }
   }
 
-  void deactivate_fault(const std::string& fault_id) override {
+  void deactivate_fault(const std::string & fault_id) override
+  {
     active_.erase(fault_id);
   }
 
-  bool has_fault(const std::string& fault_id) const override {
+  bool has_fault(const std::string & fault_id) const override
+  {
     return faults_.find(fault_id) != faults_.end();
   }
 
-  std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const override {
+  std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const override
+  {
     const auto it = faults_.find(fault_id);
     if (it == faults_.end()) {
       return std::nullopt;
@@ -57,8 +72,10 @@ public:
     return it->second;
   }
 
-  bool set_fault_config_value(const std::string& fault_id, const std::string& key,
-                              const std::string& value) override {
+  bool set_fault_config_value(
+    const std::string & fault_id, const std::string & key,
+    const std::string & value) override
+  {
     const auto it = faults_.find(fault_id);
     if (it == faults_.end()) {
       return false;
@@ -68,19 +85,22 @@ public:
     return true;
   }
 
-  std::vector<std::string> fault_ids() const override {
+  std::vector<std::string> fault_ids() const override
+  {
     std::vector<std::string> ids;
-    for (const auto& [fault_id, _] : faults_) {
+    for (const auto & [fault_id, _] : faults_) {
       ids.push_back(fault_id);
     }
     return ids;
   }
 
-  std::vector<std::string> active_fault_ids() const override {
+  std::vector<std::string> active_fault_ids() const override
+  {
     return std::vector<std::string>(active_.begin(), active_.end());
   }
 
-  bool is_active(const std::string& fault_id) const {
+  bool is_active(const std::string & fault_id) const
+  {
     return active_.find(fault_id) != active_.end();
   }
 
@@ -90,7 +110,8 @@ private:
   std::unordered_set<std::string> active_;
 };
 
-FaultConfig make_fault() {
+FaultConfig make_fault()
+{
   FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
@@ -98,7 +119,8 @@ FaultConfig make_fault() {
   return fault;
 }
 
-void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds duration) {
+void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds duration)
+{
   const auto deadline = std::chrono::steady_clock::now() + duration;
 
   while (std::chrono::steady_clock::now() < deadline) {
@@ -108,16 +130,17 @@ void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds dur
 }
 
 std::optional<msg::FaultEvent> call_set_fault_state_and_wait_for_event(
-    const rclcpp::Node::SharedPtr& node, bool active,
-    const rclcpp::Client<srv::SetFaultState>::SharedPtr& client,
-    const std::shared_ptr<msg::FaultEvent>& latest_event) {
+  const rclcpp::Node::SharedPtr & node, bool active,
+  const rclcpp::Client<srv::SetFaultState>::SharedPtr & client,
+  const std::shared_ptr<msg::FaultEvent> & latest_event)
+{
   auto request = std::make_shared<srv::SetFaultState::Request>();
   request->fault_id = "odom_bias";
   request->active = active;
 
   auto future = client->async_send_request(request);
   const auto result =
-      rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
   if (result != rclcpp::FutureReturnCode::SUCCESS || !future.get()->success) {
     return std::nullopt;
@@ -150,7 +173,7 @@ TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent) {
   auto latest_event = std::make_shared<msg::FaultEvent>();
   auto subscription = node->create_subscription<msg::FaultEvent>(
       "fault_injection/events", 10,
-      [latest_event](const msg::FaultEvent& event) { *latest_event = event; });
+    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
 
   auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
   ASSERT_TRUE(client->wait_for_service(500ms));
@@ -186,7 +209,7 @@ TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent) {
   auto latest_event = std::make_shared<msg::FaultEvent>();
   auto subscription = node->create_subscription<msg::FaultEvent>(
       "fault_injection/events", 10,
-      [latest_event](const msg::FaultEvent& event) { *latest_event = event; });
+    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
 
   auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
   ASSERT_TRUE(client->wait_for_service(500ms));
@@ -221,7 +244,7 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent) {
   auto latest_event = std::make_shared<msg::FaultEvent>();
   auto subscription = node->create_subscription<msg::FaultEvent>(
       "fault_injection/events", 10,
-      [latest_event](const msg::FaultEvent& event) { *latest_event = event; });
+    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
 
   auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
   ASSERT_TRUE(client->wait_for_service(500ms));
@@ -233,7 +256,7 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent) {
 
   auto future = client->async_send_request(request);
   const auto result =
-      rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
   ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
   ASSERT_TRUE(future.get()->success);

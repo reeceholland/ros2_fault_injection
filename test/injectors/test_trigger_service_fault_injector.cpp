@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -11,23 +17,27 @@
 
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
 using namespace std::chrono_literals;
 
-InjectorConfig make_injector_config(const std::string& suffix) {
+InjectorConfig make_injector_config(const std::string & suffix)
+{
   InjectorConfig config;
   config.id = "trigger_service";
   config.type = "trigger_service";
   config.trigger_service = TriggerServiceEndpointConfig{
-      "/test/trigger_proxy_" + suffix,
-      "/test/trigger_target_" + suffix,
+    "/test/trigger_proxy_" + suffix,
+    "/test/trigger_target_" + suffix,
   };
   return config;
 }
 
-FaultConfig make_force_failure_fault() {
+FaultConfig make_force_failure_fault()
+{
   FaultConfig fault;
   fault.id = "trigger_failure";
   fault.injector_id = "trigger_service";
@@ -36,7 +46,8 @@ FaultConfig make_force_failure_fault() {
   return fault;
 }
 
-FaultConfig make_delay_fault() {
+FaultConfig make_delay_fault()
+{
   FaultConfig fault;
   fault.id = "trigger_delay";
   fault.injector_id = "trigger_service";
@@ -45,8 +56,9 @@ FaultConfig make_delay_fault() {
 }
 
 bool wait_for_service(
-    const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr& client,
-    std::chrono::milliseconds timeout) {
+  const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr & client,
+  std::chrono::milliseconds timeout)
+{
   const auto deadline = std::chrono::steady_clock::now() + timeout;
 
   while (std::chrono::steady_clock::now() < deadline) {
@@ -59,8 +71,9 @@ bool wait_for_service(
 }
 
 std_srvs::srv::Trigger::Response::SharedPtr call_trigger(
-    const rclcpp::Node::SharedPtr& client_node,
-    const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr& client) {
+  const rclcpp::Node::SharedPtr & client_node,
+  const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr & client)
+{
   auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
   auto future = client->async_send_request(request);
 
@@ -74,12 +87,15 @@ std_srvs::srv::Trigger::Response::SharedPtr call_trigger(
 
 class SpinningExecutor {
 public:
-  explicit SpinningExecutor(const rclcpp::Node::SharedPtr& node) : executor_(rclcpp::ExecutorOptions{}, 2) {
+  explicit SpinningExecutor(const rclcpp::Node::SharedPtr & node)
+  : executor_(rclcpp::ExecutorOptions{}, 2)
+  {
     executor_.add_node(node);
-    thread_ = std::thread([this]() { executor_.spin(); });
+    thread_ = std::thread([this]() {executor_.spin();});
   }
 
-  ~SpinningExecutor() {
+  ~SpinningExecutor()
+  {
     executor_.cancel();
     if (thread_.joinable()) {
       thread_.join();
@@ -103,11 +119,11 @@ TEST(TriggerServiceFaultInjector, ForwardsTargetResponseWhenNoFaultActive) {
   std::atomic<int> target_calls{0};
   auto target_service = target_node->create_service<std_srvs::srv::Trigger>(
       "/test/trigger_target_passthrough",
-      [&target_calls](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
-                      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-        ++target_calls;
-        response->success = true;
-        response->message = "target response";
+    [&target_calls](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      ++target_calls;
+      response->success = true;
+      response->message = "target response";
       });
 
   SpinningExecutor target_spin(target_node);
@@ -116,7 +132,7 @@ TEST(TriggerServiceFaultInjector, ForwardsTargetResponseWhenNoFaultActive) {
   SpinningExecutor proxy_spin(proxy_node);
 
   auto client =
-      client_node->create_client<std_srvs::srv::Trigger>("/test/trigger_proxy_passthrough");
+    client_node->create_client<std_srvs::srv::Trigger>("/test/trigger_proxy_passthrough");
   ASSERT_TRUE(wait_for_service(client, 500ms));
 
   const auto response = call_trigger(client_node, client);
@@ -140,11 +156,11 @@ TEST(TriggerServiceFaultInjector, ForceFailureReturnsInjectedFailureWithoutCalli
   std::atomic<int> target_calls{0};
   auto target_service = target_node->create_service<std_srvs::srv::Trigger>(
       "/test/trigger_target_failure",
-      [&target_calls](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
-                      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-        ++target_calls;
-        response->success = true;
-        response->message = "target response";
+    [&target_calls](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      ++target_calls;
+      response->success = true;
+      response->message = "target response";
       });
 
   SpinningExecutor target_spin(target_node);
@@ -178,10 +194,10 @@ TEST(TriggerServiceFaultInjector, DelayFaultDelaysResponse) {
 
   auto target_service = target_node->create_service<std_srvs::srv::Trigger>(
       "/test/trigger_target_delay",
-      [](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
-         std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-        response->success = true;
-        response->message = "target response";
+    [](const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      response->success = true;
+      response->message = "target response";
       });
 
   SpinningExecutor target_spin(target_node);

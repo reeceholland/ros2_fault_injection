@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_
 #define ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_
 
@@ -9,7 +15,8 @@
 
 #include "ros2_fault_injection/config/fault_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Common interface implemented by all typed fault injectors.
@@ -34,21 +41,21 @@ public:
    *
    * @param fault_config Fault configuration to store.
    */
-  virtual void add_fault(const FaultConfig& fault_config) = 0;
+  virtual void add_fault(const FaultConfig & fault_config) = 0;
 
   /**
    * @brief Mark a known fault active.
    *
    * @param fault_id Fault identifier to activate.
    */
-  virtual void activate_fault(const std::string& fault_id) = 0;
+  virtual void activate_fault(const std::string & fault_id) = 0;
 
   /**
    * @brief Mark a fault inactive.
    *
    * @param fault_id Fault identifier to deactivate.
    */
-  virtual void deactivate_fault(const std::string& fault_id) = 0;
+  virtual void deactivate_fault(const std::string & fault_id) = 0;
 
   /**
    * @brief Check whether this injector owns a fault id.
@@ -56,7 +63,7 @@ public:
    * @param fault_id Fault identifier to look up.
    * @return true when the fault is registered.
    */
-  virtual bool has_fault(const std::string& fault_id) const = 0;
+  virtual bool has_fault(const std::string & fault_id) const = 0;
 
   /**
    * @brief Get the stored configuration for a fault.
@@ -64,7 +71,7 @@ public:
    * @param fault_id Fault identifier to look up.
    * @return Fault configuration when found, otherwise std::nullopt.
    */
-  virtual std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const = 0;
+  virtual std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const = 0;
 
   /**
    * @brief Update one runtime config value for a registered fault.
@@ -77,8 +84,9 @@ public:
    * @param value New value stored as text.
    * @return true when the fault exists and the value was stored.
    */
-  virtual bool set_fault_config_value(const std::string& fault_id, const std::string& key,
-                                      const std::string& value) = 0;
+  virtual bool set_fault_config_value(
+    const std::string & fault_id, const std::string & key,
+    const std::string & value) = 0;
 
   /**
    * @brief List all fault ids registered with this injector.

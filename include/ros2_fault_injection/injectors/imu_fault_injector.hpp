@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__IMU_FAULT_INJECTOR_HPP_
 #define ROS2_FAULT_INJECTION__IMU_FAULT_INJECTOR_HPP_
 
@@ -11,7 +17,8 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Fault injector for `sensor_msgs/msg/Imu` streams.
@@ -27,10 +34,11 @@ public:
    * @param node Node used to create publishers, subscriptions, and timers.
    * @param config Injector topic and QoS configuration.
    */
-  explicit ImuFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
+  explicit ImuFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
 private:
-  struct DelayedImu {
+  struct DelayedImu
+  {
     sensor_msgs::msg::Imu msg;
     rclcpp::Time release_time;
   };
@@ -38,10 +46,10 @@ private:
   void on_imu(const sensor_msgs::msg::Imu::SharedPtr msg);
   void flush_delayed();
 
-  void apply_angular_velocity_bias(sensor_msgs::msg::Imu& msg);
-  void apply_angular_velocity_noise(sensor_msgs::msg::Imu& msg);
-  void apply_linear_acceleration_bias(sensor_msgs::msg::Imu& msg);
-  void apply_linear_acceleration_noise(sensor_msgs::msg::Imu& msg);
+  void apply_angular_velocity_bias(sensor_msgs::msg::Imu & msg);
+  void apply_angular_velocity_noise(sensor_msgs::msg::Imu & msg);
+  void apply_linear_acceleration_bias(sensor_msgs::msg::Imu & msg);
+  void apply_linear_acceleration_noise(sensor_msgs::msg::Imu & msg);
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_;

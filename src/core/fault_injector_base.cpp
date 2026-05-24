@@ -1,13 +1,22 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
 #include <algorithm>
 #include <cstdlib>
 #include <utility>
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
-double get_double(const FaultConfig& fault, const std::string& key, double fallback) {
+double get_double(const FaultConfig & fault, const std::string & key, double fallback)
+{
   const auto it = fault.config.find(key);
   if (it == fault.config.end()) {
     return fallback;
@@ -16,7 +25,8 @@ double get_double(const FaultConfig& fault, const std::string& key, double fallb
   return std::stod(it->second);
 }
 
-int get_int(const FaultConfig& fault, const std::string& key, int fallback) {
+int get_int(const FaultConfig & fault, const std::string & key, int fallback)
+{
   const auto it = fault.config.find(key);
   if (it == fault.config.end()) {
     return fallback;
@@ -27,21 +37,24 @@ int get_int(const FaultConfig& fault, const std::string& key, int fallback) {
 
 }  // namespace
 
-FaultInjectorBase::FaultInjectorBase(rclcpp::Node& node, InjectorConfig config)
-    : node_(node), config_(std::move(config)), rng_(std::random_device{}()) {}
+FaultInjectorBase::FaultInjectorBase(rclcpp::Node & node, InjectorConfig config)
+: node_(node), config_(std::move(config)), rng_(std::random_device{}()) {}
 
-std::string FaultInjectorBase::id() const {
+std::string FaultInjectorBase::id() const
+{
   return config_.id;
 }
 
-void FaultInjectorBase::add_fault(const FaultConfig& fault_config) {
+void FaultInjectorBase::add_fault(const FaultConfig & fault_config)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   faults_[fault_config.id] = fault_config;
   active_[fault_config.id] = false;
 }
 
-void FaultInjectorBase::activate_fault(const std::string& fault_id) {
+void FaultInjectorBase::activate_fault(const std::string & fault_id)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (faults_.find(fault_id) == faults_.end()) {
@@ -52,7 +65,8 @@ void FaultInjectorBase::activate_fault(const std::string& fault_id) {
   active_[fault_id] = true;
 }
 
-void FaultInjectorBase::deactivate_fault(const std::string& fault_id) {
+void FaultInjectorBase::deactivate_fault(const std::string & fault_id)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (faults_.find(fault_id) == faults_.end()) {
@@ -63,12 +77,14 @@ void FaultInjectorBase::deactivate_fault(const std::string& fault_id) {
   active_[fault_id] = false;
 }
 
-bool FaultInjectorBase::has_fault(const std::string& fault_id) const {
+bool FaultInjectorBase::has_fault(const std::string & fault_id) const
+{
   std::lock_guard<std::mutex> lock(mutex_);
   return faults_.find(fault_id) != faults_.end();
 }
 
-std::optional<FaultConfig> FaultInjectorBase::get_fault_config(const std::string& fault_id) const {
+std::optional<FaultConfig> FaultInjectorBase::get_fault_config(const std::string & fault_id) const
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   const auto it = faults_.find(fault_id);
@@ -79,8 +95,10 @@ std::optional<FaultConfig> FaultInjectorBase::get_fault_config(const std::string
   return it->second;
 }
 
-bool FaultInjectorBase::set_fault_config_value(const std::string& fault_id, const std::string& key,
-                                               const std::string& value) {
+bool FaultInjectorBase::set_fault_config_value(
+  const std::string & fault_id, const std::string & key,
+  const std::string & value)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto it = faults_.find(fault_id);
@@ -93,21 +111,23 @@ bool FaultInjectorBase::set_fault_config_value(const std::string& fault_id, cons
   return true;
 }
 
-std::vector<std::string> FaultInjectorBase::fault_ids() const {
+std::vector<std::string> FaultInjectorBase::fault_ids() const
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   std::vector<std::string> ids;
-  for (const auto& [id, _] : faults_) {
+  for (const auto & [id, _] : faults_) {
     ids.push_back(id);
   }
   return ids;
 }
 
-std::vector<std::string> FaultInjectorBase::active_fault_ids() const {
+std::vector<std::string> FaultInjectorBase::active_fault_ids() const
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   std::vector<std::string> ids;
-  for (const auto& [id, is_active] : active_) {
+  for (const auto & [id, is_active] : active_) {
     if (is_active) {
       ids.push_back(id);
     }
@@ -115,10 +135,11 @@ std::vector<std::string> FaultInjectorBase::active_fault_ids() const {
   return ids;
 }
 
-double FaultInjectorBase::active_max_double(const std::string& key, double fallback) const {
+double FaultInjectorBase::active_max_double(const std::string & key, double fallback) const
+{
   double value = fallback;
 
-  for (const auto& [fault_id, is_active] : active_) {
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
@@ -129,10 +150,11 @@ double FaultInjectorBase::active_max_double(const std::string& key, double fallb
   return value;
 }
 
-double FaultInjectorBase::active_sum_double(const std::string& key, double fallback) const {
+double FaultInjectorBase::active_sum_double(const std::string & key, double fallback) const
+{
   double value = 0.0;
 
-  for (const auto& [fault_id, is_active] : active_) {
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
@@ -143,10 +165,11 @@ double FaultInjectorBase::active_sum_double(const std::string& key, double fallb
   return value;
 }
 
-int FaultInjectorBase::active_max_int(const std::string& key, int fallback) const {
+int FaultInjectorBase::active_max_int(const std::string & key, int fallback) const
+{
   int value = fallback;
 
-  for (const auto& [fault_id, is_active] : active_) {
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
@@ -157,8 +180,9 @@ int FaultInjectorBase::active_max_int(const std::string& key, int fallback) cons
   return value;
 }
 
-bool FaultInjectorBase::active_bool(const std::string& key, bool fallback) const {
-  for (const auto& [fault_id, is_active] : active_) {
+bool FaultInjectorBase::active_bool(const std::string & key, bool fallback) const
+{
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
@@ -172,9 +196,11 @@ bool FaultInjectorBase::active_bool(const std::string& key, bool fallback) const
   return fallback;
 }
 
-std::string FaultInjectorBase::active_string(const std::string& key,
-                                             const std::string& fallback) const {
-  for (const auto& [fault_id, is_active] : active_) {
+std::string FaultInjectorBase::active_string(
+  const std::string & key,
+  const std::string & fallback) const
+{
+  for (const auto & [fault_id, is_active] : active_) {
     if (!is_active) {
       continue;
     }
@@ -188,7 +214,8 @@ std::string FaultInjectorBase::active_string(const std::string& key,
   return fallback;
 }
 
-bool FaultInjectorBase::should_drop() {
+bool FaultInjectorBase::should_drop()
+{
   double probability = active_max_double("drop_probability", 0.0);
   if (probability <= 0.0) {
     return false;
@@ -200,7 +227,8 @@ bool FaultInjectorBase::should_drop() {
   return distribution(rng_) < probability;
 }
 
-std::chrono::milliseconds FaultInjectorBase::active_delay() const {
+std::chrono::milliseconds FaultInjectorBase::active_delay() const
+{
   return std::chrono::milliseconds{active_max_int("delay_ms", 0)};
 }
 

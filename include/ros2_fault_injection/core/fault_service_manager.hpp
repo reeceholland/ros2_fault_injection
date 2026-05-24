@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__FAULT_SERVICE_MANAGER_HPP_
 #define ROS2_FAULT_INJECTION__FAULT_SERVICE_MANAGER_HPP_
 
@@ -15,7 +21,8 @@
 #include "ros2_fault_injection/srv/set_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Owns runtime control services for fault injection.
@@ -35,24 +42,29 @@ public:
    * @param injectors Runtime injectors indexed by id.
    * @param events Publisher used for manual state/config events.
    */
-  FaultServiceManager(rclcpp::Node& node, const InjectorMap& injectors,
-                      FaultEventPublisher& events);
+  FaultServiceManager(
+    rclcpp::Node & node, const InjectorMap & injectors,
+    FaultEventPublisher & events);
 
 private:
-  std::shared_ptr<FaultInjector> find_injector_for_fault(const std::string& fault_id) const;
-  void handle_set_fault_state(const std::shared_ptr<srv::SetFaultState::Request> request,
-                              std::shared_ptr<srv::SetFaultState::Response> response);
-  void handle_list_faults(const std::shared_ptr<srv::ListFaults::Request> request,
-                          std::shared_ptr<srv::ListFaults::Response> response);
+  std::shared_ptr<FaultInjector> find_injector_for_fault(const std::string & fault_id) const;
+  void handle_set_fault_state(
+    const std::shared_ptr<srv::SetFaultState::Request> request,
+    std::shared_ptr<srv::SetFaultState::Response> response);
+  void handle_list_faults(
+    const std::shared_ptr<srv::ListFaults::Request> request,
+    std::shared_ptr<srv::ListFaults::Response> response);
 
-  void handle_get_fault_status(const std::shared_ptr<srv::GetFaultStatus::Request> request,
-                               std::shared_ptr<srv::GetFaultStatus::Response> response);
-  void handle_set_fault_config(const std::shared_ptr<srv::SetFaultConfig::Request> request,
-                               std::shared_ptr<srv::SetFaultConfig::Response> response);
+  void handle_get_fault_status(
+    const std::shared_ptr<srv::GetFaultStatus::Request> request,
+    std::shared_ptr<srv::GetFaultStatus::Response> response);
+  void handle_set_fault_config(
+    const std::shared_ptr<srv::SetFaultConfig::Request> request,
+    std::shared_ptr<srv::SetFaultConfig::Response> response);
 
-  rclcpp::Node& node_;
-  const InjectorMap& injectors_;
-  FaultEventPublisher& events_;
+  rclcpp::Node & node_;
+  const InjectorMap & injectors_;
+  FaultEventPublisher & events_;
 
   rclcpp::Service<srv::SetFaultState>::SharedPtr set_fault_state_service_;
   rclcpp::Service<srv::ListFaults>::SharedPtr list_faults_service_;

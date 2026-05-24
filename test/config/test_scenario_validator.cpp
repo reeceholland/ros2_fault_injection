@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "ros2_fault_injection/config/scenario_validator.hpp"
 
 #include <chrono>
@@ -7,16 +13,18 @@
 
 #include "ros2_fault_injection/config/fault_config.hpp"
 
-namespace {
+namespace
+{
 
-ros2_fault_injection::ScenarioConfig valid_odom_scenario() {
+ros2_fault_injection::ScenarioConfig valid_odom_scenario()
+{
   ros2_fault_injection::ScenarioConfig scenario;
   scenario.injector.id = "odom";
   scenario.injector.type = "odom";
   scenario.injector.topic = ros2_fault_injection::TopicEndpointConfig{
-      "/odom_raw",
-      "/odom",
-      10,
+    "/odom_raw",
+    "/odom",
+    10,
   };
   scenario.injectors.push_back(scenario.injector);
 
@@ -32,7 +40,8 @@ ros2_fault_injection::ScenarioConfig valid_odom_scenario() {
 
 }  // namespace
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 TEST(ScenarioValidator, AcceptsValidOdomScenario) {
   const auto result = ros2_fault_injection::validate_scenario(valid_odom_scenario());
@@ -92,9 +101,9 @@ TEST(ScenarioValidator, WarnsOnUnknownScanKey) {
   scenario.injector.id = "scan";
   scenario.injector.type = "scan";
   scenario.injector.topic = TopicEndpointConfig{
-      "/scan_raw",
-      "/scan",
-      10,
+    "/scan_raw",
+    "/scan",
+    10,
   };
   scenario.injectors.push_back(scenario.injector);
 
@@ -163,9 +172,9 @@ TEST(ScenarioValidator, AcceptsValidImuScenario) {
   scenario.injector.id = "imu";
   scenario.injector.type = "imu";
   scenario.injector.topic = TopicEndpointConfig{
-      "/sensors/imu_raw",
-      "/sensors/imu",
-      10,
+    "/sensors/imu_raw",
+    "/sensors/imu",
+    10,
   };
   scenario.injector.topic->qos_depth = 10;
   scenario.injectors.push_back(scenario.injector);
@@ -190,9 +199,9 @@ TEST(ScenarioValidator, RejectsNegativeImuNoiseStddev) {
   scenario.injector.id = "imu";
   scenario.injector.type = "imu";
   scenario.injector.topic = TopicEndpointConfig{
-      "/sensors/imu_raw",
-      "/sensors/imu",
-      10,
+    "/sensors/imu_raw",
+    "/sensors/imu",
+    10,
   };
   scenario.injectors.push_back(scenario.injector);
 

@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__FAULT_CONFIG_HPP_
 #define ROS2_FAULT_INJECTION__FAULT_CONFIG_HPP_
 
@@ -7,15 +13,18 @@
 #include <string>
 #include <unordered_map>
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-struct TopicEndpointConfig {
+struct TopicEndpointConfig
+{
   std::string input_topic;
   std::string output_topic;
   size_t qos_depth{10};
 };
 
-struct TriggerServiceEndpointConfig {
+struct TriggerServiceEndpointConfig
+{
   std::string proxy_service;
   std::string target_service;
 };
@@ -27,7 +36,8 @@ struct TriggerServiceEndpointConfig {
  * `type` selects the message-specific injector implementation, while `id` is
  * used by faults to target that injector.
  */
-struct InjectorConfig {
+struct InjectorConfig
+{
   /// Unique injector identifier used by fault definitions.
   std::string id;
 
@@ -46,7 +56,8 @@ struct InjectorConfig {
  * stores injector-specific fault parameters such as `x_bias`,
  * `range_noise_stddev`, or `delay_ms`.
  */
-struct FaultConfig {
+struct FaultConfig
+{
   /// Unique fault identifier used by services, events, and schedules.
   std::string id;
 

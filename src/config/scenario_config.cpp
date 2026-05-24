@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
 #include <chrono>
@@ -6,10 +12,13 @@
 
 #include <yaml-cpp/yaml.h>
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
-std::string required_string(const YAML::Node& node, const std::string& key) {
+std::string required_string(const YAML::Node & node, const std::string & key)
+{
   if (!node[key]) {
     throw std::runtime_error("Missing required key: " + key);
   }
@@ -17,7 +26,8 @@ std::string required_string(const YAML::Node& node, const std::string& key) {
   return node[key].as<std::string>();
 }
 
-std::string node_to_string(const YAML::Node& node) {
+std::string node_to_string(const YAML::Node & node)
+{
   if (node.IsScalar()) {
     return node.as<std::string>();
   }
@@ -25,7 +35,8 @@ std::string node_to_string(const YAML::Node& node) {
   throw std::runtime_error("Expected scalar YAML value");
 }
 
-InjectorConfig parse_injector(const YAML::Node& node) {
+InjectorConfig parse_injector(const YAML::Node & node)
+{
   InjectorConfig config;
   config.id = required_string(node, "id");
   config.type = required_string(node, "type");
@@ -50,7 +61,8 @@ InjectorConfig parse_injector(const YAML::Node& node) {
   return config;
 }
 
-FaultConfig parse_fault(const YAML::Node& node) {
+FaultConfig parse_fault(const YAML::Node & node)
+{
   FaultConfig fault;
   fault.id = required_string(node, "id");
   fault.injector_id = required_string(node, "injector_id");
@@ -68,7 +80,7 @@ FaultConfig parse_fault(const YAML::Node& node) {
   if (node["config"]) {
     // Store values as strings for now. Individual injectors decide how to
     // interpret keys such as x_bias, drop_probability, or delay_ms.
-    for (const auto& item : node["config"]) {
+    for (const auto & item : node["config"]) {
       const auto key = item.first.as<std::string>();
       const auto value = node_to_string(item.second);
       fault.config[key] = value;
@@ -80,13 +92,14 @@ FaultConfig parse_fault(const YAML::Node& node) {
 
 }  // namespace
 
-ScenarioConfig load_scenario_config(const std::string& path) {
+ScenarioConfig load_scenario_config(const std::string & path)
+{
   const auto root = YAML::LoadFile(path);
 
   ScenarioConfig scenario;
 
   if (root["injectors"]) {
-    for (const auto& injector_node : root["injectors"]) {
+    for (const auto & injector_node : root["injectors"]) {
       scenario.injectors.push_back(parse_injector(injector_node));
     }
 
@@ -101,14 +114,14 @@ ScenarioConfig load_scenario_config(const std::string& path) {
   }
 
   if (root["faults"]) {
-    for (const auto& fault_node : root["faults"]) {
+    for (const auto & fault_node : root["faults"]) {
       auto fault = parse_fault(fault_node);
 
       // active_on_startup: true means the fault is active as soon as the
       // framework starts. Keep active as a deprecated alias for older scenarios.
       const bool active_on_startup =
-          (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
-          (fault_node["active"] && fault_node["active"].as<bool>());
+        (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
+        (fault_node["active"] && fault_node["active"].as<bool>());
 
       if (active_on_startup) {
         scenario.initially_active_faults.push_back(fault.id);
@@ -121,9 +134,11 @@ ScenarioConfig load_scenario_config(const std::string& path) {
   return scenario;
 }
 
-const InjectorConfig* find_injector(const ScenarioConfig& scenario,
-                                    const std::string& injector_id) {
-  for (const auto& injector : scenario.injectors) {
+const InjectorConfig * find_injector(
+  const ScenarioConfig & scenario,
+  const std::string & injector_id)
+{
+  for (const auto & injector : scenario.injectors) {
     if (injector.id == injector_id) {
       return &injector;
     }

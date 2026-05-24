@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 
 #include <gtest/gtest.h>
@@ -5,7 +11,8 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 TEST(FaultConfigSchema, AcceptsValidFaultConfig) {
   EXPECT_TRUE(is_allowed_config_key("odom", "x_bias"));
