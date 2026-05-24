@@ -1,3 +1,7 @@
+# Example scenario that runs several injectors from one node.
+#
+# This file is useful for rover-level tests where odometry, lidar, motor
+# feedback, IMU, services, and TF are all present in the same ROS graph.
 injectors:
   - id: odom
     type: odom
@@ -35,7 +39,8 @@ injectors:
     qos_depth: 50
 
 faults:
-  - id: odom_bias
+  # Scheduled odometry position drift.
+  - id: odom_position_bias
     injector_id: odom
     active_on_startup: false
     start: 5.0
@@ -44,69 +49,22 @@ faults:
       x_bias: 1.0
       y_bias: -0.25
 
-  - id: scan_noise
-    injector_id: scan
-    active_on_startup: false
-    start: 8.0
-    duration: 12.0
-    config:
-      range_noise_stddev: 0.05
-
-  - id: scan_delay
-    injector_id: scan
-    active_on_startup: false
-    config:
-      delay_ms: 250
-
-  - id: motor_velocity_bias
-    injector_id: motor_feedback
-    active_on_startup: false
-    start: 12.0
-    duration: 8.0
-    config:
-      velocity_bias: 0.1
-
-  - id: motor_feedback_drop
-    injector_id: motor_feedback
-    active_on_startup: false
-    config:
-      drop_probability: 0.25
-
-  - id: odom_noise
+  # Manual odometry noise fault, useful from the RViz panel or service calls.
+  - id: odom_position_noise
     injector_id: odom
     active_on_startup: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
 
-  - id: scan_front_blind
-    injector_id: scan
-    active_on_startup: false
-    config:
-      sector_min_deg: -20.0
-      sector_max_deg: 20.0
-      sector_value: inf
-  
+  # Manual odometry yaw error.
   - id: odom_yaw_bias
     injector_id: odom
     active_on_startup: false
     config:
       yaw_bias_deg: 10.0
 
-  - id: odom_yaw_noise
-    injector_id: odom
-    active_on_startup: false
-    config:
-      yaw_noise_stddev_deg: 2.0
-
-  - id: imu_accel_noise
-    injector_id: imu
-    active_on_startup: false
-    config:
-      linear_acceleration_x_noise_stddev: 0.15
-      linear_acceleration_y_noise_stddev: 0.15
-      linear_acceleration_z_noise_stddev: 0.05
-
+  # Manual odometry covariance inflation.
   - id: odom_covariance_inflation
     injector_id: odom
     active_on_startup: false
@@ -115,30 +73,69 @@ faults:
       pose_covariance_floor: 0.05
       twist_covariance_scale: 10.0
       twist_covariance_floor: 0.05
-  
-  - id: enable_motors_failure
+
+  # Scheduled noisy scan window.
+  - id: scan_range_noise
+    injector_id: scan
+    active_on_startup: false
+    start: 8.0
+    duration: 12.0
+    config:
+      range_noise_stddev: 0.05
+
+  # Manual front-sector lidar dropout.
+  - id: scan_front_blind
+    injector_id: scan
+    active_on_startup: false
+    config:
+      sector_min_deg: -20.0
+      sector_max_deg: 20.0
+      sector_value: inf
+
+  # Scheduled motor feedback velocity drift.
+  - id: motor_velocity_bias
+    injector_id: motor_feedback
+    active_on_startup: false
+    start: 12.0
+    duration: 8.0
+    config:
+      velocity_bias: 0.1
+
+  # Manual motor feedback dropout.
+  - id: motor_feedback_dropout
+    injector_id: motor_feedback
+    active_on_startup: false
+    config:
+      drop_probability: 0.25
+
+  # Manual IMU acceleration noise.
+  - id: imu_linear_acceleration_noise
+    injector_id: imu
+    active_on_startup: false
+    config:
+      linear_acceleration_x_noise_stddev: 0.15
+      linear_acceleration_y_noise_stddev: 0.15
+      linear_acceleration_z_noise_stddev: 0.05
+
+  # Scheduled service failure.
+  - id: enable_motors_forced_failure
     injector_id: enable_motors
     active_on_startup: false
     start: 5.0
     duration: 10.0
     config:
       force_failure: true
-      failure_message: "Injected scheduled service failure"
+      failure_message: Injected scheduled service failure
 
-  - id: enable_motors_failure
-    injector_id: enable_motors
-    active_on_startup: false
-    config:
-      force_failure: true
-      failure_message: "Injected enable_motors failure"
-
+  # Manual service latency.
   - id: enable_motors_delay
     injector_id: enable_motors
     active_on_startup: false
     config:
       delay_ms: 2000
 
-  - id: tf_x_bias
+  # Startup TF translation fault.
+  - id: tf_translation_bias
     injector_id: tf_odom_base
     active_on_startup: true
     config:

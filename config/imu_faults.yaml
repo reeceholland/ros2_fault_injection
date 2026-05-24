@@ -1,3 +1,7 @@
+# Example scenario for IMU fault injection.
+#
+# The IMU injector proxies sensor_msgs/msg/Imu from /sensors/imu_raw to
+# /sensors/imu.
 injector:
   id: imu
   type: imu
@@ -6,22 +10,48 @@ injector:
   qos_depth: 10
 
 faults:
-  - id: imu_accel_noise
+  # Drops roughly 20 percent of IMU messages while active.
+  - id: imu_dropout
     injector_id: imu
     active_on_startup: false
     config:
-      linear_acceleration_x_noise_stddev: 0.15
-      linear_acceleration_y_noise_stddev: 0.15
-      linear_acceleration_z_noise_stddev: 0.05
+      drop_probability: 0.2
 
+  # Delays IMU messages by the configured number of milliseconds.
+  - id: imu_delay
+    injector_id: imu
+    active_on_startup: false
+    config:
+      delay_ms: 100
+
+  # Adds constant yaw-rate error in radians per second.
   - id: imu_yaw_rate_bias
     injector_id: imu
     active_on_startup: false
     config:
       angular_velocity_z_bias: 0.05
 
-  - id: imu_delay
+  # Adds Gaussian yaw-rate noise in radians per second.
+  - id: imu_yaw_rate_noise
     injector_id: imu
     active_on_startup: false
     config:
-      delay_ms: 100
+      angular_velocity_z_noise_stddev: 0.02
+
+  # Adds constant linear acceleration error in metres per second squared.
+  - id: imu_linear_acceleration_bias
+    injector_id: imu
+    active_on_startup: false
+    config:
+      linear_acceleration_x_bias: 0.10
+      linear_acceleration_y_bias: -0.05
+      linear_acceleration_z_bias: 0.20
+
+  # Adds Gaussian linear acceleration noise in metres per second squared.
+  - id: imu_linear_acceleration_noise
+    injector_id: imu
+    active_on_startup: false
+    config:
+      linear_acceleration_x_noise_stddev: 0.15
+      linear_acceleration_y_noise_stddev: 0.15
+      linear_acceleration_z_noise_stddev: 0.05

@@ -162,6 +162,11 @@ if(BUILD_TESTING)
   ament_add_gtest(test_scenario_validator
     test/config/test_scenario_validator.cpp
     test/config/test_scenario_config.cpp
+    test/config/test_scenario_examples.cpp
+  )
+  target_compile_definitions(test_scenario_validator
+    PRIVATE
+      ROS2_FAULT_INJECTION_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
   )
   target_link_libraries(test_scenario_validator
     ${PROJECT_NAME}_core
