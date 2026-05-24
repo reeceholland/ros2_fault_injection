@@ -7,22 +7,22 @@
 #ifndef ROS2_FAULT_INJECTION__FAULT_SERVICE_MANAGER_HPP_
 #define ROS2_FAULT_INJECTION__FAULT_SERVICE_MANAGER_HPP_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <functional>
 
 #include <rclcpp/node.hpp>
 #include <rclcpp/service.hpp>
 
+#include "ros2_fault_injection/core/fault_controller.hpp"
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
-#include "ros2_fault_injection/core/fault_controller.hpp"
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/list_faults.hpp"
+#include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
-#include "ros2_fault_injection/srv/reload_scenario.hpp"
 
 namespace ros2_fault_injection
 {
@@ -38,6 +38,8 @@ class FaultServiceManager
 public:
     /// Map of injector id to injector instance.
   using InjectorMap = std::unordered_map<std::string, std::shared_ptr<FaultInjector>>;
+
+    /// Callback used by the reload service to ask the controller to reload its scenario.
   using ReloadScenarioCallback = std::function<ReloadScenarioResult()>;
 
     /**
@@ -46,6 +48,7 @@ public:
      * @param node Node used to create services.
      * @param injectors Runtime injectors indexed by id.
      * @param events Publisher used for manual state/config events.
+     * @param reload_scenario_callback Callback used by the reload service.
      */
   FaultServiceManager(
     rclcpp::Node & node, const InjectorMap & injectors,

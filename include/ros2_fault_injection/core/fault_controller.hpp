@@ -45,7 +45,7 @@ public:
      * @param events Shared event publisher used by scheduled faults.
      */
   FaultController(
-    rclcpp::Node & node, const std::string & scenario_file, ScenarioConfig scenario,
+    rclcpp::Node & node, std::string scenario_file, ScenarioConfig scenario,
     FaultEventPublisher & events);
 
     /**
