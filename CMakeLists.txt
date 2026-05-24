@@ -122,6 +122,7 @@ install(DIRECTORY
 )
 
 install(FILES
+  CHANGELOG.rst
   LICENSE
   README.md
   DESTINATION share/${PROJECT_NAME}
