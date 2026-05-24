@@ -21,46 +21,57 @@
 namespace ros2_fault_injection
 {
 
-/**
- * @brief Owns the runtime injector graph for one scenario.
- *
- * The controller creates typed injectors, registers each fault with the
- * injector named by `FaultConfig::injector_id`, and starts scheduled fault
- * activation.
- */
-class FaultController {
-public:
-  /**
-   * @brief Construct and start the controller.
-   *
-   * @param node ROS node used to create injector publishers, subscriptions, and timers.
-   * @param scenario Parsed and validated scenario configuration.
-   * @param events Shared event publisher used by scheduled faults.
-   */
-  FaultController(
-    rclcpp::Node & node, const ScenarioConfig & scenario,
-    FaultEventPublisher & events);
+struct ReloadScenarioResult
+{
+  bool success{false};
+  std::string message;
+};
 
   /**
-   * @brief Access the configured injectors by injector id.
+   * @brief Owns the runtime injector graph for one scenario.
    *
-   * @return Map of injector id to injector instance.
+   * The controller creates typed injectors, registers each fault with the
+   * injector named by `FaultConfig::injector_id`, and starts scheduled fault
+   * activation.
    */
+class FaultController
+{
+public:
+    /**
+     * @brief Construct and start the controller.
+     *
+     * @param node ROS node used to create injector publishers, subscriptions, and timers.
+     * @param scenario Parsed and validated scenario configuration.
+     * @param events Shared event publisher used by scheduled faults.
+     */
+  FaultController(
+    rclcpp::Node & node, const std::string & scenario_file, ScenarioConfig scenario,
+    FaultEventPublisher & events);
+
+    /**
+     * @brief Access the configured injectors by injector id.
+     *
+     * @return Map of injector id to injector instance.
+     */
   const InjectorMap & injectors() const;
+
+  ReloadScenarioResult reload_scenario();
 
 private:
   void create_injectors();
   void register_faults();
   void schedule_faults();
+  ReloadScenarioResult validate_reload_compatible(const ScenarioConfig & new_scenario) const;
 
   rclcpp::Node & node_;
-  const ScenarioConfig & scenario_;
+  std::string scenario_file_;
+  ScenarioConfig scenario_;
   FaultEventPublisher & events_;
   FaultInjectorFactory factory_;
   FaultScheduler scheduler_;
   InjectorMap injectors_;
 };
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
 
-#endif  // ROS2_FAULT_INJECTION__FAULT_CONTROLLER_HPP_
+#endif // ROS2_FAULT_INJECTION__FAULT_CONTROLLER_HPP_

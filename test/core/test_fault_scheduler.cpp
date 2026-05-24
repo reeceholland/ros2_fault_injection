@@ -27,7 +27,8 @@ namespace
 
 using namespace std::chrono_literals;
 
-class FakeFaultInjector : public FaultInjector {
+class FakeFaultInjector : public FaultInjector
+{
 public:
   std::string id() const override
   {
@@ -69,7 +70,7 @@ public:
   std::vector<std::string> fault_ids() const override
   {
     std::vector<std::string> ids;
-    for (const auto & [id, _] : faults_) {
+    for (const auto &[id, _] : faults_) {
       ids.push_back(id);
     }
     return ids;
@@ -97,6 +98,11 @@ public:
     it->second.config[key] = value;
     return true;
   }
+  void clear_faults() override
+  {
+    faults_.clear();
+    active_.clear();
+  }
 
 private:
   std::unordered_map<std::string, FaultConfig> faults_;
@@ -121,79 +127,82 @@ FaultConfig make_fault(const std::string & id)
   return fault;
 }
 
-}  // namespace
+}   // namespace
 
-TEST(FaultScheduler, StartupActiveFaultStopsAfterDuration) {
-  rclcpp::init(0, nullptr);
+TEST(FaultScheduler, StartupActiveFaultStopsAfterDuration)
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-  FaultEventPublisher events(*node);
-  FaultScheduler scheduler(*node, events);
+    auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
+    FaultEventPublisher events(*node);
+    FaultScheduler scheduler(*node, events);
 
-  FakeFaultInjector injector;
+    FakeFaultInjector injector;
 
-  auto fault = make_fault("startup_fault");
-  fault.duration = 50ms;
-  injector.add_fault(fault);
+    auto fault = make_fault("startup_fault");
+    fault.duration = 50ms;
+    injector.add_fault(fault);
 
-  scheduler.schedule({fault}, injector, {"startup_fault"});
+    scheduler.schedule({fault}, injector, {"startup_fault"});
 
-  EXPECT_TRUE(injector.is_active("startup_fault"));
+    EXPECT_TRUE(injector.is_active("startup_fault"));
 
-  spin_for(node, 100ms);
+    spin_for(node, 100ms);
 
-  EXPECT_FALSE(injector.is_active("startup_fault"));
+    EXPECT_FALSE(injector.is_active("startup_fault"));
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
-TEST(FaultScheduler, ScheduledFaultStartsAndStops) {
-  rclcpp::init(0, nullptr);
+TEST(FaultScheduler, ScheduledFaultStartsAndStops)
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-  FaultEventPublisher events(*node);
-  FaultScheduler scheduler(*node, events);
+    auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
+    FaultEventPublisher events(*node);
+    FaultScheduler scheduler(*node, events);
 
-  FakeFaultInjector injector;
+    FakeFaultInjector injector;
 
-  auto fault = make_fault("scheduled_fault");
-  fault.start = 50ms;
-  fault.duration = 50ms;
-  injector.add_fault(fault);
+    auto fault = make_fault("scheduled_fault");
+    fault.start = 50ms;
+    fault.duration = 50ms;
+    injector.add_fault(fault);
 
-  scheduler.schedule({fault}, injector, {});
+    scheduler.schedule({fault}, injector, {});
 
-  EXPECT_FALSE(injector.is_active("scheduled_fault"));
+    EXPECT_FALSE(injector.is_active("scheduled_fault"));
 
-  spin_for(node, 75ms);
+    spin_for(node, 75ms);
 
-  EXPECT_TRUE(injector.is_active("scheduled_fault"));
+    EXPECT_TRUE(injector.is_active("scheduled_fault"));
 
-  spin_for(node, 75ms);
+    spin_for(node, 75ms);
 
-  EXPECT_FALSE(injector.is_active("scheduled_fault"));
+    EXPECT_FALSE(injector.is_active("scheduled_fault"));
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
-TEST(FaultScheduler, ManualOnlyTestStaysInactive) {
-  rclcpp::init(0, nullptr);
+TEST(FaultScheduler, ManualOnlyTestStaysInactive)
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-  FaultEventPublisher events(*node);
-  FaultScheduler scheduler(*node, events);
+    auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
+    FaultEventPublisher events(*node);
+    FaultScheduler scheduler(*node, events);
 
-  FakeFaultInjector injector;
-  auto fault = make_fault("manual_only_fault");
+    FakeFaultInjector injector;
+    auto fault = make_fault("manual_only_fault");
 
-  injector.add_fault(fault);
+    injector.add_fault(fault);
 
-  scheduler.schedule({fault}, injector, {});
+    scheduler.schedule({fault}, injector, {});
 
-  spin_for(node, 50ms);
+    spin_for(node, 50ms);
 
-  EXPECT_FALSE(injector.is_active("manual_only_fault"));
+    EXPECT_FALSE(injector.is_active("manual_only_fault"));
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection

@@ -6,13 +6,21 @@
 
 #include "ros2_fault_injection/core/fault_controller.hpp"
 
+#include <utility>
+#include <exception>
+#include <string>
+
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/scenario_validator.hpp"
+
 namespace ros2_fault_injection
 {
 
 FaultController::FaultController(
-  rclcpp::Node & node, const ScenarioConfig & scenario,
+  rclcpp::Node & node, const std::string & scenario_file, ScenarioConfig scenario,
   FaultEventPublisher & events)
-: node_(node), scenario_(scenario), events_(events), factory_(node), scheduler_(node, events)
+: node_(node), scenario_file_(std::move(scenario_file)), scenario_(std::move(scenario)),
+  events_(events), factory_(node), scheduler_(node, events)
 {
   create_injectors();
   register_faults();
@@ -31,7 +39,7 @@ void FaultController::create_injectors()
 
     if (!injector) {
       RCLCPP_ERROR(node_.get_logger(), "Unknown injector type '%s' for injector '%s'",
-                   injector_config.type.c_str(), injector_config.id.c_str());
+                     injector_config.type.c_str(), injector_config.id.c_str());
 
       continue;
     }
@@ -47,7 +55,7 @@ void FaultController::register_faults()
 
     if (injector_it == injectors_.end()) {
       RCLCPP_WARN(node_.get_logger(), "Fault '%s' targets unknown injector_id '%s', skipping",
-                  fault.id.c_str(), fault.injector_id.c_str());
+                    fault.id.c_str(), fault.injector_id.c_str());
 
       continue;
     }
@@ -58,7 +66,7 @@ void FaultController::register_faults()
 
 void FaultController::schedule_faults()
 {
-  for (const auto & [injector_id, injector] : injectors_) {
+  for (const auto &[injector_id, injector] : injectors_) {
     std::vector<FaultConfig> targeted_faults;
 
     for (const auto & fault : scenario_.faults) {
@@ -71,4 +79,112 @@ void FaultController::schedule_faults()
   }
 }
 
-}  // namespace ros2_fault_injection
+ReloadScenarioResult FaultController::reload_scenario()
+{
+  ScenarioConfig new_scenario;
+  RCLCPP_INFO(node_.get_logger(), "Attempting to reload scenario from file '%s'",
+      scenario_file_.c_str());
+
+  try {
+    new_scenario = load_scenario_config(scenario_file_);
+  } catch (const std::exception & error) {
+    RCLCPP_ERROR(node_.get_logger(), "Failed to reload scenario config %s : %s",
+                   scenario_file_.c_str(), error.what());
+
+    return ReloadScenarioResult{false,
+      "failed to load scenario config: " + std::string(error.what())};
+  }
+
+  RCLCPP_INFO(node_.get_logger(), "Validating new scenario configuration from file '%s'",
+      scenario_file_.c_str());
+  const auto validation_result = validate_scenario(new_scenario);
+
+  if (!validation_result.ok()) {
+    std::string message = "Scenario validation failed";
+
+    for (const auto & error : validation_result.errors) {
+      message += "; " + error;
+    }
+
+    return ReloadScenarioResult{
+      false,
+      message,
+    };
+  }
+
+  for (const auto & warning : validation_result.warnings) {
+    RCLCPP_WARN(node_.get_logger(), "Scenario reload warning: %s", warning.c_str());
+  }
+  const auto compatibility = validate_reload_compatible(new_scenario);
+  if (!compatibility.success) {
+    return compatibility;
+  }
+
+  scheduler_.clear();
+
+  for (const auto &[injector_id, injector] : injectors_) {
+    injector->clear_faults();
+  }
+
+  scenario_ = std::move(new_scenario);
+
+  register_faults();
+  schedule_faults();
+
+  RCLCPP_INFO(node_.get_logger(), "Scenario reloaded successfully from file '%s'",
+      scenario_file_.c_str());
+  return ReloadScenarioResult{
+    true,
+    "Scenario reloaded successfully",
+  };
+}
+ReloadScenarioResult FaultController::validate_reload_compatible(
+  const ScenarioConfig & new_scenario) const
+{
+  if (new_scenario.injectors.size() != scenario_.injectors.size()) {
+    return {false, "Reload cannot change the number of injectors"};
+  }
+
+  for (const auto & current : scenario_.injectors) {
+    const auto *updated = find_injector(new_scenario, current.id);
+
+    if (updated == nullptr) {
+      return {false, "Reload cannot remove injector '" + current.id + "'"};
+    }
+
+    if (updated->type != current.type) {
+      return {false, "Reload cannot change type for injector '" + current.id + "'"};
+    }
+
+      // topic injector
+    if (current.topic.has_value() != updated->topic.has_value()) {
+      return {false, "Reload cannot change endpoint kind for injector '" + current.id + "'"};
+    }
+
+    if (current.topic && updated->topic) {
+      if (updated->topic->input_topic != current.topic->input_topic ||
+        updated->topic->output_topic != current.topic->output_topic ||
+        updated->topic->qos_depth != current.topic->qos_depth)
+      {
+        return {false, "Reload cannot change topic endpoints for injector '" + current.id + "'"};
+      }
+    }
+
+      // service injector
+    if (current.trigger_service.has_value() != updated->trigger_service.has_value()) {
+      return {false, "Reload cannot change endpoint kind for injector '" + current.id + "'"};
+    }
+
+    if (current.trigger_service && updated->trigger_service) {
+      if (updated->trigger_service->proxy_service != current.trigger_service->proxy_service ||
+        updated->trigger_service->target_service != current.trigger_service->target_service)
+      {
+        return {false, "Reload cannot change service endpoints for injector '" + current.id + "'"};
+      }
+    }
+  }
+
+  return {true, "Scenario is compatible with running injectors"};
+}
+
+} // namespace ros2_fault_injection

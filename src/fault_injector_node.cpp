@@ -20,7 +20,7 @@
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/config/scenario_validator.hpp"
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
 
@@ -70,10 +70,14 @@ int main(int argc, char ** argv)
 
   ros2_fault_injection::FaultEventPublisher event_pub(*node);
 
-  ros2_fault_injection::FaultController controller(*node, scenario, event_pub);
+  ros2_fault_injection::FaultController controller(*node, scenario_file, scenario, event_pub);
 
   auto fault_service_manager = std::make_shared<ros2_fault_injection::FaultServiceManager>(
-      *node, controller.injectors(), event_pub);
+      *node, controller.injectors(), event_pub,
+    [&controller]()
+    {
+      return controller.reload_scenario();
+      });
 
   ros2_fault_injection::FaultScheduler scheduler(*node, event_pub);
 
