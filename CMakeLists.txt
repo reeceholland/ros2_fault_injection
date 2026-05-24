@@ -23,6 +23,7 @@ find_package(tf2_msgs REQUIRED)
 find_package(Doxygen)
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_copyright REQUIRED)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_cmake_uncrustify REQUIRED)
 endif()
@@ -225,6 +226,8 @@ if(BUILD_TESTING)
     src
     test
   )
+
+  ament_copyright()
 endif()
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)

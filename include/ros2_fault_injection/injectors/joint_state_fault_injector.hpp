@@ -1,3 +1,9 @@
+// Copyright 2026 Reece Holland
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #ifndef ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_
 #define ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_
 
