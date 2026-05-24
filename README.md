@@ -1,5 +1,7 @@
 # ros2_fault_injection
 
+[![CI](https://github.com/reeceholland/ros2_fault_injection/actions/workflows/ci.yml/badge.svg)](https://github.com/reeceholland/ros2_fault_injection/actions/workflows/ci.yml)
+
 `ros2_fault_injection` is a C++ ROS 2 framework for inserting controlled faults into robot data streams.
 
 The package is designed around proxy injectors. For topics, a real publisher is remapped to a `*_raw` topic, the injector subscribes to that raw topic, applies configured faults, and republishes on the normal topic used by the rest of the ROS graph.

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jazzy:
+    name: ROS 2 Jazzy
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup ROS
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - name: Install dependencies
+        run: |
+          sudo rosdep init || true
+          rosdep update
+          rosdep install --from-paths . --ignore-src --rosdistro jazzy --dependency-types buildtool build build_export exec test -r -y
+
+      - name: Build
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --symlink-install --packages-select ros2_fault_injection --event-handlers console_direct+
+
+      - name: Test
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
+          colcon test-result --verbose
