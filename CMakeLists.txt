@@ -105,10 +105,14 @@ ament_target_dependencies(fault_injector_node
 
 install(TARGETS
   ${PROJECT_NAME}_core
-  fault_injector_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib
+)
+
+install(TARGETS
+  fault_injector_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
