@@ -9,31 +9,37 @@
 
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
-bool is_known_injector_type(const std::string& type) {
+bool is_known_injector_type(const std::string & type)
+{
   return type == "odom" || type == "scan" || type == "joint_state" || type == "imu" ||
-         type == "trigger_service";
+         type == "trigger_service" || type == "tf";
 }
 
-bool parse_double(const std::string& text, double& value) {
-  const auto* begin = text.data();
-  const auto* end = text.data() + text.size();
+bool parse_double(const std::string & text, double & value)
+{
+  const auto * begin = text.data();
+  const auto * end = text.data() + text.size();
 
   const auto result = std::from_chars(begin, end, value);
   return result.ec == std::errc{} && result.ptr == end;
 }
 
-bool parse_int(const std::string& text, int& value) {
-  const auto* begin = text.data();
-  const auto* end = text.data() + text.size();
+bool parse_int(const std::string & text, int & value)
+{
+  const auto * begin = text.data();
+  const auto * end = text.data() + text.size();
 
   const auto result = std::from_chars(begin, end, value);
   return result.ec == std::errc{} && result.ptr == end;
 }
 
-void validate_injector(const InjectorConfig& injector, ValidationResult& result) {
+void validate_injector(const InjectorConfig & injector, ValidationResult & result)
+{
   if (injector.id.empty()) {
     result.errors.push_back("injector.id must not be empty");
   }
@@ -77,8 +83,10 @@ void validate_injector(const InjectorConfig& injector, ValidationResult& result)
   }
 }
 
-void validate_number_key(const FaultConfig& fault, const std::string& key,
-                         ValidationResult& result) {
+void validate_number_key(
+  const FaultConfig & fault, const std::string & key,
+  ValidationResult & result)
+{
   const auto it = fault.config.find(key);
   if (it == fault.config.end()) {
     return;
@@ -90,8 +98,31 @@ void validate_number_key(const FaultConfig& fault, const std::string& key,
   }
 }
 
-void validate_non_negative_number_key(const FaultConfig& fault, const std::string& key,
-                                      ValidationResult& result) {
+void validate_between_zero_and_one_key(
+  const FaultConfig & fault, const std::string & key,
+  ValidationResult & result)
+{
+  const auto it = fault.config.find(key);
+  if (it == fault.config.end()) {
+    return;
+  }
+
+  double value = 0.0;
+  if (!parse_double(it->second, value)) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' must be a number");
+    return;
+  }
+
+  if (value < 0.0 || value > 1.0) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key +
+                            "' must be between 0 and 1");
+  }
+}
+
+void validate_non_negative_number_key(
+  const FaultConfig & fault, const std::string & key,
+  ValidationResult & result)
+{
   const auto it = fault.config.find(key);
   if (it == fault.config.end()) {
     return;
@@ -108,11 +139,13 @@ void validate_non_negative_number_key(const FaultConfig& fault, const std::strin
   }
 }
 
-bool is_special_float_value(const std::string& value) {
+bool is_special_float_value(const std::string & value)
+{
   return value == "inf" || value == "+inf" || value == "-inf" || value == "nan";
 }
 
-void validate_sector_value(const FaultConfig& fault, ValidationResult& result) {
+void validate_sector_value(const FaultConfig & fault, ValidationResult & result)
+{
   const auto it = fault.config.find("sector_value");
   if (it == fault.config.end() || is_special_float_value(it->second)) {
     return;
@@ -125,7 +158,8 @@ void validate_sector_value(const FaultConfig& fault, ValidationResult& result) {
   }
 }
 
-void validate_drop_probability(const FaultConfig& fault, ValidationResult& result) {
+void validate_drop_probability(const FaultConfig & fault, ValidationResult & result)
+{
   const auto it = fault.config.find("drop_probability");
   if (it == fault.config.end()) {
     return;
@@ -143,7 +177,8 @@ void validate_drop_probability(const FaultConfig& fault, ValidationResult& resul
   }
 }
 
-void validate_delay_ms(const FaultConfig& fault, ValidationResult& result) {
+void validate_delay_ms(const FaultConfig & fault, ValidationResult & result)
+{
   const auto it = fault.config.find("delay_ms");
   if (it == fault.config.end()) {
     return;
@@ -160,22 +195,42 @@ void validate_delay_ms(const FaultConfig& fault, ValidationResult& result) {
   }
 }
 
-void validate_bool_key(const FaultConfig& fault, const std::string& key, ValidationResult& result) {
+void validate_bool_key(
+  const FaultConfig & fault, const std::string & key,
+  ValidationResult & result)
+{
   const auto it = fault.config.find(key);
   if (it == fault.config.end()) {
     return;
   }
 
-  const std::string& value = it->second;
+  const std::string & value = it->second;
   if (value != "true" && value != "false") {
     result.errors.push_back("fault '" + fault.id + "' config '" + key +
                             "' must be 'true' or 'false'");
   }
 }
 
-void validate_fault_keys(const FaultConfig& fault, const std::string& injector_type,
-                         ValidationResult& result) {
-  for (const auto& [key, value] : fault.config) {
+void validate_required_string_key(
+  const FaultConfig & fault, const std::string & key,
+  ValidationResult & result)
+{
+  const auto it = fault.config.find(key);
+  if (it == fault.config.end()) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' is required");
+    return;
+  }
+
+  if (it->second.empty()) {
+    result.errors.push_back("fault '" + fault.id + "' config '" + key + "' must not be empty");
+  }
+}
+
+void validate_fault_keys(
+  const FaultConfig & fault, const std::string & injector_type,
+  ValidationResult & result)
+{
+  for (const auto & [key, value] : fault.config) {
     (void)value;
 
     if (!is_allowed_config_key(injector_type, key)) {
@@ -184,8 +239,10 @@ void validate_fault_keys(const FaultConfig& fault, const std::string& injector_t
   }
 }
 
-void validate_fault_values(const FaultConfig& fault, const std::string& injector_type,
-                           ValidationResult& result) {
+void validate_fault_values(
+  const FaultConfig & fault, const std::string & injector_type,
+  ValidationResult & result)
+{
   validate_drop_probability(fault, result);
   validate_delay_ms(fault, result);
 
@@ -230,15 +287,30 @@ void validate_fault_values(const FaultConfig& fault, const std::string& injector
     validate_bool_key(fault, "force_failure", result);
     validate_delay_ms(fault, result);
   }
+
+  if (injector_type == "tf") {
+    validate_number_key(fault, "x_bias", result);
+    validate_number_key(fault, "y_bias", result);
+    validate_number_key(fault, "z_bias", result);
+    validate_number_key(fault, "roll_bias_deg", result);
+    validate_number_key(fault, "pitch_bias_deg", result);
+    validate_number_key(fault, "yaw_bias_deg", result);
+    validate_between_zero_and_one_key(fault, "drop_probability", result);
+    validate_required_string_key(fault, "parent_frame", result);
+    validate_required_string_key(fault, "child_frame", result);
+  }
 }
 
-bool is_initially_active(const ScenarioConfig& scenario, const FaultConfig& fault) {
+bool is_initially_active(const ScenarioConfig & scenario, const FaultConfig & fault)
+{
   return std::find(scenario.initially_active_faults.begin(), scenario.initially_active_faults.end(),
                    fault.id) != scenario.initially_active_faults.end();
 }
 
-void validate_fault(const ScenarioConfig& scenario, const FaultConfig& fault,
-                    const InjectorConfig& injector, ValidationResult& result) {
+void validate_fault(
+  const ScenarioConfig & scenario, const FaultConfig & fault,
+  const InjectorConfig & injector, ValidationResult & result)
+{
   const bool active_on_startup = is_initially_active(scenario, fault);
   if (fault.id.empty()) {
     result.errors.push_back("fault.id must not be empty");
@@ -277,11 +349,12 @@ void validate_fault(const ScenarioConfig& scenario, const FaultConfig& fault,
 
 }  // namespace
 
-ValidationResult validate_scenario(const ScenarioConfig& scenario) {
+ValidationResult validate_scenario(const ScenarioConfig & scenario)
+{
   ValidationResult result;
 
   std::unordered_set<std::string> injector_ids;
-  for (const auto& injector : scenario.injectors) {
+  for (const auto & injector : scenario.injectors) {
     if (!injector.id.empty() && !injector_ids.insert(injector.id).second) {
       result.errors.push_back("duplicate injector id: '" + injector.id + "'");
     }
@@ -289,8 +362,8 @@ ValidationResult validate_scenario(const ScenarioConfig& scenario) {
     validate_injector(injector, result);
   }
 
-  for (const auto& fault : scenario.faults) {
-    const auto* injector = find_injector(scenario, fault.injector_id);
+  for (const auto & fault : scenario.faults) {
+    const auto * injector = find_injector(scenario, fault.injector_id);
 
     if (injector == nullptr) {
       result.errors.push_back("fault '" + fault.id + "' references unknown injector_id '" +

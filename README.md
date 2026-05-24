@@ -24,6 +24,7 @@ This keeps the framework understandable and testable while covering both data st
 | `scan` | `sensor_msgs/msg/LaserScan` | `/scan_raw` | `/scan` |
 | `joint_state` | `sensor_msgs/msg/JointState` | `/platform/motors/feedback_raw` | `/platform/motors/feedback` |
 | `imu` | `sensor_msgs/msg/Imu` | `/sensors/imu_raw` | `/sensors/imu` |
+| `tf` | `tf2_msgs/msg/TFMessage` | `/tf_raw` | `/tf` |
 | `trigger_service` | `std_srvs/srv/Trigger` | `/enable_motors_raw` | `/enable_motors` |
 
 ## Fault Types
@@ -83,6 +84,25 @@ The supported config keys depend on the injector type.
 | `drop_probability` | Randomly drop IMU messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay IMU messages by this many milliseconds. |
 
+### TF
+
+TF faults target individual transforms inside a `tf2_msgs/msg/TFMessage`. Each TF fault must include `parent_frame` and `child_frame` so faults do not accidentally apply to every transform in the tree.
+
+| Key | Meaning |
+| --- | --- |
+| `parent_frame` | Required parent frame to match against `transform.header.frame_id`. |
+| `child_frame` | Required child frame to match against `transform.child_frame_id`. |
+| `x_bias` | Add a translation offset in metres to the matching transform's X value. |
+| `y_bias` | Add a translation offset in metres to the matching transform's Y value. |
+| `z_bias` | Add a translation offset in metres to the matching transform's Z value. |
+| `roll_bias_deg` | Add a roll offset, in degrees, to the matching transform rotation. |
+| `pitch_bias_deg` | Add a pitch offset, in degrees, to the matching transform rotation. |
+| `yaw_bias_deg` | Add a yaw offset, in degrees, to the matching transform rotation. |
+| `drop_probability` | Randomly drop matching transforms. Range: `0.0` to `1.0`. |
+| `delay_ms` | Delay TF messages by this many milliseconds before republishing. |
+
+When using TF injection, remap the original TF publisher to `/tf_raw` and let the injector publish the consumer-facing `/tf`. Avoid leaving multiple publishers producing the same `parent_frame -> child_frame` transform on `/tf`, because TF consumers may receive conflicting transforms.
+
 ### Trigger Service
 
 | Key | Meaning |
@@ -113,6 +133,12 @@ injectors:
     type: trigger_service
     proxy_service: /enable_motors
     target_service: /enable_motors_raw
+
+  - id: tf_odom_base
+    type: tf
+    input_topic: /tf_raw
+    output_topic: /tf
+    qos_depth: 50
 
 faults:
   - id: odom_bias
@@ -153,6 +179,14 @@ faults:
     config:
       force_failure: true
       failure_message: "Injected enable_motors failure"
+
+  - id: tf_yaw_bias
+    injector_id: tf_odom_base
+    active_on_startup: false
+    config:
+      parent_frame: odom
+      child_frame: base_link
+      yaw_bias_deg: 10.0
 ```
 
 ### Fault Activation Rules
@@ -283,6 +317,7 @@ diff_drive_controller -> /odom_raw -> odom injector -> /odom -> Nav2
 lidar or simulator    -> /scan_raw -> scan injector -> /scan -> Nav2/SLAM
 Unity motor feedback  -> /platform/motors/feedback_raw -> joint_state injector -> /platform/motors/feedback -> ros2_control
 Unity or IMU driver  -> /sensors/imu_raw -> imu injector -> /sensors/imu -> consumers
+TF publisher         -> /tf_raw -> tf injector -> /tf -> TF consumers
 client               -> /enable_motors -> trigger_service injector -> /enable_motors_raw -> real server
 ```
 
@@ -338,7 +373,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, and service/event behavior in `FaultServiceManager`.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, odom covariance behavior, trigger service faults, and TF transform faults.
 
 ## Development Notes
 

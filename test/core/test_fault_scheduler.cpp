@@ -14,37 +14,45 @@
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
 using namespace std::chrono_literals;
 
 class FakeFaultInjector : public FaultInjector {
 public:
-  std::string id() const override {
+  std::string id() const override
+  {
     return "fake_injector";
   }
 
-  void add_fault(const FaultConfig& fault_config) override {
+  void add_fault(const FaultConfig & fault_config) override
+  {
     faults_[fault_config.id] = fault_config;
     active_.erase(fault_config.id);
   }
 
-  void activate_fault(const std::string& fault_id) override {
+  void activate_fault(const std::string & fault_id) override
+  {
     if (has_fault(fault_id)) {
       active_.insert(fault_id);
     }
   }
 
-  void deactivate_fault(const std::string& fault_id) override {
+  void deactivate_fault(const std::string & fault_id) override
+  {
     active_.erase(fault_id);
   }
 
-  bool has_fault(const std::string& fault_id) const override {
+  bool has_fault(const std::string & fault_id) const override
+  {
     return faults_.find(fault_id) != faults_.end();
   }
 
-  std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const override {
+  std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const override
+  {
     const auto it = faults_.find(fault_id);
     if (it != faults_.end()) {
       return it->second;
@@ -52,24 +60,29 @@ public:
     return std::nullopt;
   }
 
-  std::vector<std::string> fault_ids() const override {
+  std::vector<std::string> fault_ids() const override
+  {
     std::vector<std::string> ids;
-    for (const auto& [id, _] : faults_) {
+    for (const auto & [id, _] : faults_) {
       ids.push_back(id);
     }
     return ids;
   }
 
-  std::vector<std::string> active_fault_ids() const override {
+  std::vector<std::string> active_fault_ids() const override
+  {
     return std::vector<std::string>(active_.begin(), active_.end());
   }
 
-  bool is_active(const std::string& fault_id) const {
+  bool is_active(const std::string & fault_id) const
+  {
     return active_.find(fault_id) != active_.end();
   }
 
-  bool set_fault_config_value(const std::string& fault_id, const std::string& key,
-                              const std::string& value) override {
+  bool set_fault_config_value(
+    const std::string & fault_id, const std::string & key,
+    const std::string & value) override
+  {
     const auto it = faults_.find(fault_id);
     if (it == faults_.end()) {
       return false;
@@ -84,7 +97,8 @@ private:
   std::unordered_set<std::string> active_;
 };
 
-void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds duration) {
+void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds duration)
+{
   const auto deadline = std::chrono::steady_clock::now() + duration;
 
   while (std::chrono::steady_clock::now() < deadline) {
@@ -93,7 +107,8 @@ void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds dur
   }
 }
 
-FaultConfig make_fault(const std::string& id) {
+FaultConfig make_fault(const std::string & id)
+{
   FaultConfig fault;
   fault.id = id;
   fault.injector_id = "fake_injector";

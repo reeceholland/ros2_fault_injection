@@ -9,12 +9,15 @@
 
 #include "ros2_fault_injection/injectors/odom_fault_injector.hpp"
 
-namespace ros2_fault_injection {
-namespace {
+namespace ros2_fault_injection
+{
+namespace
+{
 
 using namespace std::chrono_literals;
 
-void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds duration) {
+void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds duration)
+{
   const auto deadline = std::chrono::steady_clock::now() + duration;
 
   while (std::chrono::steady_clock::now() < deadline) {
@@ -24,10 +27,11 @@ void spin_for(const rclcpp::Node::SharedPtr& node, std::chrono::milliseconds dur
 }
 
 std::optional<nav_msgs::msg::Odometry> publish_and_wait_for_odom(
-    const rclcpp::Node::SharedPtr& node,
-    const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr& pub,
-    const std::shared_ptr<std::optional<nav_msgs::msg::Odometry>>& latest_msg,
-    const nav_msgs::msg::Odometry& msg) {
+  const rclcpp::Node::SharedPtr & node,
+  const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr & pub,
+  const std::shared_ptr<std::optional<nav_msgs::msg::Odometry>> & latest_msg,
+  const nav_msgs::msg::Odometry & msg)
+{
   latest_msg->reset();
 
   const auto deadline = std::chrono::steady_clock::now() + 500ms;
@@ -46,7 +50,8 @@ std::optional<nav_msgs::msg::Odometry> publish_and_wait_for_odom(
   return std::nullopt;
 }
 
-InjectorConfig make_injector_config() {
+InjectorConfig make_injector_config()
+{
   InjectorConfig config;
   config.id = "odom";
   config.type = "odom";
@@ -60,7 +65,8 @@ InjectorConfig make_injector_config() {
   return config;
 }
 
-FaultConfig make_covariance_fault() {
+FaultConfig make_covariance_fault()
+{
   FaultConfig fault;
   fault.id = "odom_covariance";
   fault.injector_id = "odom";
@@ -71,14 +77,15 @@ FaultConfig make_covariance_fault() {
   return fault;
 }
 
-nav_msgs::msg::Odometry make_odom_with_covariance(double pose_value, double twist_value) {
+nav_msgs::msg::Odometry make_odom_with_covariance(double pose_value, double twist_value)
+{
   nav_msgs::msg::Odometry msg;
 
-  for (auto& value : msg.pose.covariance) {
+  for (auto & value : msg.pose.covariance) {
     value = pose_value;
   }
 
-  for (auto& value : msg.twist.covariance) {
+  for (auto & value : msg.twist.covariance) {
     value = twist_value;
   }
 
@@ -102,7 +109,7 @@ TEST(OdomFaultInjector, CovarianceFloorAppliesWhenRawCovarianceIsZero) {
 
   auto latest_msg = std::make_shared<std::optional<nav_msgs::msg::Odometry>>();
   auto sub = node->create_subscription<nav_msgs::msg::Odometry>(
-      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry& msg) { *latest_msg = msg; });
+      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry & msg) {*latest_msg = msg;});
 
   spin_for(node, 100ms);
 
@@ -138,7 +145,7 @@ TEST(OdomFaultInjector, CovarianceScaleAppliesWhenRawCovarianceIsNonZero) {
 
   auto latest_msg = std::make_shared<std::optional<nav_msgs::msg::Odometry>>();
   auto sub = node->create_subscription<nav_msgs::msg::Odometry>(
-      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry& msg) { *latest_msg = msg; });
+      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry & msg) {*latest_msg = msg;});
 
   spin_for(node, 100ms);
 
@@ -173,7 +180,7 @@ TEST(OdomFaultInjector, CovarianceUnchangedWithoutActiveFault) {
 
   auto latest_msg = std::make_shared<std::optional<nav_msgs::msg::Odometry>>();
   auto sub = node->create_subscription<nav_msgs::msg::Odometry>(
-      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry& msg) { *latest_msg = msg; });
+      "/test/odom", 10, [latest_msg](const nav_msgs::msg::Odometry & msg) {*latest_msg = msg;});
 
   spin_for(node, 100ms);
 

@@ -5,9 +5,11 @@
 #include <utility>
 #include <vector>
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-std::string describe_config(const std::unordered_map<std::string, std::string>& config) {
+std::string describe_config(const std::unordered_map<std::string, std::string> & config)
+{
   std::vector<std::pair<std::string, std::string>> entries(config.begin(), config.end());
   std::sort(entries.begin(), entries.end());
 
@@ -24,7 +26,8 @@ std::string describe_config(const std::unordered_map<std::string, std::string>& 
   return out.str();
 }
 
-std::string describe_fault(const FaultConfig& fault) {
+std::string describe_fault(const FaultConfig & fault)
+{
   std::vector<std::string> parts;
 
   if (fault.start.has_value()) {
@@ -53,7 +56,8 @@ std::string describe_fault(const FaultConfig& fault) {
   return out.str();
 }
 
-std::string describe_config_update(const std::string& key, const std::string& value) {
+std::string describe_config_update(const std::string & key, const std::string & value)
+{
   return "config_update={" + key + "=" + value + "}";
 }
 

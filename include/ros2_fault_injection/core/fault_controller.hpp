@@ -12,7 +12,8 @@
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Owns the runtime injector graph for one scenario.
@@ -30,23 +31,25 @@ public:
    * @param scenario Parsed and validated scenario configuration.
    * @param events Shared event publisher used by scheduled faults.
    */
-  FaultController(rclcpp::Node& node, const ScenarioConfig& scenario, FaultEventPublisher& events);
+  FaultController(
+    rclcpp::Node & node, const ScenarioConfig & scenario,
+    FaultEventPublisher & events);
 
   /**
    * @brief Access the configured injectors by injector id.
    *
    * @return Map of injector id to injector instance.
    */
-  const InjectorMap& injectors() const;
+  const InjectorMap & injectors() const;
 
 private:
   void create_injectors();
   void register_faults();
   void schedule_faults();
 
-  rclcpp::Node& node_;
-  const ScenarioConfig& scenario_;
-  FaultEventPublisher& events_;
+  rclcpp::Node & node_;
+  const ScenarioConfig & scenario_;
+  FaultEventPublisher & events_;
   FaultInjectorFactory factory_;
   FaultScheduler scheduler_;
   InjectorMap injectors_;

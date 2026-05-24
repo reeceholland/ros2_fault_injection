@@ -12,7 +12,8 @@
 
 #include "ros2_fault_injection/core/fault_injector.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Shared implementation for typed fault injectors.
@@ -29,18 +30,19 @@ public:
    * @param node ROS node used by derived classes.
    * @param config Injector configuration from the scenario.
    */
-  explicit FaultInjectorBase(rclcpp::Node& node, InjectorConfig config);
+  explicit FaultInjectorBase(rclcpp::Node & node, InjectorConfig config);
 
   std::string id() const override;
-  void add_fault(const FaultConfig& fault_config) override;
-  void activate_fault(const std::string& fault_id) override;
-  void deactivate_fault(const std::string& fault_id) override;
-  bool has_fault(const std::string& fault_id) const override;
-  std::optional<FaultConfig> get_fault_config(const std::string& fault_id) const override;
+  void add_fault(const FaultConfig & fault_config) override;
+  void activate_fault(const std::string & fault_id) override;
+  void deactivate_fault(const std::string & fault_id) override;
+  bool has_fault(const std::string & fault_id) const override;
+  std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const override;
   std::vector<std::string> fault_ids() const override;
   std::vector<std::string> active_fault_ids() const override;
-  bool set_fault_config_value(const std::string& fault_id, const std::string& key,
-                              const std::string& value) override;
+  bool set_fault_config_value(
+    const std::string & fault_id, const std::string & key,
+    const std::string & value) override;
 
 protected:
   /**
@@ -50,7 +52,7 @@ protected:
    * @param fallback Value returned when no active fault provides the key.
    * @return Largest parsed value or fallback.
    */
-  double active_max_double(const std::string& key, double fallback = 0.0) const;
+  double active_max_double(const std::string & key, double fallback = 0.0) const;
 
   /**
    * @brief Sum active numeric config values for a key.
@@ -59,7 +61,7 @@ protected:
    * @param fallback Value returned when no active fault provides the key.
    * @return Sum of parsed values or fallback.
    */
-  double active_sum_double(const std::string& key, double fallback = 0.0) const;
+  double active_sum_double(const std::string & key, double fallback = 0.0) const;
 
   /**
    * @brief Get the largest active integer config value for a key.
@@ -68,11 +70,11 @@ protected:
    * @param fallback Value returned when no active fault provides the key.
    * @return Largest parsed value or fallback.
    */
-  int active_max_int(const std::string& key, int fallback = 0) const;
+  int active_max_int(const std::string & key, int fallback = 0) const;
 
-  bool active_bool(const std::string& key, bool fallback = false) const;
+  bool active_bool(const std::string & key, bool fallback = false) const;
 
-  std::string active_string(const std::string& key, const std::string& fallback = "") const;
+  std::string active_string(const std::string & key, const std::string & fallback = "") const;
 
   /**
    * @brief Decide whether the current message should be dropped.
@@ -88,7 +90,7 @@ protected:
    */
   std::chrono::milliseconds active_delay() const;
 
-  rclcpp::Node& node_;
+  rclcpp::Node & node_;
   InjectorConfig config_;
   mutable std::mutex mutex_;
   std::unordered_map<std::string, FaultConfig> faults_;

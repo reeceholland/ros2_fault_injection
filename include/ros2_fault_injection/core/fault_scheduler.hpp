@@ -11,7 +11,8 @@
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Schedules startup and timed fault activation.
@@ -27,7 +28,7 @@ public:
    * @param node Node used to create wall timers.
    * @param event_pub Publisher used for scheduled fault events.
    */
-  explicit FaultScheduler(rclcpp::Node& node, FaultEventPublisher& event_pub);
+  explicit FaultScheduler(rclcpp::Node & node, FaultEventPublisher & event_pub);
 
   /**
    * @brief Schedule all faults belonging to one injector.
@@ -36,23 +37,26 @@ public:
    * @param injector Injector to activate and deactivate.
    * @param initially_active_faults Fault ids that should start active.
    */
-  void schedule(const std::vector<FaultConfig>& faults, FaultInjector& injector,
-                const std::vector<std::string>& initially_active_faults);
+  void schedule(
+    const std::vector<FaultConfig> & faults, FaultInjector & injector,
+    const std::vector<std::string> & initially_active_faults);
 
 private:
-  bool is_initially_active(const FaultConfig& fault,
-                           const std::vector<std::string>& initially_active_faults) const;
+  bool is_initially_active(
+    const FaultConfig & fault,
+    const std::vector<std::string> & initially_active_faults) const;
 
-  void schedule_start(FaultInjector& injector, const FaultConfig& fault);
-  void schedule_stop(FaultInjector& injector, const FaultConfig& fault);
-  void schedule_stop_after(FaultInjector& injector, const FaultConfig& fault,
-                           std::chrono::milliseconds delay);
+  void schedule_start(FaultInjector & injector, const FaultConfig & fault);
+  void schedule_stop(FaultInjector & injector, const FaultConfig & fault);
+  void schedule_stop_after(
+    FaultInjector & injector, const FaultConfig & fault,
+    std::chrono::milliseconds delay);
 
-  void publish_event(const FaultEvent& event);
+  void publish_event(const FaultEvent & event);
 
-  rclcpp::Node& node_;
+  rclcpp::Node & node_;
   std::vector<rclcpp::TimerBase::SharedPtr> timers_;
-  FaultEventPublisher& event_pub_;
+  FaultEventPublisher & event_pub_;
 };
 
 }  // namespace ros2_fault_injection

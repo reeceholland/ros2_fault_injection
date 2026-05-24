@@ -7,7 +7,8 @@
 #include <rclcpp/publisher.hpp>
 #include "ros2_fault_injection/msg/fault_event.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Internal representation of a fault lifecycle event.
@@ -15,7 +16,8 @@ namespace ros2_fault_injection {
  * The publisher adds the timestamp when converting this struct to
  * `ros2_fault_injection/msg/FaultEvent`.
  */
-struct FaultEvent {
+struct FaultEvent
+{
   /// Fault identifier associated with the event.
   std::string fault_id;
 
@@ -42,17 +44,17 @@ public:
    *
    * @param node Node used for publisher creation and event timestamps.
    */
-  explicit FaultEventPublisher(rclcpp::Node& node);
+  explicit FaultEventPublisher(rclcpp::Node & node);
 
   /**
    * @brief Publish a fault event with the node's current time.
    *
    * @param event Event payload to publish.
    */
-  void publish(const FaultEvent& event);
+  void publish(const FaultEvent & event);
 
 private:
-  rclcpp::Node* node_;
+  rclcpp::Node * node_;
   rclcpp::Publisher<msg::FaultEvent>::SharedPtr pub_;
 };
 

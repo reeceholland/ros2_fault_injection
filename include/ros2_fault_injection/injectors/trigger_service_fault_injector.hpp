@@ -9,14 +9,16 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 class TriggerServiceFaultInjector : public FaultInjectorBase {
 public:
-  explicit TriggerServiceFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
+  explicit TriggerServiceFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
 private:
-  void on_request(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-                  std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+  void on_request(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
   rclcpp::CallbackGroup::SharedPtr service_callback_group_;
   rclcpp::CallbackGroup::SharedPtr client_callback_group_;

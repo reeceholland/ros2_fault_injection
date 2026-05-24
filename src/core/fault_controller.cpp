@@ -1,21 +1,26 @@
 #include "ros2_fault_injection/core/fault_controller.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-FaultController::FaultController(rclcpp::Node& node, const ScenarioConfig& scenario,
-                                 FaultEventPublisher& events)
-    : node_(node), scenario_(scenario), events_(events), factory_(node), scheduler_(node, events) {
+FaultController::FaultController(
+  rclcpp::Node & node, const ScenarioConfig & scenario,
+  FaultEventPublisher & events)
+: node_(node), scenario_(scenario), events_(events), factory_(node), scheduler_(node, events)
+{
   create_injectors();
   register_faults();
   schedule_faults();
 }
 
-const InjectorMap& FaultController::injectors() const {
+const InjectorMap & FaultController::injectors() const
+{
   return injectors_;
 }
 
-void FaultController::create_injectors() {
-  for (const auto& injector_config : scenario_.injectors) {
+void FaultController::create_injectors()
+{
+  for (const auto & injector_config : scenario_.injectors) {
     auto injector = factory_.create(injector_config);
 
     if (!injector) {
@@ -29,8 +34,9 @@ void FaultController::create_injectors() {
   }
 }
 
-void FaultController::register_faults() {
-  for (const auto& fault : scenario_.faults) {
+void FaultController::register_faults()
+{
+  for (const auto & fault : scenario_.faults) {
     const auto injector_it = injectors_.find(fault.injector_id);
 
     if (injector_it == injectors_.end()) {
@@ -44,11 +50,12 @@ void FaultController::register_faults() {
   }
 }
 
-void FaultController::schedule_faults() {
-  for (const auto& [injector_id, injector] : injectors_) {
+void FaultController::schedule_faults()
+{
+  for (const auto & [injector_id, injector] : injectors_) {
     std::vector<FaultConfig> targeted_faults;
 
-    for (const auto& fault : scenario_.faults) {
+    for (const auto & fault : scenario_.faults) {
       if (fault.injector_id == injector_id) {
         targeted_faults.push_back(fault);
       }

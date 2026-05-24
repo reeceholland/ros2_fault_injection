@@ -5,7 +5,8 @@
 
 #include <gtest/gtest.h>
 
-std::string write_temp_yaml(const std::string& contents) {
+std::string write_temp_yaml(const std::string & contents)
+{
   const auto path = "/tmp/ros2_fault_injection_test_scenario.yaml";
 
   std::ofstream file(path);
@@ -16,7 +17,9 @@ std::string write_temp_yaml(const std::string& contents) {
 }
 
 TEST(ScenarioConfig, ParseMultiInjectorScenario) {
-  const auto path = write_temp_yaml(R"(
+  const auto path =
+    write_temp_yaml(
+    R"(
 injectors:
   - id: odom
     type: odom
@@ -70,7 +73,9 @@ faults:
 }
 
 TEST(ScenarioConfig, ParseTriggerServiceInjector) {
-  const auto path = write_temp_yaml(R"(
+  const auto path =
+    write_temp_yaml(
+    R"(
 injector:
   id: trigger_service
   type: trigger_service

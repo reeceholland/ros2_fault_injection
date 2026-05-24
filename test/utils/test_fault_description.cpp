@@ -5,7 +5,8 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 TEST(FaultDescriptions, DescribeConfigFormatsConfig) {
   std::unordered_map<std::string, std::string> config;

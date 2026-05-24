@@ -19,10 +19,12 @@ find_package(yaml-cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
 find_package(Doxygen)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_uncrustify REQUIRED)
 endif()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -56,6 +58,7 @@ add_library(${PROJECT_NAME}_core
   src/config/fault_config_schema.cpp
   src/utils/fault_descriptions.cpp
   src/injectors/trigger_service_fault_injector.cpp
+  src/injectors/tf_fault_injector.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -78,6 +81,7 @@ ament_target_dependencies(${PROJECT_NAME}_core
   builtin_interfaces
   tf2
   tf2_geometry_msgs
+  tf2_msgs
 )
 
 add_executable(fault_injector_node
@@ -100,6 +104,7 @@ ament_target_dependencies(fault_injector_node
 install(TARGETS
   ${PROJECT_NAME}_core
   fault_injector_node
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
@@ -109,9 +114,20 @@ install(DIRECTORY include/
   DESTINATION include
 )
 
-install(DIRECTORY 
+install(DIRECTORY
   config
   launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(FILES
+  LICENSE
+  README.md
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  docs
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -196,6 +212,34 @@ if(BUILD_TESTING)
   target_link_libraries(test_trigger_service_fault_injector
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_tf_fault_injector
+    test/injectors/test_tf_fault_injector.cpp
+  )
+  target_link_libraries(test_tf_fault_injector
+    ${PROJECT_NAME}_core
+  )
+
+  ament_uncrustify(
+    include
+    src
+    test
+  )
 endif()
+
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+  builtin_interfaces
+  nav_msgs
+  rclcpp
+  rosidl_default_runtime
+  sensor_msgs
+  std_msgs
+  std_srvs
+  tf2
+  tf2_geometry_msgs
+  tf2_msgs
+  yaml-cpp
+)
 
 ament_package()

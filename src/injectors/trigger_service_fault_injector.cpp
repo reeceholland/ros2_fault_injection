@@ -1,18 +1,22 @@
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection {
-TriggerServiceFaultInjector::TriggerServiceFaultInjector(rclcpp::Node& node,
-                                                         const InjectorConfig& config)
-    : FaultInjectorBase(node, config) {
+namespace ros2_fault_injection
+{
+TriggerServiceFaultInjector::TriggerServiceFaultInjector(
+  rclcpp::Node & node,
+  const InjectorConfig & config)
+: FaultInjectorBase(node, config)
+{
   service_callback_group_ =
-      node_.create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  client_callback_group_ = node_.create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    node_.create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  client_callback_group_ =
+    node_.create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   service_ = node_.create_service<std_srvs::srv::Trigger>(
       config.trigger_service->proxy_service,
-      [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-             std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
-        on_request(request, response);
+    [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      on_request(request, response);
       },
       rclcpp::ServicesQoS(), service_callback_group_);
   client_ = node_.create_client<std_srvs::srv::Trigger>(
@@ -26,8 +30,9 @@ TriggerServiceFaultInjector::TriggerServiceFaultInjector(rclcpp::Node& node,
 }
 
 void TriggerServiceFaultInjector::on_request(
-    const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-    std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+  const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+  std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+{
   const auto delay = active_delay();
   if (delay.count() > 0) {
     std::this_thread::sleep_for(delay);
@@ -61,7 +66,7 @@ void TriggerServiceFaultInjector::on_request(
     auto trigger_response = future.get();
     response->success = trigger_response->success;
     response->message = trigger_response->message;
-  } catch (const std::exception& e) {
+  } catch (const std::exception & e) {
     RCLCPP_ERROR(node_.get_logger(), "Error calling trigger service '%s': %s",
                  config_.trigger_service->target_service.c_str(), e.what());
     response->success = false;

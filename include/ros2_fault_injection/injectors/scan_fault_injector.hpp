@@ -11,7 +11,8 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Fault injector for `sensor_msgs/msg/LaserScan` streams.
@@ -27,10 +28,11 @@ public:
    * @param node Node used to create publishers, subscriptions, and timers.
    * @param config Injector topic and QoS configuration.
    */
-  explicit ScanFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
+  explicit ScanFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
 private:
-  struct DelayedScan {
+  struct DelayedScan
+  {
     sensor_msgs::msg::LaserScan msg;
     rclcpp::Time release_time;
   };
@@ -38,9 +40,9 @@ private:
   void on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void flush_delayed();
 
-  void apply_range_bias(sensor_msgs::msg::LaserScan& msg);
-  void apply_range_noise(sensor_msgs::msg::LaserScan& msg);
-  void apply_sector_dropout(sensor_msgs::msg::LaserScan& msg);
+  void apply_range_bias(sensor_msgs::msg::LaserScan & msg);
+  void apply_range_noise(sensor_msgs::msg::LaserScan & msg);
+  void apply_sector_dropout(sensor_msgs::msg::LaserScan & msg);
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr pub_;

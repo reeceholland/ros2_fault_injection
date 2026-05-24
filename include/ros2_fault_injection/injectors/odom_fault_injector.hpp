@@ -11,7 +11,8 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Fault injector for `nav_msgs/msg/Odometry` streams.
@@ -27,10 +28,11 @@ public:
    * @param node Node used to create publishers, subscriptions, and timers.
    * @param config Injector topic and QoS configuration.
    */
-  explicit OdomFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
+  explicit OdomFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
 private:
-  struct DelayedOdom {
+  struct DelayedOdom
+  {
     nav_msgs::msg::Odometry msg;
     rclcpp::Time release_time;
   };
@@ -38,11 +40,11 @@ private:
   void on_odom(const nav_msgs::msg::Odometry::SharedPtr msg);
   void flush_delayed();
 
-  void apply_bias(nav_msgs::msg::Odometry& msg);
-  void apply_noise(nav_msgs::msg::Odometry& msg);
-  void apply_yaw_bias(nav_msgs::msg::Odometry& msg);
-  void apply_yaw_noise(nav_msgs::msg::Odometry& msg);
-  void apply_covariance_scale(nav_msgs::msg::Odometry& msg);
+  void apply_bias(nav_msgs::msg::Odometry & msg);
+  void apply_noise(nav_msgs::msg::Odometry & msg);
+  void apply_yaw_bias(nav_msgs::msg::Odometry & msg);
+  void apply_yaw_noise(nav_msgs::msg::Odometry & msg);
+  void apply_covariance_scale(nav_msgs::msg::Odometry & msg);
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_;

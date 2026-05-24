@@ -2,13 +2,17 @@
 
 #include "ros2_fault_injection/msg/fault_event.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-FaultEventPublisher::FaultEventPublisher(rclcpp::Node& node) : node_(&node) {
+FaultEventPublisher::FaultEventPublisher(rclcpp::Node & node)
+: node_(&node)
+{
   pub_ = node.create_publisher<msg::FaultEvent>("fault_injection/events", 10);
 }
 
-void FaultEventPublisher::publish(const FaultEvent& event) {
+void FaultEventPublisher::publish(const FaultEvent & event)
+{
   msg::FaultEvent event_msg;
   event_msg.stamp = node_->now();
   event_msg.fault_id = event.fault_id;

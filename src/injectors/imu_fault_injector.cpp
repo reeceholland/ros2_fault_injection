@@ -1,21 +1,24 @@
 #include "ros2_fault_injection/injectors/imu_fault_injector.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
-ImuFaultInjector::ImuFaultInjector(rclcpp::Node& node, const InjectorConfig& config)
-    : FaultInjectorBase(node, config) {
+ImuFaultInjector::ImuFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
+: FaultInjectorBase(node, config)
+{
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
 
   pub_ = node_.create_publisher<sensor_msgs::msg::Imu>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::Imu>(
       config_.topic->input_topic, qos,
-      [this](sensor_msgs::msg::Imu::SharedPtr msg) { on_imu(msg); });
+    [this](sensor_msgs::msg::Imu::SharedPtr msg) {on_imu(msg);});
 
-  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() { flush_delayed(); });
+  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() {flush_delayed();});
 }
 
-void ImuFaultInjector::on_imu(const sensor_msgs::msg::Imu::SharedPtr msg) {
+void ImuFaultInjector::on_imu(const sensor_msgs::msg::Imu::SharedPtr msg)
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (should_drop()) {
@@ -38,7 +41,8 @@ void ImuFaultInjector::on_imu(const sensor_msgs::msg::Imu::SharedPtr msg) {
   pub_->publish(out);
 }
 
-void ImuFaultInjector::flush_delayed() {
+void ImuFaultInjector::flush_delayed()
+{
   std::lock_guard<std::mutex> lock(mutex_);
 
   const auto now = node_.now();
@@ -49,7 +53,8 @@ void ImuFaultInjector::flush_delayed() {
   }
 }
 
-void ImuFaultInjector::apply_angular_velocity_bias(sensor_msgs::msg::Imu& msg) {
+void ImuFaultInjector::apply_angular_velocity_bias(sensor_msgs::msg::Imu & msg)
+{
   const double bias = active_sum_double("angular_velocity_z_bias", 0.0);
 
   if (bias == 0.0) {
@@ -58,7 +63,8 @@ void ImuFaultInjector::apply_angular_velocity_bias(sensor_msgs::msg::Imu& msg) {
   msg.angular_velocity.z += bias;
 }
 
-void ImuFaultInjector::apply_angular_velocity_noise(sensor_msgs::msg::Imu& msg) {
+void ImuFaultInjector::apply_angular_velocity_noise(sensor_msgs::msg::Imu & msg)
+{
   const double stddev = active_max_double("angular_velocity_z_noise_stddev", 0.0);
 
   if (stddev == 0.0) {
@@ -69,7 +75,8 @@ void ImuFaultInjector::apply_angular_velocity_noise(sensor_msgs::msg::Imu& msg) 
   msg.angular_velocity.z += dist(rng_);
 }
 
-void ImuFaultInjector::apply_linear_acceleration_bias(sensor_msgs::msg::Imu& msg) {
+void ImuFaultInjector::apply_linear_acceleration_bias(sensor_msgs::msg::Imu & msg)
+{
   const double x_bias = active_sum_double("linear_acceleration_x_bias", 0.0);
   const double y_bias = active_sum_double("linear_acceleration_y_bias", 0.0);
   const double z_bias = active_sum_double("linear_acceleration_z_bias", 0.0);
@@ -83,7 +90,8 @@ void ImuFaultInjector::apply_linear_acceleration_bias(sensor_msgs::msg::Imu& msg
   msg.linear_acceleration.z += z_bias;
 }
 
-void ImuFaultInjector::apply_linear_acceleration_noise(sensor_msgs::msg::Imu& msg) {
+void ImuFaultInjector::apply_linear_acceleration_noise(sensor_msgs::msg::Imu & msg)
+{
   const double x_stddev = active_max_double("linear_acceleration_x_noise_stddev", 0.0);
   const double y_stddev = active_max_double("linear_acceleration_y_noise_stddev", 0.0);
   const double z_stddev = active_max_double("linear_acceleration_z_noise_stddev", 0.0);

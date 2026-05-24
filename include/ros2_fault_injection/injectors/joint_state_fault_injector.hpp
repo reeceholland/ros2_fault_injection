@@ -11,7 +11,8 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Fault injector for `sensor_msgs/msg/JointState` streams.
@@ -27,10 +28,11 @@ public:
    * @param node Node used to create publishers, subscriptions, and timers.
    * @param config Injector topic and QoS configuration.
    */
-  explicit JointStateFaultInjector(rclcpp::Node& node, const InjectorConfig& config);
+  explicit JointStateFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
 private:
-  struct DelayedJointState {
+  struct DelayedJointState
+  {
     sensor_msgs::msg::JointState msg;
     rclcpp::Time release_time;
   };
@@ -38,8 +40,8 @@ private:
   void on_joint_state(const sensor_msgs::msg::JointState::SharedPtr msg);
   void flush_delayed();
 
-  void apply_bias(sensor_msgs::msg::JointState& msg);
-  void apply_noise(sensor_msgs::msg::JointState& msg);
+  void apply_bias(sensor_msgs::msg::JointState & msg);
+  void apply_noise(sensor_msgs::msg::JointState & msg);
 
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_;

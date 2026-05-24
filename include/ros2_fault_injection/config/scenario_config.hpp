@@ -6,12 +6,14 @@
 
 #include "ros2_fault_injection/config/fault_config.hpp"
 
-namespace ros2_fault_injection {
+namespace ros2_fault_injection
+{
 
 /**
  * @brief Parsed YAML scenario.
  */
-struct ScenarioConfig {
+struct ScenarioConfig
+{
   /// All injectors configured by the scenario.
   std::vector<InjectorConfig> injectors;
 
@@ -32,7 +34,7 @@ struct ScenarioConfig {
  * @return Parsed scenario configuration.
  * @throws std::exception when the file cannot be parsed.
  */
-ScenarioConfig load_scenario_config(const std::string& path);
+ScenarioConfig load_scenario_config(const std::string & path);
 
 /**
  * @brief Find an injector config by id.
@@ -41,7 +43,9 @@ ScenarioConfig load_scenario_config(const std::string& path);
  * @param injector_id Injector id to find.
  * @return Pointer to the injector config, or nullptr when absent.
  */
-const InjectorConfig* find_injector(const ScenarioConfig& scenario, const std::string& injector_id);
+const InjectorConfig * find_injector(
+  const ScenarioConfig & scenario,
+  const std::string & injector_id);
 
 }  // namespace ros2_fault_injection
 
