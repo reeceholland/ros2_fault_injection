@@ -130,7 +130,7 @@ faults:
   # Manual service latency.
   - id: enable_motors_delay
     injector_id: enable_motors
-    active_on_startup: false
+    active_on_startup: true
     config:
       delay_ms: 2000
 

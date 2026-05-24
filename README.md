@@ -289,6 +289,19 @@ source: manual
 details: config_update={x_bias=2.0}
 ```
 
+### Reload The Scenario File
+
+```bash
+ros2 service call /fault_injection/reload_scenario ros2_fault_injection/srv/ReloadScenario {}
+```
+
+Reloads the same scenario file that was passed to `fault_injector.launch.py`.
+
+The reload path is intentionally conservative: it can update fault definitions, config values,
+startup state, and schedules, but it cannot change the running injector layout. Injector IDs,
+injector types, topic endpoints, service endpoints, and QoS depth must stay the same. If validation
+or compatibility checks fail, the currently running scenario is left unchanged.
+
 ## Events
 
 Fault changes are published as typed events:

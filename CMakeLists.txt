@@ -33,6 +33,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ListFaults.srv"
   "srv/GetFaultStatus.srv"
   "srv/SetFaultConfig.srv"
+  "srv/ReloadScenario.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   DEPENDENCIES builtin_interfaces
@@ -104,10 +105,14 @@ ament_target_dependencies(fault_injector_node
 
 install(TARGETS
   ${PROJECT_NAME}_core
-  fault_injector_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib
+)
+
+install(TARGETS
+  fault_injector_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -224,6 +229,13 @@ if(BUILD_TESTING)
     test/injectors/test_tf_fault_injector.cpp
   )
   target_link_libraries(test_tf_fault_injector
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_fault_controller
+    test/core/test_fault_controller.cpp
+  )
+  target_link_libraries(test_fault_controller
     ${PROJECT_NAME}_core
   )
 

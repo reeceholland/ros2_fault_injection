@@ -29,7 +29,8 @@ namespace
 
 using namespace std::chrono_literals;
 
-class FakeFaultInjector : public FaultInjector {
+class FakeFaultInjector : public FaultInjector
+{
 public:
   explicit FakeFaultInjector(std::string id)
   : id_(std::move(id)) {}
@@ -88,7 +89,7 @@ public:
   std::vector<std::string> fault_ids() const override
   {
     std::vector<std::string> ids;
-    for (const auto & [fault_id, _] : faults_) {
+    for (const auto &[fault_id, _] : faults_) {
       ids.push_back(fault_id);
     }
     return ids;
@@ -102,6 +103,12 @@ public:
   bool is_active(const std::string & fault_id) const
   {
     return active_.find(fault_id) != active_.end();
+  }
+
+  void clear_faults() override
+  {
+    faults_.clear();
+    active_.clear();
   }
 
 private:
@@ -155,125 +162,143 @@ std::optional<msg::FaultEvent> call_set_fault_state_and_wait_for_event(
   return *latest_event;
 }
 
-}  // namespace
+}   // namespace
 
-TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent) {
-  rclcpp::init(0, nullptr);
+TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_active");
-  auto injector = std::make_shared<FakeFaultInjector>("odom");
-  injector->add_fault(make_fault());
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_active");
+    auto injector = std::make_shared<FakeFaultInjector>("odom");
+    injector->add_fault(make_fault());
 
-  FaultServiceManager::InjectorMap injectors;
-  injectors["odom"] = injector;
+    FaultServiceManager::InjectorMap injectors;
+    injectors["odom"] = injector;
 
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher);
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher, []()
+    {
+      return ros2_fault_injection::ReloadScenarioResult{
+      false,
+      "test reload callback"};
+    });
 
-  auto latest_event = std::make_shared<msg::FaultEvent>();
-  auto subscription = node->create_subscription<msg::FaultEvent>(
-      "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
+    auto latest_event = std::make_shared<msg::FaultEvent>();
+    auto subscription = node->create_subscription<msg::FaultEvent>(
+        "fault_injection/events", 10,
+    [latest_event](const msg::FaultEvent & event)
+    {*latest_event = event;});
 
-  auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
-  ASSERT_TRUE(client->wait_for_service(500ms));
+    auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
+    ASSERT_TRUE(client->wait_for_service(500ms));
 
-  const auto event = call_set_fault_state_and_wait_for_event(node, true, client, latest_event);
+    const auto event = call_set_fault_state_and_wait_for_event(node, true, client, latest_event);
 
-  ASSERT_TRUE(event.has_value());
-  EXPECT_TRUE(injector->is_active("odom_bias"));
-  EXPECT_EQ(event->fault_id, "odom_bias");
-  EXPECT_EQ(event->injector_id, "odom");
-  EXPECT_EQ(event->state, "active");
-  EXPECT_EQ(event->source, "manual");
-  EXPECT_NE(event->details.find("x_bias=1.0"), std::string::npos);
-
-  (void)subscription;
-  rclcpp::shutdown();
-}
-
-TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent) {
-  rclcpp::init(0, nullptr);
-
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_inactive");
-  auto injector = std::make_shared<FakeFaultInjector>("odom");
-  injector->add_fault(make_fault());
-  injector->activate_fault("odom_bias");
-
-  FaultServiceManager::InjectorMap injectors;
-  injectors["odom"] = injector;
-
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher);
-
-  auto latest_event = std::make_shared<msg::FaultEvent>();
-  auto subscription = node->create_subscription<msg::FaultEvent>(
-      "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
-
-  auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
-  ASSERT_TRUE(client->wait_for_service(500ms));
-
-  const auto event = call_set_fault_state_and_wait_for_event(node, false, client, latest_event);
-
-  ASSERT_TRUE(event.has_value());
-  EXPECT_FALSE(injector->is_active("odom_bias"));
-  EXPECT_EQ(event->fault_id, "odom_bias");
-  EXPECT_EQ(event->injector_id, "odom");
-  EXPECT_EQ(event->state, "inactive");
-  EXPECT_EQ(event->source, "manual");
-  EXPECT_NE(event->details.find("x_bias=1.0"), std::string::npos);
+    ASSERT_TRUE(event.has_value());
+    EXPECT_TRUE(injector->is_active("odom_bias"));
+    EXPECT_EQ(event->fault_id, "odom_bias");
+    EXPECT_EQ(event->injector_id, "odom");
+    EXPECT_EQ(event->state, "active");
+    EXPECT_EQ(event->source, "manual");
+    EXPECT_NE(event->details.find("x_bias=1.0"), std::string::npos);
 
   (void)subscription;
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
-TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent) {
-  rclcpp::init(0, nullptr);
+TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent)
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_config_update");
-  auto injector = std::make_shared<FakeFaultInjector>("odom");
-  injector->add_fault(make_fault());
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_inactive");
+    auto injector = std::make_shared<FakeFaultInjector>("odom");
+    injector->add_fault(make_fault());
+    injector->activate_fault("odom_bias");
 
-  FaultServiceManager::InjectorMap injectors;
-  injectors["odom"] = injector;
+    FaultServiceManager::InjectorMap injectors;
+    injectors["odom"] = injector;
 
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher);
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher, []()
+    {
+      return ros2_fault_injection::ReloadScenarioResult{
+      false,
+      "test reload callback"};
+    });
 
-  auto latest_event = std::make_shared<msg::FaultEvent>();
-  auto subscription = node->create_subscription<msg::FaultEvent>(
-      "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event) {*latest_event = event;});
+    auto latest_event = std::make_shared<msg::FaultEvent>();
+    auto subscription = node->create_subscription<msg::FaultEvent>(
+        "fault_injection/events", 10,
+    [latest_event](const msg::FaultEvent & event)
+    {*latest_event = event;});
 
-  auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
-  ASSERT_TRUE(client->wait_for_service(500ms));
+    auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
+    ASSERT_TRUE(client->wait_for_service(500ms));
 
-  auto request = std::make_shared<srv::SetFaultConfig::Request>();
-  request->fault_id = "odom_bias";
-  request->key = "x_bias";
-  request->value = "2.0";
+    const auto event = call_set_fault_state_and_wait_for_event(node, false, client, latest_event);
 
-  auto future = client->async_send_request(request);
-  const auto result =
+    ASSERT_TRUE(event.has_value());
+    EXPECT_FALSE(injector->is_active("odom_bias"));
+    EXPECT_EQ(event->fault_id, "odom_bias");
+    EXPECT_EQ(event->injector_id, "odom");
+    EXPECT_EQ(event->state, "inactive");
+    EXPECT_EQ(event->source, "manual");
+    EXPECT_NE(event->details.find("x_bias=1.0"), std::string::npos);
+
+  (void)subscription;
+    rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_config_update");
+    auto injector = std::make_shared<FakeFaultInjector>("odom");
+    injector->add_fault(make_fault());
+
+    FaultServiceManager::InjectorMap injectors;
+    injectors["odom"] = injector;
+
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher,
+    []()
+    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+
+    auto latest_event = std::make_shared<msg::FaultEvent>();
+    auto subscription = node->create_subscription<msg::FaultEvent>(
+        "fault_injection/events", 10,
+    [latest_event](const msg::FaultEvent & event)
+    {*latest_event = event;});
+
+    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    request->fault_id = "odom_bias";
+    request->key = "x_bias";
+    request->value = "2.0";
+
+    auto future = client->async_send_request(request);
+    const auto result =
     rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
-  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
-  ASSERT_TRUE(future.get()->success);
-  ASSERT_TRUE(injector->has_fault("odom_bias"));
-  EXPECT_EQ(injector->get_fault_config("odom_bias")->config["x_bias"], "2.0");
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    ASSERT_TRUE(future.get()->success);
+    ASSERT_TRUE(injector->has_fault("odom_bias"));
+    EXPECT_EQ(injector->get_fault_config("odom_bias")->config["x_bias"], "2.0");
 
-  spin_for(node, 100ms);
+    spin_for(node, 100ms);
 
-  ASSERT_FALSE(latest_event->fault_id.empty());
-  EXPECT_EQ(latest_event->fault_id, "odom_bias");
-  EXPECT_EQ(latest_event->injector_id, "odom");
-  EXPECT_EQ(latest_event->state, "config_updated");
-  EXPECT_EQ(latest_event->source, "manual");
-  EXPECT_NE(latest_event->details.find("config_update={x_bias=2.0}"), std::string::npos);
+    ASSERT_FALSE(latest_event->fault_id.empty());
+    EXPECT_EQ(latest_event->fault_id, "odom_bias");
+    EXPECT_EQ(latest_event->injector_id, "odom");
+    EXPECT_EQ(latest_event->state, "config_updated");
+    EXPECT_EQ(latest_event->source, "manual");
+    EXPECT_NE(latest_event->details.find("config_update={x_bias=2.0}"), std::string::npos);
 
   (void)subscription;
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection

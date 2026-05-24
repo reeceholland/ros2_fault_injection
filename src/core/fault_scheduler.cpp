@@ -45,8 +45,8 @@ void FaultScheduler::schedule(
 
     if (!fault.start) {
       RCLCPP_INFO(node_.get_logger(),
-                  "Fault '%s' has no start time; leaving it inactive for manual control",
-                  fault.id.c_str());
+                    "Fault '%s' has no start time; leaving it inactive for manual control",
+                    fault.id.c_str());
       continue;
     }
 
@@ -71,7 +71,8 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
 
   auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-  *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]() {
+  *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
+      {
         (*timer_holder)->cancel();
 
         injector.activate_fault(fault.id);
@@ -85,7 +86,7 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
         publish_event(event);
 
         RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str());
-  });
+                                                                                             });
 
   timers_.push_back(*timer_holder);
 }
@@ -103,7 +104,8 @@ void FaultScheduler::schedule_stop_after(
 
   auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-  *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]() {
+  *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
+      {
         (*timer_holder)->cancel();
 
         injector.deactivate_fault(fault.id);
@@ -117,7 +119,7 @@ void FaultScheduler::schedule_stop_after(
         publish_event(event);
 
         RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str());
-  });
+                                                                                               });
 
   timers_.push_back(*timer_holder);
 }
@@ -127,4 +129,9 @@ void FaultScheduler::publish_event(const FaultEvent & event)
   event_pub_.publish(event);
 }
 
-}  // namespace ros2_fault_injection
+void FaultScheduler::clear()
+{
+  timers_.clear();
+}
+
+} // namespace ros2_fault_injection

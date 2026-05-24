@@ -18,40 +18,49 @@ namespace ros2_fault_injection
 
 FaultServiceManager::FaultServiceManager(
   rclcpp::Node & node, const InjectorMap & injectors,
-  FaultEventPublisher & events)
-: node_(node), injectors_(injectors), events_(events)
+  FaultEventPublisher & events, ReloadScenarioCallback reload_scenario_callback)
+: node_(node), injectors_(injectors), events_(events),
+  reload_scenario_callback_(reload_scenario_callback)
 {
   set_fault_state_service_ = node_.create_service<srv::SetFaultState>(
-      "fault_injection/set_fault_state",
+        "fault_injection/set_fault_state",
     [this](const std::shared_ptr<srv::SetFaultState::Request> request,
-    std::shared_ptr<srv::SetFaultState::Response> response) {
+    std::shared_ptr<srv::SetFaultState::Response> response)
+    {
       handle_set_fault_state(request, response);
-      });
+        });
 
   list_faults_service_ = node_.create_service<srv::ListFaults>(
-      "fault_injection/list_faults", [this](const std::shared_ptr<srv::ListFaults::Request> request,
-    std::shared_ptr<srv::ListFaults::Response> response) {
-      handle_list_faults(request, response);
-      });
+        "fault_injection/list_faults",
+    [this](const std::shared_ptr<srv::ListFaults::Request> request,
+    std::shared_ptr<srv::ListFaults::Response> response)
+    {handle_list_faults(request, response);});
 
   get_fault_status_service_ = node_.create_service<srv::GetFaultStatus>(
-      "fault_injection/get_fault_status",
+        "fault_injection/get_fault_status",
     [this](const std::shared_ptr<srv::GetFaultStatus::Request> request,
-    std::shared_ptr<srv::GetFaultStatus::Response> response) {
+    std::shared_ptr<srv::GetFaultStatus::Response> response)
+    {
       handle_get_fault_status(request, response);
-      });
+        });
   set_fault_config_service_ = node_.create_service<srv::SetFaultConfig>(
-      "fault_injection/set_fault_config",
+        "fault_injection/set_fault_config",
     [this](const std::shared_ptr<srv::SetFaultConfig::Request> request,
-    std::shared_ptr<srv::SetFaultConfig::Response> response) {
+    std::shared_ptr<srv::SetFaultConfig::Response> response)
+    {
       handle_set_fault_config(request, response);
-      });
+        });
+  reload_scenario_service_ = node_.create_service<srv::ReloadScenario>(
+        "fault_injection/reload_scenario",
+    [this](const std::shared_ptr<srv::ReloadScenario::Request> request,
+    std::shared_ptr<srv::ReloadScenario::Response> response)
+    {handle_reload_scenario(request, response);});
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
   const std::string & fault_id) const
 {
-  for (const auto & [injector_id, injector] : injectors_) {
+  for (const auto &[injector_id, injector] : injectors_) {
     (void)injector_id;
     if (injector->has_fault(fault_id)) {
       return injector;
@@ -59,6 +68,18 @@ std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
   }
 
   return nullptr;
+}
+
+void FaultServiceManager::handle_reload_scenario(
+  const std::shared_ptr<srv::ReloadScenario::Request> request,
+  std::shared_ptr<srv::ReloadScenario::Response> response)
+{
+  (void)request;
+
+  const auto result = reload_scenario_callback_();
+
+  response->success = result.success;
+  response->message = result.message;
 }
 
 void FaultServiceManager::handle_get_fault_status(
@@ -69,7 +90,7 @@ void FaultServiceManager::handle_get_fault_status(
 
   response->faults.clear();
 
-  for (const auto & [injector_id, injector] : injectors_) {
+  for (const auto &[injector_id, injector] : injectors_) {
     const auto fault_ids = injector->fault_ids();
     const auto active_fault_ids = injector->active_fault_ids();
     const std::unordered_set<std::string> active_faults(active_fault_ids.begin(),
@@ -106,7 +127,7 @@ void FaultServiceManager::handle_set_fault_state(
     response->success = false;
     response->message = "unknown fault_id: " + request->fault_id;
     RCLCPP_WARN(node_.get_logger(), "Received request with unknown fault_id: %s",
-                request->fault_id.c_str());
+                  request->fault_id.c_str());
     return;
   }
 
@@ -115,8 +136,8 @@ void FaultServiceManager::handle_set_fault_state(
     response->success = false;
     response->message = "unable to retrieve config for fault_id: " + request->fault_id;
     RCLCPP_WARN(node_.get_logger(),
-                "Unable to retrieve config for fault_id: %s when handling request",
-                request->fault_id.c_str());
+                  "Unable to retrieve config for fault_id: %s when handling request",
+                  request->fault_id.c_str());
     return;
   }
 
@@ -153,14 +174,14 @@ void FaultServiceManager::handle_list_faults(
 {
   (void)request;
 
-  for (const auto & [injector_id, injector] : injectors_) {
+  for (const auto &[injector_id, injector] : injectors_) {
     (void)injector_id;
     const auto fault_ids = injector->fault_ids();
     response->fault_ids.insert(response->fault_ids.end(), fault_ids.begin(), fault_ids.end());
 
     const auto active_fault_ids = injector->active_fault_ids();
     response->active_fault_ids.insert(response->active_fault_ids.end(), active_fault_ids.begin(),
-                                      active_fault_ids.end());
+                                        active_fault_ids.end());
   }
 }
 
@@ -180,7 +201,7 @@ void FaultServiceManager::handle_set_fault_config(
     response->success = false;
     response->message = "unknown fault_id: " + request->fault_id;
     RCLCPP_WARN(node_.get_logger(), "Received SetFaultConfig request with unknown fault_id: %s",
-                request->fault_id.c_str());
+                  request->fault_id.c_str());
     return;
   }
 
@@ -189,8 +210,8 @@ void FaultServiceManager::handle_set_fault_config(
     response->success = false;
     response->message = "unable to retrieve config for fault_id: " + request->fault_id;
     RCLCPP_WARN(node_.get_logger(),
-                "Unable to retrieve config for fault_id: %s when handling SetFaultConfig request",
-                request->fault_id.c_str());
+                  "Unable to retrieve config for fault_id: %s when handling SetFaultConfig request",
+                  request->fault_id.c_str());
     return;
   }
 
@@ -199,7 +220,7 @@ void FaultServiceManager::handle_set_fault_config(
     response->message = "key '" + request->key + "' is not valid for injector_id '" +
       fault_config->injector_id + "'";
     RCLCPP_WARN(node_.get_logger(), "Rejected config update for fault '%s': invalid key '%s'",
-                request->fault_id.c_str(), request->key.c_str());
+                  request->fault_id.c_str(), request->key.c_str());
     return;
   }
 
@@ -208,7 +229,7 @@ void FaultServiceManager::handle_set_fault_config(
     response->message =
       "failed to set config key '" + request->key + "' for fault_id '" + request->fault_id + "'";
     RCLCPP_ERROR(node_.get_logger(), "Failed to set config key '%s' for fault '%s'",
-                 request->key.c_str(), request->fault_id.c_str());
+                   request->key.c_str(), request->fault_id.c_str());
     return;
   }
 
@@ -224,7 +245,7 @@ void FaultServiceManager::handle_set_fault_config(
   events_.publish(event);
 
   RCLCPP_INFO(node_.get_logger(), "Updated fault '%s' config '%s' to '%s'",
-              request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
+                request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
 }
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
