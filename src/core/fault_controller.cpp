@@ -83,7 +83,7 @@ ReloadScenarioResult FaultController::reload_scenario()
 {
   ScenarioConfig new_scenario;
   RCLCPP_INFO(node_.get_logger(), "Attempting to reload scenario from file '%s'",
-      scenario_file_.c_str());
+                scenario_file_.c_str());
 
   try {
     new_scenario = load_scenario_config(scenario_file_);
@@ -96,7 +96,7 @@ ReloadScenarioResult FaultController::reload_scenario()
   }
 
   RCLCPP_INFO(node_.get_logger(), "Validating new scenario configuration from file '%s'",
-      scenario_file_.c_str());
+                scenario_file_.c_str());
   const auto validation_result = validate_scenario(new_scenario);
 
   if (!validation_result.ok()) {
@@ -105,7 +105,7 @@ ReloadScenarioResult FaultController::reload_scenario()
     for (const auto & error : validation_result.errors) {
       message += "; " + error;
     }
-
+    RCLCPP_WARN(node_.get_logger(), "Scenario reload failed validation: %s", message.c_str());
     return ReloadScenarioResult{
       false,
       message,
@@ -132,7 +132,7 @@ ReloadScenarioResult FaultController::reload_scenario()
   schedule_faults();
 
   RCLCPP_INFO(node_.get_logger(), "Scenario reloaded successfully from file '%s'",
-      scenario_file_.c_str());
+                scenario_file_.c_str());
   return ReloadScenarioResult{
     true,
     "Scenario reloaded successfully",

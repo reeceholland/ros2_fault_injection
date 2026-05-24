@@ -228,6 +228,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_core
   )
 
+  ament_add_gtest(test_fault_controller
+    test/core/test_fault_controller.cpp
+  )
+  target_link_libraries(test_fault_controller
+    ${PROJECT_NAME}_core
+  )
+
   ament_uncrustify(
     include
     src
