@@ -41,21 +41,21 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 )
 
 add_library(${PROJECT_NAME}_core
-  src/fault_injector_base.cpp
-  src/odom_fault_injector.cpp
-  src/scan_fault_injector.cpp
-  src/joint_state_fault_injector.cpp
-  src/imu_fault_injector.cpp
-  src/scenario_config.cpp
-  src/fault_scheduler.cpp
-  src/fault_event_publisher.cpp
-  src/scenario_validator.cpp
-  src/fault_injector_factory.cpp
-  src/fault_service_manager.cpp
-  src/fault_controller.cpp
-  src/fault_config_schema.cpp
-  src/fault_descriptions.cpp
-  src/trigger_service_fault_injector.cpp
+  src/core/fault_injector_base.cpp
+  src/injectors/odom_fault_injector.cpp
+  src/injectors/scan_fault_injector.cpp
+  src/injectors/joint_state_fault_injector.cpp
+  src/injectors/imu_fault_injector.cpp
+  src/config/scenario_config.cpp
+  src/core/fault_scheduler.cpp
+  src/core/fault_event_publisher.cpp
+  src/config/scenario_validator.cpp
+  src/core/fault_injector_factory.cpp
+  src/core/fault_service_manager.cpp
+  src/core/fault_controller.cpp
+  src/config/fault_config_schema.cpp
+  src/utils/fault_descriptions.cpp
+  src/injectors/trigger_service_fault_injector.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -142,56 +142,56 @@ add_custom_target(generate_doxygen_api
 
 if(BUILD_TESTING)
   ament_add_gtest(test_scenario_validator
-    test/test_scenario_validator.cpp
-    test/test_scenario_config.cpp
+    test/config/test_scenario_validator.cpp
+    test/config/test_scenario_config.cpp
   )
   target_link_libraries(test_scenario_validator
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_fault_injector_base
-    test/test_fault_injector_base.cpp
+    test/core/test_fault_injector_base.cpp
   )
   target_link_libraries(test_fault_injector_base
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_fault_config_schema
-    test/test_fault_config_schema.cpp
+    test/config/test_fault_config_schema.cpp
   )
   target_link_libraries(test_fault_config_schema
     ${PROJECT_NAME}_core
   )
   ament_add_gtest(test_fault_scheduler
-    test/test_fault_scheduler.cpp
+    test/core/test_fault_scheduler.cpp
   )
   target_link_libraries(test_fault_scheduler
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_fault_service_manager
-    test/test_fault_service_manager.cpp
+    test/core/test_fault_service_manager.cpp
   )
   target_link_libraries(test_fault_service_manager
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_fault_description
-    test/test_fault_description.cpp
+    test/utils/test_fault_description.cpp
   )
   target_link_libraries(test_fault_description
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_odom_fault_injector
-    test/test_odom_fault_injector.cpp
+    test/injectors/test_odom_fault_injector.cpp
   )
   target_link_libraries(test_odom_fault_injector
     ${PROJECT_NAME}_core
   )
 
   ament_add_gtest(test_trigger_service_fault_injector
-    test/test_trigger_service_fault_injector.cpp
+    test/injectors/test_trigger_service_fault_injector.cpp
   )
   target_link_libraries(test_trigger_service_fault_injector
     ${PROJECT_NAME}_core
