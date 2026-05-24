@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo rosdep init || true
           rosdep update
-          rosdep install --from-paths . --ignore-src --rosdistro jazzy --dependency-types buildtool build build_export exec test -r -y
+          rosdep install --from-paths . --ignore-src --rosdistro jazzy --dependency-types buildtool,build,build_export,exec,test -r -y
 
       - name: Build
         shell: bash
