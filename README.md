@@ -209,7 +209,7 @@ Topic injectors use `input_topic`, `output_topic`, and `qos_depth`. Service inje
 From the workspace root:
 
 ```bash
-cd /home/reece/fault_injection_ws
+cd /path/to/fault_injection_ws
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install --packages-select ros2_fault_injection
 source install/setup.bash
@@ -221,7 +221,7 @@ Launch the injector with a scenario file:
 
 ```bash
 ros2 launch ros2_fault_injection fault_injector.launch.py \
-  scenario_file:=/home/reece/fault_injection_ws/install/ros2_fault_injection/share/ros2_fault_injection/config/multi_injector_faults.yaml
+  scenario_file:=/path/to/fault_injection_ws/install/ros2_fault_injection/share/ros2_fault_injection/config/multi_injector_faults.yaml
 ```
 
 When using `--symlink-install`, editing files in `config/` is usually reflected through the install space symlink. If in doubt, rebuild and source the workspace again.
@@ -351,7 +351,7 @@ For full walkthroughs, see:
 API docs are generated with Doxygen when Doxygen is installed:
 
 ```bash
-cd /home/reece/fault_injection_ws
+cd /path/to/fault_injection_ws
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install --packages-select ros2_fault_injection --cmake-target generate_doxygen_api
 ```
@@ -359,7 +359,7 @@ colcon build --symlink-install --packages-select ros2_fault_injection --cmake-ta
 The generated HTML is written under:
 
 ```text
-/home/reece/fault_injection_ws/build/ros2_fault_injection/docs/html/index.html
+/path/to/fault_injection_ws/build/ros2_fault_injection/docs/html/index.html
 ```
 
 The docs target is optional. Normal package builds and tests do not require Doxygen.
@@ -369,7 +369,7 @@ The docs target is optional. Normal package builds and tests do not require Doxy
 Run package tests:
 
 ```bash
-cd /home/reece/fault_injection_ws
+cd /path/to/fault_injection_ws
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+

@@ -1,3 +1,8 @@
+# Example scenario for odometry fault injection.
+#
+# The odom injector proxies nav_msgs/msg/Odometry from /odom_raw to /odom.
+# Remap the real odometry source to /odom_raw, then let this injector publish
+# the mutated odometry on /odom for Nav2, SLAM, RViz, or other consumers.
 injector:
   id: odom
   type: odom
@@ -6,7 +11,8 @@ injector:
   qos_depth: 10
 
 faults:
-  - id: odom_bias
+  # Adds constant position error in metres. Bias faults stack additively.
+  - id: odom_position_bias
     injector_id: odom
     active_on_startup: false
     start: 10.0
@@ -15,7 +21,9 @@ faults:
       x_bias: 1.0
       y_bias: -0.25
 
-  - id: odom_drop
+  # Drops roughly half of incoming odometry messages while active.
+  # Valid range is 0.0 to 1.0.
+  - id: odom_dropout
     injector_id: odom
     active_on_startup: false
     start: 5.0
@@ -23,15 +31,43 @@ faults:
     config:
       drop_probability: 0.5
 
-  - id: odom_noise
+  # Adds Gaussian position noise in metres. If multiple noise faults are active,
+  # the largest configured standard deviation is used for each axis.
+  - id: odom_position_noise
     injector_id: odom
     active_on_startup: false
     config:
       x_noise_stddev: 0.05
       y_noise_stddev: 0.05
 
+  # Delays odometry messages by the configured number of milliseconds.
   - id: odom_delay
     injector_id: odom
     active_on_startup: false
     config:
       delay_ms: 250
+
+  # Adds a constant yaw error in degrees to pose.pose.orientation.
+  - id: odom_yaw_bias
+    injector_id: odom
+    active_on_startup: false
+    config:
+      yaw_bias_deg: 10.0
+
+  # Adds Gaussian yaw noise in degrees to pose.pose.orientation.
+  - id: odom_yaw_noise
+    injector_id: odom
+    active_on_startup: false
+    config:
+      yaw_noise_stddev_deg: 2.0
+
+  # Inflates pose and twist covariance. The scale multiplies existing values;
+  # the floor is useful when the incoming covariance is zero.
+  - id: odom_covariance_inflation
+    injector_id: odom
+    active_on_startup: false
+    config:
+      pose_covariance_scale: 10.0
+      pose_covariance_floor: 0.05
+      twist_covariance_scale: 10.0
+      twist_covariance_floor: 0.05

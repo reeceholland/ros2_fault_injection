@@ -1,3 +1,7 @@
+# Example scenario for motor feedback fault injection.
+#
+# The joint_state injector proxies sensor_msgs/msg/JointState. In the rover
+# stack this is useful for /platform/motors/feedback.
 injector:
   id: motor_feedback
   type: joint_state
@@ -6,20 +10,30 @@ injector:
   qos_depth: 10
 
 faults:
-  - id: motor_velocity_noise
+  # Drops roughly 25 percent of motor feedback messages while active.
+  - id: motor_feedback_dropout
     injector_id: motor_feedback
     active_on_startup: false
     config:
-      velocity_noise_stddev: 0.05
+      drop_probability: 0.25
 
+  # Delays motor feedback messages by the configured number of milliseconds.
+  - id: motor_feedback_delay
+    injector_id: motor_feedback
+    active_on_startup: false
+    config:
+      delay_ms: 250
+
+  # Adds a constant velocity offset to every velocity entry in the JointState.
   - id: motor_velocity_bias
     injector_id: motor_feedback
     active_on_startup: false
     config:
       velocity_bias: 0.1
 
-  - id: motor_feedback_delay
+  # Adds Gaussian velocity noise to every velocity entry in the JointState.
+  - id: motor_velocity_noise
     injector_id: motor_feedback
     active_on_startup: false
     config:
-      delay_ms: 250
+      velocity_noise_stddev: 0.05

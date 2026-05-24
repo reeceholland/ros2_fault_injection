@@ -1,0 +1,27 @@
+# Example scenario for Trigger service fault injection.
+#
+# The trigger_service injector proxies std_srvs/srv/Trigger calls. Clients call
+# proxy_service, and the injector forwards to target_service unless an active
+# service fault changes the response.
+injector:
+  id: enable_motors
+  type: trigger_service
+  proxy_service: /enable_motors
+  target_service: /enable_motors_raw
+
+faults:
+  # Delays service responses by the configured number of milliseconds.
+  - id: enable_motors_delay
+    injector_id: enable_motors
+    active_on_startup: false
+    config:
+      delay_ms: 2000
+
+  # Forces the proxy service to return success=false without calling the target
+  # service. failure_message becomes the returned response message.
+  - id: enable_motors_forced_failure
+    injector_id: enable_motors
+    active_on_startup: false
+    config:
+      force_failure: true
+      failure_message: Injected enable_motors failure

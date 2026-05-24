@@ -1,3 +1,8 @@
+# Example scenario for LaserScan fault injection.
+#
+# The scan injector proxies sensor_msgs/msg/LaserScan from /scan_raw to /scan.
+# Remap the real lidar publisher to /scan_raw, then let this injector publish
+# the mutated scan on /scan.
 injector:
   id: scan
   type: scan
@@ -6,18 +11,14 @@ injector:
   qos_depth: 10
 
 faults:
-  - id: scan_noise
-    injector_id: scan
-    active_on_startup: true
-    config:
-      range_noise_stddev: 0.01
-
-  - id: scan_bias
+  # Drops roughly 25 percent of complete LaserScan messages while active.
+  - id: scan_dropout
     injector_id: scan
     active_on_startup: false
     config:
-      range_bias: 0.2
+      drop_probability: 0.25
 
+  # Delays complete LaserScan messages by the configured number of milliseconds.
   - id: scan_delay
     injector_id: scan
     active_on_startup: false
@@ -26,7 +27,22 @@ faults:
     config:
       delay_ms: 250
 
+  # Adds a constant range offset in metres to each finite range sample.
+  - id: scan_range_bias
+    injector_id: scan
+    active_on_startup: false
+    config:
+      range_bias: 0.2
 
+  # Adds Gaussian range noise in metres to each finite range sample.
+  - id: scan_range_noise
+    injector_id: scan
+    active_on_startup: true
+    config:
+      range_noise_stddev: 0.01
+
+  # Replaces ranges inside the front sector. Angles are degrees in the scan
+  # frame. sector_value can be a number, inf, -inf, or nan.
   - id: scan_front_blind
     injector_id: scan
     active_on_startup: false
