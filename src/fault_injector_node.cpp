@@ -5,14 +5,14 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "ros2_fault_injection/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
 
-#include "ros2_fault_injection/fault_config.hpp"
-#include "ros2_fault_injection/fault_event_publisher.hpp"
-#include "ros2_fault_injection/fault_injector.hpp"
-#include "ros2_fault_injection/fault_service_manager.hpp"
-#include "ros2_fault_injection/scenario_config.hpp"
-#include "ros2_fault_injection/scenario_validator.hpp"
+#include "ros2_fault_injection/config/fault_config.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/scenario_validator.hpp"
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
