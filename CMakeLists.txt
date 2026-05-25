@@ -245,6 +245,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_core
   )
 
+  ament_add_gtest(test_fault_injector_factory
+    test/core/test_fault_injector_factory.cpp
+  )
+  target_link_libraries(test_fault_injector_factory
+    ${PROJECT_NAME}_core
+  )
+
   ament_uncrustify(
     include
     src
