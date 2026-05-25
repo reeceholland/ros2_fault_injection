@@ -21,6 +21,8 @@ client -> /service -> fault injector -> /service_raw -> real server
 
 This keeps the framework understandable and testable while covering both data streams and command/control interactions.
 
+Injectors are discovered through `pluginlib`. The built-in injector types are registered in `fault_injector_plugins.xml`, and additional packages can provide their own `FaultInjectorPlugin` wrappers without editing the core factory.
+
 ## Supported Injectors
 
 | Injector type | Message type | Example input | Example output |
@@ -124,26 +126,30 @@ A scenario defines one or more injectors and the faults assigned to them.
 injectors:
   - id: odom
     type: odom
-    input_topic: /odom_raw
-    output_topic: /odom
-    qos_depth: 10
+    topic:
+      input_topic: /odom_raw
+      output_topic: /odom
+      qos_depth: 10
 
   - id: scan
     type: scan
-    input_topic: /scan_raw
-    output_topic: /scan
-    qos_depth: 10
+    topic:
+      input_topic: /scan_raw
+      output_topic: /scan
+      qos_depth: 10
 
   - id: enable_motors
     type: trigger_service
-    proxy_service: /enable_motors
-    target_service: /enable_motors_raw
+    trigger_service:
+      proxy_service: /enable_motors
+      target_service: /enable_motors_raw
 
   - id: tf_odom_base
     type: tf
-    input_topic: /tf_raw
-    output_topic: /tf
-    qos_depth: 50
+    topic:
+      input_topic: /tf_raw
+      output_topic: /tf
+      qos_depth: 50
 
 faults:
   - id: odom_bias
@@ -205,7 +211,7 @@ faults:
 
 `start` and `duration` are written in seconds in YAML and stored internally as milliseconds.
 
-Topic injectors use `input_topic`, `output_topic`, and `qos_depth`. Service injectors use `proxy_service` and `target_service` instead.
+Topic injectors use a `topic` block containing `input_topic`, `output_topic`, and `qos_depth`. Trigger service injectors use a `trigger_service` block containing `proxy_service` and `target_service`.
 
 ## Build
 
