@@ -41,20 +41,24 @@ InjectorConfig parse_injector(const YAML::Node & node)
   config.id = required_string(node, "id");
   config.type = required_string(node, "type");
 
-  if (config.type == "trigger_service") {
+  if (node["trigger_service"] || config.type == "trigger_service") {
+    const auto service_node = node["trigger_service"] ? node["trigger_service"] : node;
+
     TriggerServiceEndpointConfig service;
-    service.proxy_service = required_string(node, "proxy_service");
-    service.target_service = required_string(node, "target_service");
+    service.proxy_service = required_string(service_node, "proxy_service");
+    service.target_service = required_string(service_node, "target_service");
     config.trigger_service = service;
     return config;
   }
 
-  TopicEndpointConfig topic;
-  topic.input_topic = required_string(node, "input_topic");
-  topic.output_topic = required_string(node, "output_topic");
+  const auto topic_node = node["topic"] ? node["topic"] : node;
 
-  if (node["qos_depth"]) {
-    topic.qos_depth = node["qos_depth"].as<std::size_t>();
+  TopicEndpointConfig topic;
+  topic.input_topic = required_string(topic_node, "input_topic");
+  topic.output_topic = required_string(topic_node, "output_topic");
+
+  if (topic_node["qos_depth"]) {
+    topic.qos_depth = topic_node["qos_depth"].as<std::size_t>();
   }
 
   config.topic = topic;
