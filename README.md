@@ -23,6 +23,14 @@ This keeps the framework understandable and testable while covering both data st
 
 Injectors are discovered through `pluginlib`. The built-in injector types are registered in `fault_injector_plugins.xml`, and additional packages can provide their own `FaultInjectorPlugin` wrappers without editing the core factory.
 
+## Example Plugin Package
+
+An external example plugin package is available here:
+
+[ros2_fault_injection_example_plugins](https://github.com/reeceholland/ros2_fault_injection_example_plugins)
+
+It demonstrates how to add a custom injector type in a separate ROS 2 package using `pluginlib`, without modifying the core `ros2_fault_injection` package.
+
 ## Supported Injectors
 
 | Injector type | Message type | Example input | Example output |
