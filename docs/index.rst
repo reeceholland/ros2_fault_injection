@@ -12,3 +12,4 @@ A ROS 2 framework for injecting faults into topics, transforms, and services.
    services
    adding_an_injector
    adding_a_fault_type
+   api_reference
