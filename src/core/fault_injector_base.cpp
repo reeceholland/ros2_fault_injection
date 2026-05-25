@@ -45,6 +45,11 @@ std::string FaultInjectorBase::id() const
   return config_.id;
 }
 
+std::string FaultInjectorBase::type() const
+{
+  return config_.type;
+}
+
 void FaultInjectorBase::add_fault(const FaultConfig & fault_config)
 {
   std::lock_guard<std::mutex> lock(mutex_);

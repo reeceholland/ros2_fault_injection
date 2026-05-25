@@ -35,6 +35,11 @@ public:
     return "fake_injector";
   }
 
+  std::string type() const override
+  {
+    return "odom";
+  }
+
   void add_fault(const FaultConfig & fault_config) override
   {
     faults_[fault_config.id] = fault_config;
