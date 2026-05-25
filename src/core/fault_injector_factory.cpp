@@ -6,43 +6,53 @@
 
 #include "ros2_fault_injection/core/fault_injector_factory.hpp"
 
-#include "ros2_fault_injection/injectors/imu_fault_injector.hpp"
-#include "ros2_fault_injection/injectors/joint_state_fault_injector.hpp"
-#include "ros2_fault_injection/injectors/odom_fault_injector.hpp"
-#include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
-#include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
-#include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
+#include <memory>
+#include <string>
+
+#include <pluginlib/exceptions.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 namespace ros2_fault_injection
 {
 
 FaultInjectorFactory::FaultInjectorFactory(rclcpp::Node & node)
-: node_(node) {}
-
-std::shared_ptr<FaultInjector> FaultInjectorFactory::create(const InjectorConfig & config) const
+: node_(node),
+  loader_("ros2_fault_injection", "ros2_fault_injection::FaultInjectorPlugin")
 {
-  if (config.type == "odom") {
-    return std::make_shared<OdomFaultInjector>(node_, config);
+  load_plugins();
+}
+
+void FaultInjectorFactory::load_plugins()
+{
+  for (const auto & plugin_name : loader_.getDeclaredClasses()) {
+    try {
+      const auto plugin = loader_.createSharedInstance(plugin_name);
+      plugin_names_by_type_[plugin->type()] = plugin_name;
+      RCLCPP_DEBUG(
+        node_.get_logger(), "Loaded fault injector plugin '%s' for type '%s'",
+        plugin_name.c_str(), plugin->type().c_str());
+    } catch (const pluginlib::PluginlibException & error) {
+      RCLCPP_WARN(
+        node_.get_logger(), "Failed to load fault injector plugin '%s': %s",
+        plugin_name.c_str(), error.what());
+    }
+  }
+}
+
+std::shared_ptr<FaultInjector> FaultInjectorFactory::create(const InjectorConfig & config)
+{
+  const auto plugin_it = plugin_names_by_type_.find(config.type);
+  if (plugin_it == plugin_names_by_type_.end()) {
+    return nullptr;
   }
 
-  if (config.type == "scan") {
-    return std::make_shared<ScanFaultInjector>(node_, config);
-  }
-
-  if (config.type == "joint_state") {
-    return std::make_shared<JointStateFaultInjector>(node_, config);
-  }
-
-  if (config.type == "imu") {
-    return std::make_shared<ImuFaultInjector>(node_, config);
-  }
-
-  if (config.type == "trigger_service") {
-    return std::make_shared<TriggerServiceFaultInjector>(node_, config);
-  }
-
-  if (config.type == "tf") {
-    return std::make_shared<TfFaultInjector>(node_, config);
+  try {
+    const auto plugin = loader_.createSharedInstance(plugin_it->second);
+    return plugin->create(node_, config);
+  } catch (const pluginlib::PluginlibException & error) {
+    RCLCPP_ERROR(
+      node_.get_logger(), "Failed to create fault injector plugin for type '%s': %s",
+      config.type.c_str(), error.what());
   }
 
   return nullptr;

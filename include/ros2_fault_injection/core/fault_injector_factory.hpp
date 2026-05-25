@@ -8,11 +8,15 @@
 #define ROS2_FAULT_INJECTION__FAULT_INJECTOR_FACTORY_HPP_
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 
+#include <pluginlib/class_loader.hpp>
 #include <rclcpp/node.hpp>
 
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_plugin.hpp"
 
 namespace ros2_fault_injection
 {
@@ -35,10 +39,14 @@ public:
    * @param config Injector configuration.
    * @return Shared injector instance, or nullptr when the type is unsupported.
    */
-  std::shared_ptr<FaultInjector> create(const InjectorConfig & config) const;
+  std::shared_ptr<FaultInjector> create(const InjectorConfig & config);
 
 private:
+  void load_plugins();
+
   rclcpp::Node & node_;
+  pluginlib::ClassLoader<FaultInjectorPlugin> loader_;
+  std::unordered_map<std::string, std::string> plugin_names_by_type_;
 };
 
 }  // namespace ros2_fault_injection
