@@ -41,6 +41,7 @@ public:
      * @brief Construct and start the controller.
      *
      * @param node ROS node used to create injector publishers, subscriptions, and timers.
+     * @param scenario_file Scenario YAML file path used for runtime reloads.
      * @param scenario Parsed and validated scenario configuration.
      * @param events Shared event publisher used by scheduled faults.
      */
