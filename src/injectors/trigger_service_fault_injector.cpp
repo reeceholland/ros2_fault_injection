@@ -79,4 +79,22 @@ void TriggerServiceFaultInjector::on_request(
     response->message = "Error calling trigger service";
   }
 }
+std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+
+  for (const auto & key : {
+      "delay_ms",
+      "force_failure",
+      "failure_message",
+    })
+  {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+
+  return schema;
+}
+
 }  // namespace ros2_fault_injection

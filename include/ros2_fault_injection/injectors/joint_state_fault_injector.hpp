@@ -16,25 +16,29 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
 
 namespace ros2_fault_injection
 {
 
-/**
- * @brief Fault injector for `sensor_msgs/msg/JointState` streams.
- *
- * Subscribes to the configured input topic, applies active joint state faults,
- * and republishes the result on the configured output topic.
- */
-class JointStateFaultInjector : public FaultInjectorBase {
-public:
   /**
-   * @brief Create the joint state fault injector.
+   * @brief Fault injector for `sensor_msgs/msg/JointState` streams.
    *
-   * @param node Node used to create publishers, subscriptions, and timers.
-   * @param config Injector topic and QoS configuration.
+   * Subscribes to the configured input topic, applies active joint state faults,
+   * and republishes the result on the configured output topic.
    */
+class JointStateFaultInjector : public FaultInjectorBase
+{
+public:
+    /**
+     * @brief Create the joint state fault injector.
+     *
+     * @param node Node used to create publishers, subscriptions, and timers.
+     * @param config Injector topic and QoS configuration.
+     */
   explicit JointStateFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
+
+  std::vector<FaultConfigField> config_schema() const override;
 
 private:
   struct DelayedJointState
@@ -55,6 +59,6 @@ private:
   std::deque<DelayedJointState> delayed_;
 };
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
 
-#endif  // ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_
+#endif // ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_

@@ -206,4 +206,26 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan & msg)
   }
 }
 
+std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+
+  for (const auto & key : {
+      "drop_probability",
+      "delay_ms",
+      "range_bias",
+      "range_noise_stddev",
+      "sector_min_deg",
+      "sector_max_deg",
+      "sector_value",
+    })
+  {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+
+  return schema;
+}
+
 }  // namespace ros2_fault_injection

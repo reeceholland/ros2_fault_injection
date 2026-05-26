@@ -17,10 +17,12 @@ ImuFaultInjector::ImuFaultInjector(rclcpp::Node & node, const InjectorConfig & c
   pub_ = node_.create_publisher<sensor_msgs::msg::Imu>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::Imu>(
-      config_.topic->input_topic, qos,
-    [this](sensor_msgs::msg::Imu::SharedPtr msg) {on_imu(msg);});
+        config_.topic->input_topic, qos,
+    [this](sensor_msgs::msg::Imu::SharedPtr msg)
+    {on_imu(msg);});
 
-  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() {flush_delayed();});
+  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]()
+      {flush_delayed();});
 }
 
 void ImuFaultInjector::on_imu(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -114,4 +116,27 @@ void ImuFaultInjector::apply_linear_acceleration_noise(sensor_msgs::msg::Imu & m
   msg.linear_acceleration.z += z_dist(rng_);
 }
 
-}  // namespace ros2_fault_injection
+std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+
+  for (const auto & key :
+    {"drop_probability",
+      "delay_ms",
+      "angular_velocity_z_bias",
+      "angular_velocity_z_noise_stddev",
+      "linear_acceleration_x_bias",
+      "linear_acceleration_y_bias",
+      "linear_acceleration_z_bias",
+      "linear_acceleration_x_noise_stddev",
+      "linear_acceleration_y_noise_stddev",
+      "linear_acceleration_z_noise_stddev"})
+  {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+  return schema;
+}
+
+} // namespace ros2_fault_injection

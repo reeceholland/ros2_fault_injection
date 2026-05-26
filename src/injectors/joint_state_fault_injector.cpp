@@ -16,10 +16,12 @@ JointStateFaultInjector::JointStateFaultInjector(rclcpp::Node & node, const Inje
   pub_ = node_.create_publisher<sensor_msgs::msg::JointState>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::JointState>(
-      config_.topic->input_topic, qos,
-    [this](sensor_msgs::msg::JointState::SharedPtr msg) {on_joint_state(msg);});
+        config_.topic->input_topic, qos,
+    [this](sensor_msgs::msg::JointState::SharedPtr msg)
+    {on_joint_state(msg);});
 
-  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() {flush_delayed();});
+  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]()
+      {flush_delayed();});
 }
 
 void JointStateFaultInjector::on_joint_state(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -84,4 +86,22 @@ void JointStateFaultInjector::apply_noise(sensor_msgs::msg::JointState & msg)
   }
 }
 
-}  // namespace ros2_fault_injection
+std::vector<FaultConfigField> JointStateFaultInjector::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+
+  for (const auto & key :
+    {"drop_probability",
+      "delay_ms",
+      "velocity_bias",
+      "velocity_noise_stddev"})
+  {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+
+  return schema;
+}
+
+} // namespace ros2_fault_injection

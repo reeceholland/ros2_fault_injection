@@ -182,4 +182,29 @@ void TfFaultInjector::apply_rotation_bias(geometry_msgs::msg::TransformStamped &
   }
 }
 
+std::vector<FaultConfigField> TfFaultInjector::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+
+  for (const auto & key : {
+      "parent_frame",
+      "child_frame",
+      "drop_probability",
+      "delay_ms",
+      "x_bias",
+      "y_bias",
+      "z_bias",
+      "roll_bias_deg",
+      "pitch_bias_deg",
+      "yaw_bias_deg",
+    })
+  {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+
+  return schema;
+}
+
 }  // namespace ros2_fault_injection

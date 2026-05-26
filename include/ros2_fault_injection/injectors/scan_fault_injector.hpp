@@ -36,6 +36,8 @@ public:
    */
   explicit ScanFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
+  std::vector<FaultConfigField> config_schema() const override;
+
 private:
   struct DelayedScan
   {

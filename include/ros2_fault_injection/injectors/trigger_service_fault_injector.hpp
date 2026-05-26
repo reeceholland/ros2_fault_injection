@@ -21,6 +21,8 @@ class TriggerServiceFaultInjector : public FaultInjectorBase {
 public:
   explicit TriggerServiceFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
+  std::vector<FaultConfigField> config_schema() const override;
+
 private:
   void on_request(
     const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
