@@ -51,16 +51,17 @@ TEST(ScenarioValidator, AcceptsValidOdomScenario) {
   EXPECT_TRUE(result.warnings.empty());
 }
 
-TEST(ScenarioValidator, RejectsUnsupportedInjectorType) {
+TEST(ScenarioValidator, WarnsForExternalPluginInjectorType) {
   auto scenario = valid_odom_scenario();
   scenario.injector.type = "camera";
   scenario.injectors.front().type = "camera";
 
   const auto result = ros2_fault_injection::validate_scenario(scenario);
 
-  EXPECT_FALSE(result.ok());
-  ASSERT_EQ(result.errors.size(), 1u);
-  EXPECT_NE(result.errors.front().find("unsupported injector.type"), std::string::npos);
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(result.errors.empty());
+  ASSERT_EQ(result.warnings.size(), 1u);
+  EXPECT_NE(result.warnings.front().find("assuming external plugin"), std::string::npos);
 }
 
 TEST(ScenarioValidator, WarnsWhenDurationHasNoStart) {
@@ -218,3 +219,30 @@ TEST(ScenarioValidator, RejectsNegativeImuNoiseStddev) {
   EXPECT_NE(result.errors.front().find("linear_acceleration_x_noise_stddev"), std::string::npos);
 }
 }  // namespace ros2_fault_injection
+
+
+TEST(ScenarioValidator, ExternalPluginTypeWarnsButDoesNotFail) {
+  ros2_fault_injection::ScenarioConfig scenario;
+
+  ros2_fault_injection::InjectorConfig injector;
+  injector.id = "battery";
+  injector.type = "battery_state";
+  ros2_fault_injection::TopicEndpointConfig topic;
+  topic.input_topic = "/battery_state_raw";
+  topic.output_topic = "/battery_state";
+  topic.qos_depth = 10;
+  injector.topic = topic;
+  scenario.injectors.push_back(injector);
+  scenario.injector = injector;
+
+  ros2_fault_injection::FaultConfig fault;
+  fault.id = "battery_voltage_bias";
+  fault.injector_id = "battery";
+  fault.config["voltage_bias"] = "-1.5";
+  scenario.faults.push_back(fault);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+  EXPECT_TRUE(result.ok());
+  ASSERT_FALSE(result.warnings.empty());
+  EXPECT_NE(result.warnings.front().find("assuming external plugin"), std::string::npos);
+}

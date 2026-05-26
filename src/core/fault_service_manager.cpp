@@ -215,12 +215,14 @@ void FaultServiceManager::handle_set_fault_config(
     return;
   }
 
-  if (!is_allowed_config_key(fault_config->injector_id, request->key)) {
+  if (!is_allowed_config_key(injector->type(), request->key)) {
     response->success = false;
-    response->message = "key '" + request->key + "' is not valid for injector_id '" +
-      fault_config->injector_id + "'";
-    RCLCPP_WARN(node_.get_logger(), "Rejected config update for fault '%s': invalid key '%s'",
-                  request->fault_id.c_str(), request->key.c_str());
+    response->message = "key '" + request->key + "' is not valid for injector type '" +
+      injector->type() + "'";
+    RCLCPP_WARN(
+      node_.get_logger(),
+      "Rejected config update for fault '%s': key '%s' is invalid for injector type '%s'",
+      request->fault_id.c_str(), request->key.c_str(), injector->type().c_str());
     return;
   }
 

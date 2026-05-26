@@ -1,0 +1,14 @@
+injectors:
+  - id: battery
+    type: battery_state
+    topic:
+      input_topic: /battery_state_raw
+      output_topic: /battery_state
+      qos_depth: 10
+
+faults:
+  - id: battery_voltage_bias
+    injector_id: battery
+    active_on_startup: true
+    config:
+      voltage_bias: -1.5

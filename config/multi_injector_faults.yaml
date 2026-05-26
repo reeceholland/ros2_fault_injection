@@ -130,14 +130,14 @@ faults:
   # Manual service latency.
   - id: enable_motors_delay
     injector_id: enable_motors
-    active_on_startup: true
+    active_on_startup: false
     config:
       delay_ms: 2000
 
   # Startup TF translation fault.
   - id: tf_translation_bias
     injector_id: tf_odom_base
-    active_on_startup: true
+    active_on_startup: false
     config:
       parent_frame: odom
       child_frame: base_link
