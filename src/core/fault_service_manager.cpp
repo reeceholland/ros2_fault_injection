@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 #include "ros2_fault_injection/utils/fault_descriptions.hpp"
@@ -62,6 +63,12 @@ FaultServiceManager::FaultServiceManager(
     [this](const std::shared_ptr<srv::GetFaultSchema::Request> request,
     std::shared_ptr<srv::GetFaultSchema::Response> response)
     {handle_get_fault_schema(request, response);});
+
+  get_fault_config_service_ = node_.create_service<srv::GetFaultConfig>(
+        "fault_injection/get_fault_config",
+    [this](const std::shared_ptr<srv::GetFaultConfig::Request> request,
+    std::shared_ptr<srv::GetFaultConfig::Response> response)
+    {handle_get_fault_config(request, response);});
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
@@ -228,9 +235,9 @@ void FaultServiceManager::handle_set_fault_config(
     response->success = false;
     response->message = validation_error.value();
     RCLCPP_WARN(
-      node_.get_logger(),
-      "Rejected config update for fault '%s': %s",
-      request->fault_id.c_str(), validation_error->c_str());
+          node_.get_logger(),
+          "Rejected config update for fault '%s': %s",
+          request->fault_id.c_str(), validation_error->c_str());
     return;
   }
 
@@ -281,5 +288,48 @@ void FaultServiceManager::handle_get_fault_schema(
   const auto & keys = allowed_config_keys_for_injector_type(injector_type);
   response->keys.assign(keys.begin(), keys.end());
   std::sort(response->keys.begin(), response->keys.end());
+}
+
+void FaultServiceManager::handle_get_fault_config(
+  const std::shared_ptr<srv::GetFaultConfig::Request> request,
+  std::shared_ptr<srv::GetFaultConfig::Response> response)
+{
+  const auto injector = find_injector_for_fault(request->fault_id);
+  if (!injector) {
+    response->success = false;
+    response->message = "unknown fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(), "Received GetFaultConfig request with unknown fault_id: %s",
+                  request->fault_id.c_str());
+    return;
+  }
+
+  const auto fault_config = injector->get_fault_config(request->fault_id);
+  if (!fault_config.has_value()) {
+    response->success = false;
+    response->message = "unable to retrieve config for fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(),
+                  "Unable to retrieve config for fault_id: %s when handling GetFaultConfig request",
+                  request->fault_id.c_str());
+    return;
+  }
+
+  response->success = true;
+  response->message = "retrieved config for fault_id: " + request->fault_id;
+  response->injector_id = injector->id();
+  response->injector_type = injector->type();
+
+  std::vector<std::string> keys;
+  keys.reserve(fault_config->config.size());
+  for (const auto &[key, _] : fault_config->config) {
+    keys.push_back(key);
+  }
+  std::sort(keys.begin(), keys.end());
+
+  response->keys.clear();
+  response->values.clear();
+  for (const auto & key : keys) {
+    response->keys.push_back(key);
+    response->values.push_back(fault_config->config.at(key));
+  }
 }
 } // namespace ros2_fault_injection

@@ -20,6 +20,7 @@
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_service_manager.hpp"
 #include "ros2_fault_injection/msg/fault_event.hpp"
+#include "ros2_fault_injection/srv/get_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
 namespace ros2_fault_injection
@@ -307,6 +308,52 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
     rclcpp::shutdown();
 }
 
+
+TEST(FaultServiceManager, GetFaultConfigReturnsCurrentConfig)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_config");
+  auto injector = std::make_shared<FakeFaultInjector>("odom", "odom");
+
+  FaultConfig fault;
+  fault.id = "odom_bias";
+  fault.injector_id = "odom";
+  fault.config["x_bias"] = "1.0";
+  fault.config["drop_probability"] = "0.25";
+  injector->add_fault(fault);
+
+  FaultServiceManager::InjectorMap injectors;
+  injectors["odom"] = injector;
+
+  FaultEventPublisher event_publisher(*node);
+  FaultServiceManager services(*node, injectors, event_publisher,
+    []()
+    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+
+  auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
+  ASSERT_TRUE(client->wait_for_service(500ms));
+
+  auto request = std::make_shared<srv::GetFaultConfig::Request>();
+  request->fault_id = "odom_bias";
+
+  auto future = client->async_send_request(request);
+  const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+
+  const auto response = future.get();
+  ASSERT_TRUE(response->success);
+  EXPECT_EQ(response->injector_id, "odom");
+  EXPECT_EQ(response->injector_type, "odom");
+  ASSERT_EQ(response->keys.size(), response->values.size());
+
+  EXPECT_EQ(response->keys, (std::vector<std::string>{"drop_probability", "x_bias"}));
+  EXPECT_EQ(response->values, (std::vector<std::string>{"0.25", "1.0"}));
+
+  rclcpp::shutdown();
+}
 
 TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
 {

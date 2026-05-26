@@ -1,0 +1,8 @@
+string fault_id
+---
+bool success
+string message
+string injector_id
+string injector_type
+string[] keys
+string[] values
