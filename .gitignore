@@ -1,5 +1,45 @@
-.venv/
+# ROS / colcon build output
 build/
 install/
 log/
+
+# Python virtual environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Sphinx / documentation build output
 docs/_build/
+docs/_static/
+docs/_templates/
+
+# CMake and compiler by-products
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+*.o
+*.so
+*.a
+
+# Test and coverage output
+.coverage
+coverage/
+htmlcov/
+test_results/
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Local scratch files
+*.log
+*.tmp
+*.bak

@@ -23,6 +23,7 @@
 #include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
+#include "ros2_fault_injection/srv/get_fault_schema.hpp"
 
 namespace ros2_fault_injection
 {
@@ -73,6 +74,10 @@ private:
     const std::shared_ptr<srv::ReloadScenario::Request> request,
     std::shared_ptr<srv::ReloadScenario::Response> response);
 
+  void handle_get_fault_schema(
+    const std::shared_ptr<srv::GetFaultSchema::Request> request,
+    std::shared_ptr<srv::GetFaultSchema::Response> response);
+
   rclcpp::Node & node_;
   const InjectorMap & injectors_;
   FaultEventPublisher & events_;
@@ -82,6 +87,7 @@ private:
   rclcpp::Service<srv::GetFaultStatus>::SharedPtr get_fault_status_service_;
   rclcpp::Service<srv::SetFaultConfig>::SharedPtr set_fault_config_service_;
   rclcpp::Service<srv::ReloadScenario>::SharedPtr reload_scenario_service_;
+  rclcpp::Service<srv::GetFaultSchema>::SharedPtr get_fault_schema_service_;
 };
 
 } // namespace ros2_fault_injection

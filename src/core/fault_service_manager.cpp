@@ -6,6 +6,7 @@
 
 #include "ros2_fault_injection/core/fault_service_manager.hpp"
 
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 
@@ -55,6 +56,12 @@ FaultServiceManager::FaultServiceManager(
     [this](const std::shared_ptr<srv::ReloadScenario::Request> request,
     std::shared_ptr<srv::ReloadScenario::Response> response)
     {handle_reload_scenario(request, response);});
+
+  get_fault_schema_service_ = node_.create_service<srv::GetFaultSchema>(
+        "fault_injection/get_fault_schema",
+    [this](const std::shared_ptr<srv::GetFaultSchema::Request> request,
+    std::shared_ptr<srv::GetFaultSchema::Response> response)
+    {handle_get_fault_schema(request, response);});
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
@@ -215,14 +222,15 @@ void FaultServiceManager::handle_set_fault_config(
     return;
   }
 
-  if (!is_allowed_config_key(injector->type(), request->key)) {
+  const auto validation_error =
+    validate_config_value(injector->type(), request->key, request->value);
+  if (validation_error.has_value()) {
     response->success = false;
-    response->message = "key '" + request->key + "' is not valid for injector type '" +
-      injector->type() + "'";
+    response->message = validation_error.value();
     RCLCPP_WARN(
       node_.get_logger(),
-      "Rejected config update for fault '%s': key '%s' is invalid for injector type '%s'",
-      request->fault_id.c_str(), request->key.c_str(), injector->type().c_str());
+      "Rejected config update for fault '%s': %s",
+      request->fault_id.c_str(), validation_error->c_str());
     return;
   }
 
@@ -250,4 +258,28 @@ void FaultServiceManager::handle_set_fault_config(
                 request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
 }
 
+void FaultServiceManager::handle_get_fault_schema(
+  const std::shared_ptr<srv::GetFaultSchema::Request> request,
+  std::shared_ptr<srv::GetFaultSchema::Response> response)
+{
+  const auto injector = find_injector_for_fault(request->fault_id);
+  if (!injector) {
+    response->success = false;
+    response->message = "unknown fault_id: " + request->fault_id;
+    RCLCPP_WARN(node_.get_logger(), "Received GetFaultSchema request with unknown fault_id: %s",
+                  request->fault_id.c_str());
+    return;
+  }
+
+  const auto injector_type = injector->type();
+
+  response->success = true;
+  response->message = "retrieved schema for fault_id: " + request->fault_id;
+  response->injector_id = injector->id();
+  response->injector_type = injector_type;
+
+  const auto & keys = allowed_config_keys_for_injector_type(injector_type);
+  response->keys.assign(keys.begin(), keys.end());
+  std::sort(response->keys.begin(), response->keys.end());
+}
 } // namespace ros2_fault_injection
