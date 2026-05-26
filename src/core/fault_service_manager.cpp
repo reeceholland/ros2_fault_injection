@@ -285,8 +285,13 @@ void FaultServiceManager::handle_get_fault_schema(
   response->injector_id = injector->id();
   response->injector_type = injector_type;
 
-  const auto & keys = allowed_config_keys_for_injector_type(injector_type);
-  response->keys.assign(keys.begin(), keys.end());
+  const auto schema = injector->config_schema();
+
+  response->keys.reserve(schema.size());
+  for (const auto & field : schema) {
+    response->keys.push_back(field.key);
+  }
+
   std::sort(response->keys.begin(), response->keys.end());
 }
 

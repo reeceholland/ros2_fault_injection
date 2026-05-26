@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "ros2_fault_injection/config/fault_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
 
 namespace ros2_fault_injection
 {
@@ -47,6 +48,8 @@ public:
      * @return Injector type string.
      */
   virtual std::string type() const = 0;
+
+  virtual std::vector<FaultConfigField> config_schema() const = 0;
 
     /**
      * @brief Register or replace a fault owned by this injector.

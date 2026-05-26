@@ -108,6 +108,10 @@ public:
     faults_.clear();
     active_.clear();
   }
+  std::vector<FaultConfigField> config_schema() const override
+  {
+    return {};
+  }
 
 private:
   std::unordered_map<std::string, FaultConfig> faults_;
