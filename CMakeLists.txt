@@ -34,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultStatus.srv"
   "srv/SetFaultConfig.srv"
   "srv/ReloadScenario.srv"
+  "srv/GetFaultSchema.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   DEPENDENCIES builtin_interfaces

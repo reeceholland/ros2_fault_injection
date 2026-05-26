@@ -40,6 +40,7 @@ public:
   explicit FaultInjectorBase(rclcpp::Node & node, InjectorConfig config);
 
   std::string id() const override;
+  std::string type() const override;
   void add_fault(const FaultConfig & fault_config) override;
   void activate_fault(const std::string & fault_id) override;
   void deactivate_fault(const std::string & fault_id) override;

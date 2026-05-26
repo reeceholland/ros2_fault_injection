@@ -38,6 +38,13 @@ public:
   virtual std::string id() const = 0;
 
     /**
+     * @brief Get the injector type, used for looking up allowed config keys.
+     *
+     * @return Injector type.
+     */
+  virtual std::string type() const = 0;
+
+    /**
      * @brief Register or replace a fault owned by this injector.
      *
      * @param fault_config Fault configuration to store.
