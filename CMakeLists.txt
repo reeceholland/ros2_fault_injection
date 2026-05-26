@@ -22,6 +22,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(Doxygen)
+find_package(launch_testing_ament_cmake REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_copyright REQUIRED)
@@ -36,6 +37,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetFaultConfig.srv"
   "srv/ReloadScenario.srv"
   "srv/GetFaultSchema.srv"
+  "srv/GetFaultConfig.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   DEPENDENCIES builtin_interfaces
@@ -251,6 +253,11 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_fault_injector_factory
     ${PROJECT_NAME}_core
+  )
+  add_launch_test(
+  test/launch/test_fault_services_launch.py
+  ENV
+    ROS2_FAULT_INJECTION_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
   )
 
   ament_uncrustify(

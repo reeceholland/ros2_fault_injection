@@ -1,0 +1,14 @@
+injectors:
+  - id: odom
+    type: odom
+    topic:
+      input_topic: /test/odom_raw
+      output_topic: /test/odom
+
+faults:
+  - id: odom_bias
+    injector_id: odom
+    active_on_startup: false
+    config:
+      x_bias: 1.0
+      drop_probability: 0.0
