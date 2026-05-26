@@ -17,6 +17,21 @@
 
 namespace ros2_fault_injection
 {
+namespace
+{
+
+bool schema_contains_key(
+  const std::vector<FaultConfigField> & schema,
+  const std::string & key)
+{
+  return std::any_of(
+    schema.begin(), schema.end(),
+    [&key](const FaultConfigField & field) {
+      return field.key == key;
+    });
+}
+
+} // namespace
 
 FaultServiceManager::FaultServiceManager(
   rclcpp::Node & node, const InjectorMap & injectors,
@@ -229,15 +244,29 @@ void FaultServiceManager::handle_set_fault_config(
     return;
   }
 
+  const auto schema = injector->config_schema();
+  if (!schema_contains_key(schema, request->key)) {
+    response->success = false;
+    response->message =
+      "key '" + request->key + "' is not valid for injector type '" + injector->type() + "'";
+    RCLCPP_WARN(
+      node_.get_logger(),
+      "Rejected config update for fault '%s': invalid key '%s'",
+      request->fault_id.c_str(), request->key.c_str());
+    return;
+  }
+
   const auto validation_error =
     validate_config_value(injector->type(), request->key, request->value);
-  if (validation_error.has_value()) {
+  const auto unknown_central_key_error =
+    "key '" + request->key + "' is not valid for injector type '" + injector->type() + "'";
+  if (validation_error.has_value() && validation_error.value() != unknown_central_key_error) {
     response->success = false;
     response->message = validation_error.value();
     RCLCPP_WARN(
-          node_.get_logger(),
-          "Rejected config update for fault '%s': %s",
-          request->fault_id.c_str(), validation_error->c_str());
+      node_.get_logger(),
+      "Rejected config update for fault '%s': %s",
+      request->fault_id.c_str(), validation_error->c_str());
     return;
   }
 

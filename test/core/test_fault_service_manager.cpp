@@ -19,6 +19,7 @@
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_service_manager.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/srv/get_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
@@ -34,7 +35,14 @@ class FakeFaultInjector : public FaultInjector
 {
 public:
   explicit FakeFaultInjector(std::string id, std::string type = "odom")
-  : id_(std::move(id)), type_(std::move(type)) {}
+  : id_(std::move(id)), type_(std::move(type))
+  {
+    for (const auto & key : allowed_config_keys_for_injector_type(type_)) {
+      FaultConfigField field;
+      field.key = key;
+      schema_.push_back(field);
+    }
+  }
 
   std::string id() const override
   {
@@ -406,6 +414,53 @@ TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
     EXPECT_EQ(updated_fault->config.at("drop_probability"), "0.5");
 
     rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, SetFaultConfigAllowsInjectorOwnedKeyUnknownToCentralSchema)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_plugin_config_update");
+  auto injector = std::make_shared<FakeFaultInjector>("custom", "custom");
+
+  auto fault = make_fault();
+  fault.id = "custom_fault";
+  fault.injector_id = "custom";
+  injector->add_fault(fault);
+
+  FaultConfigField field;
+  field.key = "plugin_only_key";
+  injector->add_schema_field(field);
+
+  FaultServiceManager::InjectorMap injectors;
+  injectors["custom"] = injector;
+
+  FaultEventPublisher event_publisher(*node);
+  FaultServiceManager services(*node, injectors, event_publisher,
+    []() {
+      return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};
+    });
+
+  auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+  ASSERT_TRUE(client->wait_for_service(500ms));
+
+  auto request = std::make_shared<srv::SetFaultConfig::Request>();
+  request->fault_id = "custom_fault";
+  request->key = "plugin_only_key";
+  request->value = "plugin_value";
+
+  auto future = client->async_send_request(request);
+  const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_TRUE(future.get()->success);
+
+  const auto updated_fault = injector->get_fault_config("custom_fault");
+  ASSERT_TRUE(updated_fault.has_value());
+  EXPECT_EQ(updated_fault->config.at("plugin_only_key"), "plugin_value");
+
+  rclcpp::shutdown();
 }
 
 TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
