@@ -1,0 +1,43 @@
+<library path="ros2_fault_injection_core">
+  <class
+    name="ros2_fault_injection/OdomFaultInjectorPlugin"
+    type="ros2_fault_injection::OdomFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates odometry fault injectors.</description>
+  </class>
+
+  <class
+    name="ros2_fault_injection/ScanFaultInjectorPlugin"
+    type="ros2_fault_injection::ScanFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates laser scan fault injectors.</description>
+  </class>
+
+  <class
+    name="ros2_fault_injection/JointStateFaultInjectorPlugin"
+    type="ros2_fault_injection::JointStateFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates joint state fault injectors.</description>
+  </class>
+
+  <class
+    name="ros2_fault_injection/ImuFaultInjectorPlugin"
+    type="ros2_fault_injection::ImuFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates IMU fault injectors.</description>
+  </class>
+
+  <class
+    name="ros2_fault_injection/TfFaultInjectorPlugin"
+    type="ros2_fault_injection::TfFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates TF fault injectors.</description>
+  </class>
+
+  <class
+    name="ros2_fault_injection/TriggerServiceFaultInjectorPlugin"
+    type="ros2_fault_injection::TriggerServiceFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::FaultInjectorPlugin">
+    <description>Creates Trigger service fault injectors.</description>
+  </class>
+</library>

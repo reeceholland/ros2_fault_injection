@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(ament_cmake REQUIRED)
+find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -56,6 +57,7 @@ add_library(${PROJECT_NAME}_core
   src/core/fault_event_publisher.cpp
   src/config/scenario_validator.cpp
   src/core/fault_injector_factory.cpp
+  src/core/builtin_fault_injector_plugin.cpp
   src/core/fault_service_manager.cpp
   src/core/fault_controller.cpp
   src/config/fault_config_schema.cpp
@@ -76,6 +78,7 @@ target_include_directories(${PROJECT_NAME}_core
 )
 
 ament_target_dependencies(${PROJECT_NAME}_core
+  pluginlib
   rclcpp
   nav_msgs
   std_msgs
@@ -127,10 +130,13 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+pluginlib_export_plugin_description_file(ros2_fault_injection fault_injector_plugins.xml)
+
 install(FILES
   CHANGELOG.rst
   LICENSE
   README.md
+  fault_injector_plugins.xml
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -240,6 +246,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_core
   )
 
+  ament_add_gtest(test_fault_injector_factory
+    test/core/test_fault_injector_factory.cpp
+  )
+  target_link_libraries(test_fault_injector_factory
+    ${PROJECT_NAME}_core
+  )
+
   ament_uncrustify(
     include
     src
@@ -252,6 +265,7 @@ endif()
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   builtin_interfaces
+  pluginlib
   nav_msgs
   rclcpp
   rosidl_default_runtime

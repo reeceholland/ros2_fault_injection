@@ -38,9 +38,13 @@ public:
   virtual std::string id() const = 0;
 
     /**
-     * @brief Get the injector type, used for looking up allowed config keys.
+     * @brief Get the injector type from the scenario.
      *
-     * @return Injector type.
+     * The type is used for schema validation and plugin selection. It may
+     * differ from the injector id; for example, injector id `motor_feedback`
+     * can have type `joint_state`.
+     *
+     * @return Injector type string.
      */
   virtual std::string type() const = 0;
 

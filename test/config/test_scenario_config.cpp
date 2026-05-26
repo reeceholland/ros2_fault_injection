@@ -107,3 +107,61 @@ faults:
   EXPECT_EQ(scenario.faults[0].config.at("force_failure"), "true");
   EXPECT_EQ(scenario.faults[0].config.at("delay_ms"), "100");
 }
+
+
+TEST(ScenarioConfig, ParseNestedTopicInjector) {
+  const auto path =
+    write_temp_yaml(
+    R"(
+injector:
+  id: battery
+  type: battery_state
+  topic:
+    input_topic: /battery_state_raw
+    output_topic: /battery_state
+    qos_depth: 10
+faults:
+  - id: battery_voltage_bias
+    injector_id: battery
+    active_on_startup: true
+    config:
+      voltage_bias: -1.5
+  )");
+
+  const auto scenario = ros2_fault_injection::load_scenario_config(path);
+  ASSERT_EQ(scenario.injectors.size(), 1u);
+  EXPECT_EQ(scenario.injectors[0].id, "battery");
+  EXPECT_EQ(scenario.injectors[0].type, "battery_state");
+  ASSERT_TRUE(scenario.injectors[0].topic.has_value());
+  EXPECT_EQ(scenario.injectors[0].topic->input_topic, "/battery_state_raw");
+  EXPECT_EQ(scenario.injectors[0].topic->output_topic, "/battery_state");
+  EXPECT_EQ(scenario.injectors[0].topic->qos_depth, 10u);
+  ASSERT_EQ(scenario.initially_active_faults.size(), 1u);
+  EXPECT_EQ(scenario.initially_active_faults.front(), "battery_voltage_bias");
+  ASSERT_EQ(scenario.faults.size(), 1u);
+  EXPECT_EQ(scenario.faults[0].config.at("voltage_bias"), "-1.5");
+}
+
+TEST(ScenarioConfig, ParseNestedTriggerServiceInjector) {
+  const auto path =
+    write_temp_yaml(
+    R"(
+injector:
+  id: enable_motors
+  type: trigger_service
+  trigger_service:
+    proxy_service: /enable_motors
+    target_service: /enable_motors_raw
+faults:
+  - id: enable_motors_failure
+    injector_id: enable_motors
+    config:
+      force_failure: true
+  )");
+
+  const auto scenario = ros2_fault_injection::load_scenario_config(path);
+  ASSERT_EQ(scenario.injectors.size(), 1u);
+  ASSERT_TRUE(scenario.injectors[0].trigger_service.has_value());
+  EXPECT_EQ(scenario.injectors[0].trigger_service->proxy_service, "/enable_motors");
+  EXPECT_EQ(scenario.injectors[0].trigger_service->target_service, "/enable_motors_raw");
+}

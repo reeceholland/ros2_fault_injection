@@ -51,7 +51,8 @@ void validate_injector(const InjectorConfig & injector, ValidationResult & resul
   }
 
   if (!is_known_injector_type(injector.type)) {
-    result.errors.push_back("unsupported injector.type: '" + injector.type + "'");
+    result.warnings.push_back(
+      "injector.type '" + injector.type + "' is not built in; assuming external plugin");
   }
 
   if (!injector.topic && !injector.trigger_service) {
@@ -349,8 +350,10 @@ void validate_fault(
     result.errors.push_back("fault '" + fault.id + "' has negative duration");
   }
 
-  validate_fault_keys(fault, injector.type, result);
-  validate_fault_values(fault, injector.type, result);
+  if (is_known_injector_type(injector.type)) {
+    validate_fault_keys(fault, injector.type, result);
+    validate_fault_values(fault, injector.type, result);
+  }
 }
 
 }  // namespace
