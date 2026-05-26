@@ -8,6 +8,7 @@ A ROS 2 framework for injecting faults into topics, transforms, and services.
    :caption: Contents
 
    mainpage
+   architecture
    fault_configuration
    services
    adding_an_injector
