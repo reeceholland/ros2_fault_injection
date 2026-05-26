@@ -2,7 +2,7 @@
 
 `ros2_fault_injection` exposes runtime services under the `/fault_injection` namespace.
 
-Use these services to list faults, inspect state, activate or deactivate faults, update config values, and reload the scenario file without restarting the node.
+Use these services to list faults, inspect state, read current config values, activate or deactivate faults, update config values, and reload the scenario file without restarting the node.
 
 ## List Faults
 
@@ -137,6 +137,102 @@ ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetF
 
 Successful calls publish a `FaultEvent` with `state` set to `active` or `inactive` and `source` set to `manual`.
 
+## Get Fault Config Schema
+
+Service:
+
+```text
+/fault_injection/get_fault_schema
+```
+
+Type:
+
+```text
+ros2_fault_injection/srv/GetFaultSchema
+```
+
+Request:
+
+```text
+string fault_id
+---
+```
+
+Response:
+
+```text
+bool success
+string message
+string injector_id
+string injector_type
+string[] keys
+```
+
+Example:
+
+```bash
+ros2 service call /fault_injection/get_fault_schema ros2_fault_injection/srv/GetFaultSchema \
+  "{fault_id: odom_bias}"
+```
+
+Use this service when a UI or script needs to discover which config keys are valid for a fault before sending a runtime update.
+
+## Get Fault Config
+
+Service:
+
+```text
+/fault_injection/get_fault_config
+```
+
+Type:
+
+```text
+ros2_fault_injection/srv/GetFaultConfig
+```
+
+Request:
+
+```text
+string fault_id
+---
+```
+
+Response:
+
+```text
+bool success
+string message
+string injector_id
+string injector_type
+string[] keys
+string[] values
+```
+
+Example:
+
+```bash
+ros2 service call /fault_injection/get_fault_config ros2_fault_injection/srv/GetFaultConfig \
+  "{fault_id: odom_bias}"
+```
+
+Example response:
+
+```yaml
+success: true
+message: retrieved config for fault_id: odom_bias
+injector_id: odom
+injector_type: odom
+keys:
+- drop_probability
+- x_bias
+values:
+- '0.0'
+- '1.0'
+```
+
+`keys` and `values` are parallel arrays because ROS 2 service definitions do not support map fields directly. Use this service when a UI or script needs the current runtime value for a fault config key.
+
 ## Set Fault Config
 
 Service:
@@ -176,7 +272,7 @@ ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/Set
 
 This changes one entry in the fault's `config` map while the node is running.
 
-Only keys valid for that injector type are accepted. For example, `x_bias` is valid for an `odom` injector, while `range_bias` is valid for a `scan` injector.
+Only keys and values valid for that injector type are accepted. For example, `x_bias` is valid for an `odom` injector, while `range_bias` is valid for a `scan` injector. Numeric fields, probabilities, booleans, and non-negative values are validated before the stored config changes.
 
 This service does not change top-level scheduling fields such as `start`, `duration`, `active_on_startup`, `id`, or `injector_id`.
 

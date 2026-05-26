@@ -287,6 +287,55 @@ ros2 service call /fault_injection/set_fault_state ros2_fault_injection/srv/SetF
 
 Successful state changes publish a `FaultEvent` with `state` set to `active` or `inactive` and `source` set to `manual`.
 
+### Get Fault Config Schema
+
+```bash
+ros2 service call /fault_injection/get_fault_schema ros2_fault_injection/srv/GetFaultSchema \
+  "{fault_id: odom_bias}"
+```
+
+Returns the editable config keys for the selected fault's injector type:
+
+```yaml
+success: true
+message: retrieved schema for fault_id: odom_bias
+injector_id: odom
+injector_type: odom
+keys:
+- delay_ms
+- drop_probability
+- x_bias
+- x_noise_stddev
+- y_bias
+- y_noise_stddev
+```
+
+Use this when building UI controls or scripts that need to know which config keys are valid before calling `SetFaultConfig`.
+
+### Get Fault Config
+
+```bash
+ros2 service call /fault_injection/get_fault_config ros2_fault_injection/srv/GetFaultConfig \
+  "{fault_id: odom_bias}"
+```
+
+Returns the current runtime config for one fault:
+
+```yaml
+success: true
+message: retrieved config for fault_id: odom_bias
+injector_id: odom
+injector_type: odom
+keys:
+- drop_probability
+- x_bias
+values:
+- '0.0'
+- '1.0'
+```
+
+`keys` and `values` are parallel arrays: `keys[i]` matches `values[i]`. This shape is used because ROS 2 service definitions do not support map fields directly.
+
 ### Update A Fault Config Value
 
 ```bash
@@ -296,7 +345,7 @@ ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/Set
 
 This updates one entry inside the fault's `config` map at runtime. It does not change top-level scheduling fields such as `start`, `duration`, `active_on_startup`, `id`, or `injector_id`.
 
-The key must be valid for that injector's fault config schema. For example, `x_bias` is valid for an `odom` fault, while `range_bias` is valid for a `scan` fault.
+The key and value must be valid for that injector's fault config schema. For example, `x_bias` is valid for an `odom` fault, while `range_bias` is valid for a `scan` fault. Numeric fields, booleans, probabilities, and non-negative values are validated before the stored config is changed.
 
 Successful config updates publish a `FaultEvent` with:
 
@@ -405,7 +454,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, odom covariance behavior, trigger service faults, and TF transform faults.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
 
 ## Development Notes
 

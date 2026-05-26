@@ -1,6 +1,6 @@
 # ros2_fault_injection API
 
-`ros2_fault_injection` is a C++ ROS 2 framework for injecting controlled faults into robot topic streams.
+`ros2_fault_injection` is a C++ ROS 2 framework for injecting controlled faults into robot topics, transforms, and services.
 
 The public API is organized around a small set of framework classes:
 
@@ -13,7 +13,7 @@ The public API is organized around a small set of framework classes:
 
 Typed injectors implement message-specific mutation for odometry, laser scans, joint states, and IMU data.
 
-See the project README for runtime usage, YAML scenario format, and service examples.
+See the project README for runtime usage, YAML scenario format, service examples, and the RViz-oriented config schema/config read APIs.
 
 
 ## Contributor Guides

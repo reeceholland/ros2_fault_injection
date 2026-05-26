@@ -193,11 +193,18 @@ Example:
 
 ## Runtime Updates
 
-Fault config values can be changed while the node is running:
+Fault config values can be inspected and changed while the node is running:
+
+```bash
+ros2 service call /fault_injection/get_fault_config ros2_fault_injection/srv/GetFaultConfig \
+  "{fault_id: odom_bias}"
+```
+
+The response returns parallel `keys` and `values` arrays containing the current runtime config for that fault.
 
 ```bash
 ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/SetFaultConfig \
   "{fault_id: odom_bias, key: x_bias, value: '2.0'}"
 ```
 
-Only keys listed for that injector type are accepted. Scheduling fields such as `start`, `duration`, and `active_on_startup` are part of the scenario and are not changed through `SetFaultConfig`.
+Only keys listed for that injector type are accepted, and values are validated before being stored. Scheduling fields such as `start`, `duration`, and `active_on_startup` are part of the scenario and are not changed through `SetFaultConfig`.
