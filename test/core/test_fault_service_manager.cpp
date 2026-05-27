@@ -31,6 +31,51 @@ namespace
 
 using namespace std::chrono_literals;
 
+FaultConfigField make_test_schema_field(const std::string & key)
+{
+  FaultConfigField field;
+  field.key = key;
+
+  if (key == "drop_probability") {
+    field.type = "double";
+    field.min_value = 0.0;
+    field.max_value = 1.0;
+    return field;
+  }
+
+  if (key == "delay_ms") {
+    field.type = "int";
+    field.min_value = 0.0;
+    return field;
+  }
+
+  if (key == "force_failure") {
+    field.type = "bool";
+    return field;
+  }
+
+  if (key == "sector_value") {
+    field.type = "special_float";
+    return field;
+  }
+
+  if (key == "parent_frame" || key == "child_frame") {
+    field.type = "non_empty_string";
+    return field;
+  }
+
+  if (key.find("noise_stddev") != std::string::npos ||
+    key.find("covariance") != std::string::npos)
+  {
+    field.type = "double";
+    field.min_value = 0.0;
+    return field;
+  }
+
+  field.type = "double";
+  return field;
+}
+
 class FakeFaultInjector : public FaultInjector
 {
 public:
@@ -38,9 +83,7 @@ public:
   : id_(std::move(id)), type_(std::move(type))
   {
     for (const auto & key : allowed_config_keys_for_injector_type(type_)) {
-      FaultConfigField field;
-      field.key = key;
-      schema_.push_back(field);
+      schema_.push_back(make_test_schema_field(key));
     }
   }
 

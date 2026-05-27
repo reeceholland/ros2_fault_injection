@@ -20,15 +20,21 @@ namespace ros2_fault_injection
 namespace
 {
 
-bool schema_contains_key(
+const FaultConfigField * find_schema_field(
   const std::vector<FaultConfigField> & schema,
   const std::string & key)
 {
-  return std::any_of(
+  const auto it = std::find_if(
     schema.begin(), schema.end(),
     [&key](const FaultConfigField & field) {
       return field.key == key;
     });
+
+  if (it == schema.end()) {
+    return nullptr;
+  }
+
+  return &(*it);
 }
 
 } // namespace
@@ -245,7 +251,8 @@ void FaultServiceManager::handle_set_fault_config(
   }
 
   const auto schema = injector->config_schema();
-  if (!schema_contains_key(schema, request->key)) {
+  const auto * field = find_schema_field(schema, request->key);
+  if (field == nullptr) {
     response->success = false;
     response->message =
       "key '" + request->key + "' is not valid for injector type '" + injector->type() + "'";
@@ -256,11 +263,8 @@ void FaultServiceManager::handle_set_fault_config(
     return;
   }
 
-  const auto validation_error =
-    validate_config_value(injector->type(), request->key, request->value);
-  const auto unknown_central_key_error =
-    "key '" + request->key + "' is not valid for injector type '" + injector->type() + "'";
-  if (validation_error.has_value() && validation_error.value() != unknown_central_key_error) {
+  const auto validation_error = validate_config_value(*field, request->value);
+  if (validation_error.has_value()) {
     response->success = false;
     response->message = validation_error.value();
     RCLCPP_WARN(

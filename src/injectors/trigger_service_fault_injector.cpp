@@ -83,16 +83,30 @@ std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
 {
   std::vector<FaultConfigField> schema;
 
-  for (const auto & key : {
-      "delay_ms",
-      "force_failure",
-      "failure_message",
-    })
-  {
-    FaultConfigField field;
-    field.key = key;
-    schema.push_back(field);
-  }
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("force_failure", "bool",
+      "Force the proxy service to return failure without calling the target service.", std::nullopt,
+      std::nullopt, "false");
+  add_field("failure_message", "string", "Failure message returned when force_failure is active.",
+      std::nullopt, std::nullopt, "Injected service failure");
 
   return schema;
 }

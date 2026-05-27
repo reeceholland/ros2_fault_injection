@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 namespace ros2_fault_injection
 {
@@ -56,6 +57,10 @@ bool is_allowed_config_key(const std::string & injector_type, const std::string 
 std::optional<std::string> validate_config_value(
   const std::string & injector_type,
   const std::string & key,
+  const std::string & value);
+
+std::optional<std::string> validate_config_value(
+  const FaultConfigField & field,
   const std::string & value);
 
 } // namespace ros2_fault_injection

@@ -13,11 +13,10 @@ namespace ros2_fault_injection
 namespace
 {
 
-
 bool parse_double(const std::string & text, double & value)
 {
-  const auto * begin = text.data();
-  const auto * end = text.data() + text.size();
+  const auto *begin = text.data();
+  const auto *end = text.data() + text.size();
 
   const auto result = std::from_chars(begin, end, value);
   return result.ec == std::errc{} && result.ptr == end;
@@ -25,8 +24,8 @@ bool parse_double(const std::string & text, double & value)
 
 bool parse_int(const std::string & text, int & value)
 {
-  const auto * begin = text.data();
-  const auto * end = text.data() + text.size();
+  const auto *begin = text.data();
+  const auto *end = text.data() + text.size();
 
   const auto result = std::from_chars(begin, end, value);
   return result.ec == std::errc{} && result.ptr == end;
@@ -91,8 +90,13 @@ const std::unordered_set<std::string> kOdomKeys = {
 };
 
 const std::unordered_set<std::string> kScanKeys = {
-  "drop_probability", "delay_ms", "range_bias", "range_noise_stddev",
-  "sector_min_deg", "sector_max_deg", "sector_value",
+  "drop_probability",
+  "delay_ms",
+  "range_bias",
+  "range_noise_stddev",
+  "sector_min_deg",
+  "sector_max_deg",
+  "sector_value",
 };
 
 const std::unordered_set<std::string> kJointStateKeys = {
@@ -103,11 +107,16 @@ const std::unordered_set<std::string> kJointStateKeys = {
 };
 
 const std::unordered_set<std::string> kImuKeys = {
-  "drop_probability", "delay_ms",
-  "angular_velocity_z_bias", "angular_velocity_z_noise_stddev",
-  "linear_acceleration_x_bias", "linear_acceleration_x_noise_stddev",
-  "linear_acceleration_y_bias", "linear_acceleration_y_noise_stddev",
-  "linear_acceleration_z_bias", "linear_acceleration_z_noise_stddev",
+  "drop_probability",
+  "delay_ms",
+  "angular_velocity_z_bias",
+  "angular_velocity_z_noise_stddev",
+  "linear_acceleration_x_bias",
+  "linear_acceleration_x_noise_stddev",
+  "linear_acceleration_y_bias",
+  "linear_acceleration_y_noise_stddev",
+  "linear_acceleration_z_bias",
+  "linear_acceleration_z_noise_stddev",
 };
 
 const std::unordered_set<std::string> kEmptyKeys = {};
@@ -119,11 +128,19 @@ const std::unordered_set<std::string> kTriggerServiceKeys = {
 };
 
 const std::unordered_set<std::string> kTfKeys = {
-  "parent_frame", "child_frame", "drop_probability", "delay_ms", "x_bias",
-  "y_bias", "z_bias", "roll_bias_deg", "pitch_bias_deg", "yaw_bias_deg",
+  "parent_frame",
+  "child_frame",
+  "drop_probability",
+  "delay_ms",
+  "x_bias",
+  "y_bias",
+  "z_bias",
+  "roll_bias_deg",
+  "pitch_bias_deg",
+  "yaw_bias_deg",
 };
 
-}  // namespace
+}   // namespace
 
 const std::unordered_set<std::string> & allowed_config_keys_for_injector_type(
   const std::string & injector_type)
@@ -160,7 +177,6 @@ bool is_allowed_config_key(const std::string & injector_type, const std::string 
   const auto & keys = allowed_config_keys_for_injector_type(injector_type);
   return keys.find(key) != keys.end();
 }
-
 
 std::optional<std::string> validate_config_value(
   const std::string & injector_type,
@@ -251,4 +267,76 @@ std::optional<std::string> validate_config_value(
   return std::nullopt;
 }
 
-}  // namespace ros2_fault_injection
+std::optional<std::string> validate_config_value(
+  const FaultConfigField & field,
+  const std::string & value)
+{
+  if (field.type.empty() || field.type == "string") {
+    return std::nullopt;
+  }
+
+  if (field.type == "non_empty_string") {
+    if (value.empty()) {
+      return "config '" + field.key + "' must not be empty";
+    }
+
+    return std::nullopt;
+  }
+
+  if (field.type == "bool") {
+    if (value == "true" || value == "false") {
+      return std::nullopt;
+    }
+
+    return "config '" + field.key + "' must be 'true' or 'false'";
+  }
+
+  if (field.type == "special_float") {
+    if (is_special_float_value(value)) {
+      return std::nullopt;
+    }
+
+    double parsed_value = 0.0;
+    if (!parse_double(value, parsed_value)) {
+      return "config '" + field.key + "' must be a number, inf, -inf, or nan";
+    }
+
+    return std::nullopt;
+  }
+
+  if (field.type == "int") {
+    int parsed_value = 0;
+    if (!parse_int(value, parsed_value)) {
+      return "config '" + field.key + "' must be an integer";
+    }
+
+    if (field.min_value.has_value() && parsed_value < field.min_value.value()) {
+      return "config '" + field.key + "' must be >= " + std::to_string(field.min_value.value());
+    }
+
+    if (field.max_value.has_value() && parsed_value > field.max_value.value()) {
+      return "config '" + field.key + "' must be <= " + std::to_string(field.max_value.value());
+    }
+
+    return std::nullopt;
+  }
+  if (field.type == "double") {
+    double parsed_value = 0.0;
+    if (!parse_double(value, parsed_value)) {
+      return "config '" + field.key + "' must be a number";
+    }
+
+    if (field.min_value.has_value() && parsed_value < *field.min_value) {
+      return "config '" + field.key + "' must be >= " + std::to_string(*field.min_value);
+    }
+
+    if (field.max_value.has_value() && parsed_value > *field.max_value) {
+      return "config '" + field.key + "' must be <= " + std::to_string(*field.max_value);
+    }
+
+    return std::nullopt;
+  }
+
+  return "config '" + field.key + "' has unsupported schema type '" + field.type + "'";
+}
+} // namespace ros2_fault_injection

@@ -90,16 +90,32 @@ std::vector<FaultConfigField> JointStateFaultInjector::config_schema() const
 {
   std::vector<FaultConfigField> schema;
 
-  for (const auto & key :
-    {"drop_probability",
-      "delay_ms",
-      "velocity_bias",
-      "velocity_noise_stddev"})
-  {
-    FaultConfigField field;
-    field.key = key;
-    schema.push_back(field);
-  }
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("drop_probability", "double", "Probability that an incoming message is dropped.", 0.0,
+      1.0, "0.0");
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("velocity_bias", "double", "Additive bias applied to every joint velocity.",
+      std::nullopt, std::nullopt, "0.0");
+  add_field("velocity_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to joint velocities.", 0.0, std::nullopt,
+      "0.0");
 
   return schema;
 }

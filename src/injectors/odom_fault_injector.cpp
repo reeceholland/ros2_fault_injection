@@ -197,25 +197,51 @@ std::vector<FaultConfigField> OdomFaultInjector::config_schema() const
 {
   std::vector<FaultConfigField> schema;
 
-  for (const auto & key : {
-      "drop_probability",
-      "delay_ms",
-      "x_bias",
-      "y_bias",
-      "yaw_bias",
-      "x_noise_stddev",
-      "y_noise_stddev",
-      "pose_covariance_scale",
-      "twist_covariance_scale",
-      "pose_covariance_floor",
-      "twist_covariance_floor",
-    })
-  {
-    FaultConfigField field;
-    field.key = key;
-    schema.push_back(field);
-  }
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("drop_probability", "double", "Probability that an incoming message is dropped.", 0.0,
+      1.0, "0.0");
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("x_bias", "double", "Additive bias applied to odometry pose x.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("y_bias", "double", "Additive bias applied to odometry pose y.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("yaw_bias_deg", "double",
+      "Additive yaw bias applied to odometry orientation, in degrees.", std::nullopt, std::nullopt,
+      "0.0");
+  add_field("yaw_noise_stddev_deg", "double",
+      "Standard deviation of Gaussian noise applied to odometry yaw, in degrees.", 0.0,
+      std::nullopt, "0.0");
+  add_field("x_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to odometry pose x.", 0.0, std::nullopt, "0.0");
+  add_field("y_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to odometry pose y.", 0.0, std::nullopt, "0.0");
+  add_field("pose_covariance_scale", "double",
+      "Multiplier applied to every odometry pose covariance entry.", 0.0, std::nullopt, "1.0");
+  add_field("twist_covariance_scale", "double",
+      "Multiplier applied to every odometry twist covariance entry.", 0.0, std::nullopt, "1.0");
+  add_field("pose_covariance_floor", "double",
+      "Minimum value applied to every odometry pose covariance entry.", 0.0, std::nullopt, "0.0");
+  add_field("twist_covariance_floor", "double",
+      "Minimum value applied to every odometry twist covariance entry.", 0.0, std::nullopt, "0.0");
 
   return schema;
 }
+
 } // namespace ros2_fault_injection
