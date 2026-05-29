@@ -57,8 +57,13 @@ stores common state:
 - active fault IDs
 - runtime config value updates
 
-Typed injectors own the ROS communication and message mutation for one domain. For example, the odom injector
-subscribes to raw odometry, applies active odom faults, and republishes the mutated odometry.
+Typed injectors own the ROS communication, message mutation, and editable config schema for one domain. For
+example, the odom injector subscribes to raw odometry, applies active odom faults, and republishes the mutated
+odometry.
+
+Each built-in injector exposes a `FaultConfigField` schema. The same schema is used by scenario validation,
+runtime config updates, and the RViz panel. This keeps YAML loading and `/fault_injection/set_fault_config`
+consistent: a value accepted in a scenario should follow the same rules as a value changed at runtime.
 
 Topic injectors follow this proxy pattern:
 
@@ -95,8 +100,8 @@ Scheduler actions publish fault events so UI tools and logs can show what happen
 - set active/inactive state
 - reload the current scenario file
 
-The services are intentionally thin. They validate requests, call injector/controller behavior, and publish
-events when runtime state changes.
+The services are intentionally thin. They validate requests against the owning injector schema, call
+injector/controller behavior, and publish events when runtime state changes.
 
 ## Events
 

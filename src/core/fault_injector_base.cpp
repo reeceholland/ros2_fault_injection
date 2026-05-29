@@ -245,4 +245,18 @@ void FaultInjectorBase::clear_faults()
   active_.clear();
 }
 
+std::vector<FaultConfigField> FaultInjectorBase::config_schema() const
+{
+  std::vector<FaultConfigField> schema;
+  const auto injector_type = type();
+  const auto & keys = allowed_config_keys_for_injector_type(injector_type);
+
+  for (const auto & key : keys) {
+    FaultConfigField field;
+    field.key = key;
+    schema.push_back(field);
+  }
+  return schema;
+}
+
 } // namespace ros2_fault_injection

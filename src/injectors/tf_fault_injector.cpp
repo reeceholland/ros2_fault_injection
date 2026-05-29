@@ -182,4 +182,57 @@ void TfFaultInjector::apply_rotation_bias(geometry_msgs::msg::TransformStamped &
   }
 }
 
+std::vector<FaultConfigField> TfFaultInjector::static_config_schema()
+{
+  std::vector<FaultConfigField> schema;
+
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("parent_frame", "non_empty_string", "Parent frame id of the transform to affect.",
+      std::nullopt, std::nullopt, std::nullopt);
+  add_field("child_frame", "non_empty_string", "Child frame id of the transform to affect.",
+      std::nullopt, std::nullopt, std::nullopt);
+  add_field("drop_probability", "double", "Probability that an incoming message is dropped.", 0.0,
+      1.0, "0.0");
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("x_bias", "double", "Additive translation bias applied to transform x.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("y_bias", "double", "Additive translation bias applied to transform y.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("z_bias", "double", "Additive translation bias applied to transform z.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("roll_bias_deg", "double",
+      "Additive roll bias applied to transform rotation, in degrees.", std::nullopt, std::nullopt,
+      "0.0");
+  add_field("pitch_bias_deg", "double",
+      "Additive pitch bias applied to transform rotation, in degrees.", std::nullopt, std::nullopt,
+      "0.0");
+  add_field("yaw_bias_deg", "double",
+      "Additive yaw bias applied to transform rotation, in degrees.", std::nullopt, std::nullopt,
+      "0.0");
+
+  return schema;
+}
+
+std::vector<FaultConfigField> TfFaultInjector::config_schema() const
+{
+  return static_config_schema();
+}
+
 }  // namespace ros2_fault_injection

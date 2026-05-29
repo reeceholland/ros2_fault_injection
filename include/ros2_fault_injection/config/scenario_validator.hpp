@@ -15,36 +15,36 @@
 namespace ros2_fault_injection
 {
 
-/**
- * @brief Result of scenario validation.
- */
+  /**
+   * @brief Result of scenario validation.
+   */
 struct ValidationResult
 {
-  /// Validation failures that should prevent startup.
+    /// Validation failures that should prevent startup.
   std::vector<std::string> errors;
 
-  /// Non-fatal validation findings.
+    /// Non-fatal validation findings.
   std::vector<std::string> warnings;
 
-  /**
-   * @brief Check whether validation found any errors.
-   *
-   * @return true when `errors` is empty.
-   */
+    /**
+     * @brief Check whether validation found any errors.
+     *
+     * @return true when `errors` is empty.
+     */
   bool ok() const
   {
     return errors.empty();
   }
 };
 
-/**
- * @brief Validate a parsed scenario before starting injectors.
- *
- * @param scenario Scenario to validate.
- * @return Validation errors and warnings.
- */
+  /**
+   * @brief Validate a parsed scenario before starting injectors.
+   *
+   * @param scenario Scenario to validate.
+   * @return Validation errors and warnings.
+   */
 ValidationResult validate_scenario(const ScenarioConfig & scenario);
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
 
-#endif  // ROS2_FAULT_INJECTION__SCENARIO_VALIDATOR_HPP_
+#endif // ROS2_FAULT_INJECTION__SCENARIO_VALIDATOR_HPP_

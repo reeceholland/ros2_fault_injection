@@ -19,6 +19,7 @@
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_service_manager.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/srv/get_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
@@ -30,11 +31,61 @@ namespace
 
 using namespace std::chrono_literals;
 
+FaultConfigField make_test_schema_field(const std::string & key)
+{
+  FaultConfigField field;
+  field.key = key;
+
+  if (key == "drop_probability") {
+    field.type = "double";
+    field.min_value = 0.0;
+    field.max_value = 1.0;
+    return field;
+  }
+
+  if (key == "delay_ms") {
+    field.type = "int";
+    field.min_value = 0.0;
+    return field;
+  }
+
+  if (key == "force_failure") {
+    field.type = "bool";
+    return field;
+  }
+
+  if (key == "sector_value") {
+    field.type = "special_float";
+    return field;
+  }
+
+  if (key == "parent_frame" || key == "child_frame") {
+    field.type = "non_empty_string";
+    return field;
+  }
+
+  if (key.find("noise_stddev") != std::string::npos ||
+    key.find("covariance") != std::string::npos)
+  {
+    field.type = "double";
+    field.min_value = 0.0;
+    return field;
+  }
+
+  field.type = "double";
+  return field;
+}
+
 class FakeFaultInjector : public FaultInjector
 {
 public:
   explicit FakeFaultInjector(std::string id, std::string type = "odom")
-  : id_(std::move(id)), type_(std::move(type)) {}
+  : id_(std::move(id)), type_(std::move(type))
+  {
+    for (const auto & key : allowed_config_keys_for_injector_type(type_)) {
+      schema_.push_back(make_test_schema_field(key));
+    }
+  }
 
   std::string id() const override
   {
@@ -117,11 +168,22 @@ public:
     active_.clear();
   }
 
+  std::vector<FaultConfigField> config_schema() const override
+  {
+    return schema_;
+  }
+
+  void add_schema_field(const FaultConfigField & field)
+  {
+    schema_.push_back(field);
+  }
+
 private:
   std::string id_;
   std::string type_;
   std::unordered_map<std::string, FaultConfig> faults_;
   std::unordered_set<std::string> active_;
+  std::vector<FaultConfigField> schema_;
 };
 
 FaultConfig make_fault()
@@ -308,124 +370,127 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
     rclcpp::shutdown();
 }
 
-
 TEST(FaultServiceManager, GetFaultConfigReturnsCurrentConfig)
-{
-  rclcpp::init(0, nullptr);
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_config");
-  auto injector = std::make_shared<FakeFaultInjector>("odom", "odom");
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_config");
+    auto injector = std::make_shared<FakeFaultInjector>("odom", "odom");
 
-  FaultConfig fault;
-  fault.id = "odom_bias";
-  fault.injector_id = "odom";
-  fault.config["x_bias"] = "1.0";
-  fault.config["drop_probability"] = "0.25";
-  injector->add_fault(fault);
+    FaultConfig fault;
+    fault.id = "odom_bias";
+    fault.injector_id = "odom";
+    fault.config["x_bias"] = "1.0";
+    fault.config["drop_probability"] = "0.25";
+    injector->add_fault(fault);
 
-  FaultServiceManager::InjectorMap injectors;
-  injectors["odom"] = injector;
+    FaultServiceManager::InjectorMap injectors;
+    injectors["odom"] = injector;
 
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher,
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher,
     []()
     {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
 
-  auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
-  ASSERT_TRUE(client->wait_for_service(500ms));
+    auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
+    ASSERT_TRUE(client->wait_for_service(500ms));
 
-  auto request = std::make_shared<srv::GetFaultConfig::Request>();
-  request->fault_id = "odom_bias";
+    auto request = std::make_shared<srv::GetFaultConfig::Request>();
+    request->fault_id = "odom_bias";
 
-  auto future = client->async_send_request(request);
-  const auto result =
+    auto future = client->async_send_request(request);
+    const auto result =
     rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
-  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
 
-  const auto response = future.get();
-  ASSERT_TRUE(response->success);
-  EXPECT_EQ(response->injector_id, "odom");
-  EXPECT_EQ(response->injector_type, "odom");
-  ASSERT_EQ(response->keys.size(), response->values.size());
+    const auto response = future.get();
+    ASSERT_TRUE(response->success);
+    EXPECT_EQ(response->injector_id, "odom");
+    EXPECT_EQ(response->injector_type, "odom");
+    ASSERT_EQ(response->keys.size(), response->values.size());
 
-  EXPECT_EQ(response->keys, (std::vector<std::string>{"drop_probability", "x_bias"}));
-  EXPECT_EQ(response->values, (std::vector<std::string>{"0.25", "1.0"}));
+    EXPECT_EQ(response->keys, (std::vector<std::string>{"drop_probability", "x_bias"}));
+    EXPECT_EQ(response->values, (std::vector<std::string>{"0.25", "1.0"}));
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
 TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
-{
-  rclcpp::init(0, nullptr);
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_invalid_config_update");
-  auto injector = std::make_shared<FakeFaultInjector>("imu", "imu");
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_invalid_config_update");
+    auto injector = std::make_shared<FakeFaultInjector>("imu", "imu");
 
-  FaultConfig fault;
-  fault.id = "imu_linear_acceleration_noise";
-  fault.injector_id = "imu";
-  fault.config["drop_probability"] = "0.5";
-  injector->add_fault(fault);
+    FaultConfig fault;
+    fault.id = "imu_linear_acceleration_noise";
+    fault.injector_id = "imu";
+    fault.config["drop_probability"] = "0.5";
+    injector->add_fault(fault);
 
-  FaultServiceManager::InjectorMap injectors;
-  injectors["imu"] = injector;
+    FaultServiceManager::InjectorMap injectors;
+    injectors["imu"] = injector;
 
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher,
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher,
     []()
     {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
 
-  auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
-  ASSERT_TRUE(client->wait_for_service(500ms));
+    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    ASSERT_TRUE(client->wait_for_service(500ms));
 
-  auto request = std::make_shared<srv::SetFaultConfig::Request>();
-  request->fault_id = "imu_linear_acceleration_noise";
-  request->key = "drop_probability";
-  request->value = "Helloo";
+    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    request->fault_id = "imu_linear_acceleration_noise";
+    request->key = "drop_probability";
+    request->value = "Helloo";
 
-  auto future = client->async_send_request(request);
-  const auto result =
+    auto future = client->async_send_request(request);
+    const auto result =
     rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
-  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
-  EXPECT_FALSE(future.get()->success);
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    EXPECT_FALSE(future.get()->success);
 
-  const auto updated_fault = injector->get_fault_config("imu_linear_acceleration_noise");
-  ASSERT_TRUE(updated_fault.has_value());
-  EXPECT_EQ(updated_fault->config.at("drop_probability"), "0.5");
+    const auto updated_fault = injector->get_fault_config("imu_linear_acceleration_noise");
+    ASSERT_TRUE(updated_fault.has_value());
+    EXPECT_EQ(updated_fault->config.at("drop_probability"), "0.5");
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
-TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
+TEST(FaultServiceManager, SetFaultConfigAllowsInjectorOwnedKeyUnknownToCentralSchema)
 {
   rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_config_update_type");
-  auto injector = std::make_shared<FakeFaultInjector>("motor_feedback", "joint_state");
+  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_plugin_config_update");
+  auto injector = std::make_shared<FakeFaultInjector>("custom", "custom");
 
-  FaultConfig fault;
-  fault.id = "motor_velocity_bias";
-  fault.injector_id = "motor_feedback";
-  fault.config["velocity_bias"] = "0.1";
+  auto fault = make_fault();
+  fault.id = "custom_fault";
+  fault.injector_id = "custom";
   injector->add_fault(fault);
 
+  FaultConfigField field;
+  field.key = "plugin_only_key";
+  injector->add_schema_field(field);
+
   FaultServiceManager::InjectorMap injectors;
-  injectors["motor_feedback"] = injector;
+  injectors["custom"] = injector;
 
   FaultEventPublisher event_publisher(*node);
   FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+    []() {
+      return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};
+    });
 
   auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
   ASSERT_TRUE(client->wait_for_service(500ms));
 
   auto request = std::make_shared<srv::SetFaultConfig::Request>();
-  request->fault_id = "motor_velocity_bias";
-  request->key = "velocity_bias";
-  request->value = "0.25";
+  request->fault_id = "custom_fault";
+  request->key = "plugin_only_key";
+  request->value = "plugin_value";
 
   auto future = client->async_send_request(request);
   const auto result =
@@ -434,11 +499,102 @@ TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
   ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
   ASSERT_TRUE(future.get()->success);
 
-  const auto updated_fault = injector->get_fault_config("motor_velocity_bias");
+  const auto updated_fault = injector->get_fault_config("custom_fault");
   ASSERT_TRUE(updated_fault.has_value());
-  EXPECT_EQ(updated_fault->config.at("velocity_bias"), "0.25");
+  EXPECT_EQ(updated_fault->config.at("plugin_only_key"), "plugin_value");
 
   rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_config_update_type");
+    auto injector = std::make_shared<FakeFaultInjector>("motor_feedback", "joint_state");
+
+    FaultConfig fault;
+    fault.id = "motor_velocity_bias";
+    fault.injector_id = "motor_feedback";
+    fault.config["velocity_bias"] = "0.1";
+    injector->add_fault(fault);
+
+    FaultServiceManager::InjectorMap injectors;
+    injectors["motor_feedback"] = injector;
+
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher,
+    []()
+    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+
+    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    request->fault_id = "motor_velocity_bias";
+    request->key = "velocity_bias";
+    request->value = "0.25";
+
+    auto future = client->async_send_request(request);
+    const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    ASSERT_TRUE(future.get()->success);
+
+    const auto updated_fault = injector->get_fault_config("motor_velocity_bias");
+    ASSERT_TRUE(updated_fault.has_value());
+    EXPECT_EQ(updated_fault->config.at("velocity_bias"), "0.25");
+
+    rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, GetFaultSchemaUsesInjectorOwnedSchema)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_injector_schema");
+
+    auto injector = std::make_shared<FakeFaultInjector>("custom");
+
+    auto fault = make_fault();
+    fault.id = "custom_fault";
+    fault.injector_id = "custom";
+    injector->add_fault(fault);
+
+    FaultConfigField field;
+    field.key = "plugin_only_key";
+    injector->add_schema_field(field);
+
+    FaultServiceManager::InjectorMap injectors;
+    injectors["custom"] = injector;
+
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(*node, injectors, event_publisher,
+    []()
+    {
+      return ros2_fault_injection::ReloadScenarioResult{
+      false,
+      "test reload callback"};
+    });
+
+    auto client = node->create_client<srv::GetFaultSchema>("fault_injection/get_fault_schema");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    auto request = std::make_shared<srv::GetFaultSchema::Request>();
+    request->fault_id = "custom_fault";
+
+    auto future = client->async_send_request(request);
+    const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+    auto response = future.get();
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    ASSERT_TRUE(response->success);
+
+    const auto & keys = response->keys;
+    EXPECT_NE(std::find(keys.begin(), keys.end(), "plugin_only_key"), keys.end());
+
+    rclcpp::shutdown();
 }
 
 } // namespace ros2_fault_injection

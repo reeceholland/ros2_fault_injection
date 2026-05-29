@@ -17,10 +17,12 @@ ImuFaultInjector::ImuFaultInjector(rclcpp::Node & node, const InjectorConfig & c
   pub_ = node_.create_publisher<sensor_msgs::msg::Imu>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<sensor_msgs::msg::Imu>(
-      config_.topic->input_topic, qos,
-    [this](sensor_msgs::msg::Imu::SharedPtr msg) {on_imu(msg);});
+        config_.topic->input_topic, qos,
+    [this](sensor_msgs::msg::Imu::SharedPtr msg)
+    {on_imu(msg);});
 
-  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]() {flush_delayed();});
+  timer_ = node_.create_wall_timer(std::chrono::milliseconds{10}, [this]()
+      {flush_delayed();});
 }
 
 void ImuFaultInjector::on_imu(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -114,4 +116,58 @@ void ImuFaultInjector::apply_linear_acceleration_noise(sensor_msgs::msg::Imu & m
   msg.linear_acceleration.z += z_dist(rng_);
 }
 
-}  // namespace ros2_fault_injection
+std::vector<FaultConfigField> ImuFaultInjector::static_config_schema()
+{
+  std::vector<FaultConfigField> schema;
+
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("drop_probability", "double", "Probability that an incoming message is dropped.", 0.0,
+      1.0, "0.0");
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("angular_velocity_z_bias", "double", "Additive bias applied to IMU angular velocity z.",
+      std::nullopt, std::nullopt, "0.0");
+  add_field("angular_velocity_z_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to IMU angular velocity z.", 0.0, std::nullopt,
+      "0.0");
+  add_field("linear_acceleration_x_bias", "double",
+      "Additive bias applied to IMU linear acceleration x.", std::nullopt, std::nullopt, "0.0");
+  add_field("linear_acceleration_y_bias", "double",
+      "Additive bias applied to IMU linear acceleration y.", std::nullopt, std::nullopt, "0.0");
+  add_field("linear_acceleration_z_bias", "double",
+      "Additive bias applied to IMU linear acceleration z.", std::nullopt, std::nullopt, "0.0");
+  add_field("linear_acceleration_x_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to IMU linear acceleration x.", 0.0,
+      std::nullopt, "0.0");
+  add_field("linear_acceleration_y_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to IMU linear acceleration y.", 0.0,
+      std::nullopt, "0.0");
+  add_field("linear_acceleration_z_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to IMU linear acceleration z.", 0.0,
+      std::nullopt, "0.0");
+
+  return schema;
+}
+
+std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
+{
+  return static_config_schema();
+}
+
+} // namespace ros2_fault_injection

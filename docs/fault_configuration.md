@@ -4,6 +4,8 @@ Scenarios are YAML files that describe one or more injectors and the faults each
 
 At runtime, each fault is registered against an `injector_id`. The injector type decides which keys are valid inside that fault's `config` map.
 
+Each injector exposes a config schema made of `FaultConfigField` entries. Scenario loading and runtime config updates both use that schema, so YAML files and `/fault_injection/set_fault_config` follow the same key and value validation rules. The schema also feeds `/fault_injection/get_fault_schema`, which UI tools can use to display field types, descriptions, defaults, and numeric limits.
+
 ## Common Fault Fields
 
 Every fault supports these top-level fields:
@@ -207,4 +209,4 @@ ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/Set
   "{fault_id: odom_bias, key: x_bias, value: '2.0'}"
 ```
 
-Only keys listed for that injector type are accepted, and values are validated before being stored. Scheduling fields such as `start`, `duration`, and `active_on_startup` are part of the scenario and are not changed through `SetFaultConfig`.
+Only keys listed by the owning injector schema are accepted, and values are validated before being stored. Scheduling fields such as `start`, `duration`, and `active_on_startup` are part of the scenario and are not changed through `SetFaultConfig`.

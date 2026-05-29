@@ -22,6 +22,10 @@ class TfFaultInjector : public FaultInjectorBase {
 public:
   explicit TfFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
+  static std::vector<FaultConfigField> static_config_schema();
+
+  std::vector<FaultConfigField> config_schema() const override;
+
 private:
   void on_message(const tf2_msgs::msg::TFMessage & msg);
   bool should_drop_transform(const geometry_msgs::msg::TransformStamped & transform);

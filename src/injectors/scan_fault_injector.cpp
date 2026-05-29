@@ -206,4 +206,51 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan & msg)
   }
 }
 
+std::vector<FaultConfigField> ScanFaultInjector::static_config_schema()
+{
+  std::vector<FaultConfigField> schema;
+
+  const auto add_field = [&schema](
+    const std::string & key,
+    const std::string & type,
+    const std::string & description,
+    std::optional<double> min_value = std::nullopt,
+    std::optional<double> max_value = std::nullopt,
+    std::optional<std::string> default_value = std::nullopt) {
+      FaultConfigField field;
+      field.key = key;
+      field.type = type;
+      field.description = description;
+      field.min_value = min_value;
+      field.max_value = max_value;
+      field.default_value = default_value;
+      schema.push_back(field);
+    };
+
+  add_field("drop_probability", "double", "Probability that an incoming message is dropped.", 0.0,
+      1.0, "0.0");
+  add_field("delay_ms", "int", "Delay applied before publishing the message, in milliseconds.", 0.0,
+      std::nullopt, "0");
+  add_field("range_bias", "double", "Additive bias applied to each laser scan range.", std::nullopt,
+      std::nullopt, "0.0");
+  add_field("range_noise_stddev", "double",
+      "Standard deviation of Gaussian noise applied to laser scan ranges.", 0.0, std::nullopt,
+      "0.0");
+  add_field("sector_min_deg", "double",
+      "Start angle of the affected laser scan sector, in degrees.", std::nullopt, std::nullopt,
+      "0.0");
+  add_field("sector_max_deg", "double", "End angle of the affected laser scan sector, in degrees.",
+      std::nullopt, std::nullopt, "0.0");
+  add_field("sector_value", "special_float",
+      "Replacement range value for points inside the affected sector.", std::nullopt, std::nullopt,
+      "inf");
+
+  return schema;
+}
+
+std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
+{
+  return static_config_schema();
+}
+
 }  // namespace ros2_fault_injection

@@ -16,25 +16,31 @@
 #include <rclcpp/timer.hpp>
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
 
 namespace ros2_fault_injection
 {
 
-/**
- * @brief Fault injector for `nav_msgs/msg/Odometry` streams.
- *
- * Subscribes to the configured input topic, applies active odometry faults,
- * and republishes the result on the configured output topic.
- */
-class OdomFaultInjector : public FaultInjectorBase {
-public:
   /**
-   * @brief Create the odometry fault injector.
+   * @brief Fault injector for `nav_msgs/msg/Odometry` streams.
    *
-   * @param node Node used to create publishers, subscriptions, and timers.
-   * @param config Injector topic and QoS configuration.
+   * Subscribes to the configured input topic, applies active odometry faults,
+   * and republishes the result on the configured output topic.
    */
+class OdomFaultInjector : public FaultInjectorBase
+{
+public:
+    /**
+     * @brief Create the odometry fault injector.
+     *
+     * @param node Node used to create publishers, subscriptions, and timers.
+     * @param config Injector topic and QoS configuration.
+     */
   explicit OdomFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
+
+  static std::vector<FaultConfigField> static_config_schema();
+
+  std::vector<FaultConfigField> config_schema() const override;
 
 private:
   struct DelayedOdom
@@ -58,6 +64,6 @@ private:
   std::deque<DelayedOdom> delayed_;
 };
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
 
-#endif  // ROS2_FAULT_INJECTION__ODOM_FAULT_INJECTOR_HPP_
+#endif // ROS2_FAULT_INJECTION__ODOM_FAULT_INJECTOR_HPP_
