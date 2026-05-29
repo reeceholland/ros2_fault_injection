@@ -38,6 +38,8 @@ public:
      */
   explicit JointStateFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
 
+  static std::vector<FaultConfigField> static_config_schema();
+
   std::vector<FaultConfigField> config_schema() const override;
 
 private:

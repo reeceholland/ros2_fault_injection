@@ -79,7 +79,7 @@ void TriggerServiceFaultInjector::on_request(
     response->message = "Error calling trigger service";
   }
 }
-std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
+std::vector<FaultConfigField> TriggerServiceFaultInjector::static_config_schema()
 {
   std::vector<FaultConfigField> schema;
 
@@ -109,6 +109,11 @@ std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
       std::nullopt, std::nullopt, "Injected service failure");
 
   return schema;
+}
+
+std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
+{
+  return static_config_schema();
 }
 
 }  // namespace ros2_fault_injection

@@ -206,7 +206,7 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan & msg)
   }
 }
 
-std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
+std::vector<FaultConfigField> ScanFaultInjector::static_config_schema()
 {
   std::vector<FaultConfigField> schema;
 
@@ -246,6 +246,11 @@ std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
       "inf");
 
   return schema;
+}
+
+std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
+{
+  return static_config_schema();
 }
 
 }  // namespace ros2_fault_injection

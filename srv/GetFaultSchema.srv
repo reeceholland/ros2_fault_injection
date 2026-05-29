@@ -2,6 +2,17 @@ string fault_id
 ---
 bool success
 string message
+
 string injector_id
 string injector_type
+
 string[] keys
+string[] types
+string[] descriptions
+string[] default_values
+
+bool[] has_min_values
+float64[] min_values
+
+bool[] has_max_values
+float64[] max_values

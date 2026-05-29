@@ -116,7 +116,7 @@ void ImuFaultInjector::apply_linear_acceleration_noise(sensor_msgs::msg::Imu & m
   msg.linear_acceleration.z += z_dist(rng_);
 }
 
-std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
+std::vector<FaultConfigField> ImuFaultInjector::static_config_schema()
 {
   std::vector<FaultConfigField> schema;
 
@@ -163,6 +163,11 @@ std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
       std::nullopt, "0.0");
 
   return schema;
+}
+
+std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
+{
+  return static_config_schema();
 }
 
 } // namespace ros2_fault_injection

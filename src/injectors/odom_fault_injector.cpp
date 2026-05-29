@@ -193,7 +193,7 @@ void OdomFaultInjector::apply_covariance_scale(nav_msgs::msg::Odometry & msg)
   }
 }
 
-std::vector<FaultConfigField> OdomFaultInjector::config_schema() const
+std::vector<FaultConfigField> OdomFaultInjector::static_config_schema()
 {
   std::vector<FaultConfigField> schema;
 
@@ -242,6 +242,11 @@ std::vector<FaultConfigField> OdomFaultInjector::config_schema() const
       "Minimum value applied to every odometry twist covariance entry.", 0.0, std::nullopt, "0.0");
 
   return schema;
+}
+
+std::vector<FaultConfigField> OdomFaultInjector::config_schema() const
+{
+  return static_config_schema();
 }
 
 } // namespace ros2_fault_injection

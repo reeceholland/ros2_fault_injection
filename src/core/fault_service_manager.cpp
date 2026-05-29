@@ -25,10 +25,11 @@ const FaultConfigField * find_schema_field(
   const std::string & key)
 {
   const auto it = std::find_if(
-    schema.begin(), schema.end(),
-    [&key](const FaultConfigField & field) {
+          schema.begin(), schema.end(),
+    [&key](const FaultConfigField & field)
+    {
       return field.key == key;
-    });
+          });
 
   if (it == schema.end()) {
     return nullptr;
@@ -37,7 +38,7 @@ const FaultConfigField * find_schema_field(
   return &(*it);
 }
 
-} // namespace
+}   // namespace
 
 FaultServiceManager::FaultServiceManager(
   rclcpp::Node & node, const InjectorMap & injectors,
@@ -251,15 +252,15 @@ void FaultServiceManager::handle_set_fault_config(
   }
 
   const auto schema = injector->config_schema();
-  const auto * field = find_schema_field(schema, request->key);
+  const auto *field = find_schema_field(schema, request->key);
   if (field == nullptr) {
     response->success = false;
     response->message =
       "key '" + request->key + "' is not valid for injector type '" + injector->type() + "'";
     RCLCPP_WARN(
-      node_.get_logger(),
-      "Rejected config update for fault '%s': invalid key '%s'",
-      request->fault_id.c_str(), request->key.c_str());
+          node_.get_logger(),
+          "Rejected config update for fault '%s': invalid key '%s'",
+          request->fault_id.c_str(), request->key.c_str());
     return;
   }
 
@@ -268,9 +269,9 @@ void FaultServiceManager::handle_set_fault_config(
     response->success = false;
     response->message = validation_error.value();
     RCLCPP_WARN(
-      node_.get_logger(),
-      "Rejected config update for fault '%s': %s",
-      request->fault_id.c_str(), validation_error->c_str());
+          node_.get_logger(),
+          "Rejected config update for fault '%s': %s",
+          request->fault_id.c_str(), validation_error->c_str());
     return;
   }
 
@@ -313,19 +314,39 @@ void FaultServiceManager::handle_get_fault_schema(
 
   const auto injector_type = injector->type();
 
+  auto schema = injector->config_schema();
+
+  std::sort(schema.begin(), schema.end(),
+    [](const FaultConfigField & lhs, const FaultConfigField & rhs)
+    {
+      return lhs.key < rhs.key;
+              });
+
+  response->keys.reserve(schema.size());
+  response->types.reserve(schema.size());
+  response->descriptions.reserve(schema.size());
+  response->default_values.reserve(schema.size());
+  response->has_min_values.reserve(schema.size());
+  response->min_values.reserve(schema.size());
+  response->has_max_values.reserve(schema.size());
+  response->max_values.reserve(schema.size());
+
   response->success = true;
   response->message = "retrieved schema for fault_id: " + request->fault_id;
   response->injector_id = injector->id();
   response->injector_type = injector_type;
 
-  const auto schema = injector->config_schema();
-
-  response->keys.reserve(schema.size());
   for (const auto & field : schema) {
     response->keys.push_back(field.key);
+    response->types.push_back(field.type);
+    response->descriptions.push_back(field.description);
+    response->default_values.push_back(field.default_value.has_value() ?
+        field.default_value.value() : "");
+    response->has_min_values.push_back(field.min_value.has_value());
+    response->min_values.push_back(field.min_value.value_or(0.0));
+    response->has_max_values.push_back(field.max_value.has_value());
+    response->max_values.push_back(field.max_value.value_or(0.0));
   }
-
-  std::sort(response->keys.begin(), response->keys.end());
 }
 
 void FaultServiceManager::handle_get_fault_config(
@@ -370,4 +391,5 @@ void FaultServiceManager::handle_get_fault_config(
     response->values.push_back(fault_config->config.at(key));
   }
 }
+
 } // namespace ros2_fault_injection
