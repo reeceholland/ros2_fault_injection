@@ -23,6 +23,8 @@ This keeps the framework understandable and testable while covering both data st
 
 Injectors are discovered through `pluginlib`. The built-in injector types are registered in `fault_injector_plugins.xml`, and additional packages can provide their own `FaultInjectorPlugin` wrappers without editing the core factory.
 
+Each injector owns its editable fault config schema. Scenario validation, runtime config updates, and RViz schema display all use the same `FaultConfigField` metadata, so config keys and values are checked consistently whether they come from YAML or from `/fault_injection/set_fault_config`.
+
 ## Example Plugin Package
 
 An external example plugin package is available here:
