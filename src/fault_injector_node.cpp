@@ -33,7 +33,8 @@ int main(int argc, char **argv)
 
   const auto scenario_file = node->get_parameter("scenario_file").as_string();
 
-  if (scenario_file.empty()) {
+  if (scenario_file.empty())
+  {
     RCLCPP_ERROR(node->get_logger(), "Missing required parameter: scenario_file");
     rclcpp::shutdown();
     return 1;
@@ -41,11 +42,14 @@ int main(int argc, char **argv)
 
   ros2_fault_injection::ScenarioConfig scenario;
 
-  try {
+  try
+  {
     // Keep file parsing separate from ROS wiring so the parser stays easy to
     // test and injectors do not need to know YAML exists.
     scenario = ros2_fault_injection::load_scenario_config(scenario_file);
-  } catch (const std::exception & error) {
+  }
+  catch (const std::exception &error)
+  {
     RCLCPP_ERROR(node->get_logger(), "Failed to load scenario config %s : %s",
                  scenario_file.c_str(), error.what());
 
@@ -55,12 +59,15 @@ int main(int argc, char **argv)
 
   const auto validation_result = ros2_fault_injection::validate_scenario(scenario);
 
-  for (const auto & warning : validation_result.warnings) {
+  for (const auto &warning : validation_result.warnings)
+  {
     RCLCPP_WARN(node->get_logger(), "Scenario config warning: %s", warning.c_str());
   }
 
-  if (!validation_result.ok()) {
-    for (const auto & error : validation_result.errors) {
+  if (!validation_result.ok())
+  {
+    for (const auto &error : validation_result.errors)
+    {
       RCLCPP_ERROR(node->get_logger(), "Scenario config error: %s", error.c_str());
     }
 
@@ -74,11 +81,12 @@ int main(int argc, char **argv)
 
   auto fault_service_manager = std::make_shared<ros2_fault_injection::FaultServiceManager>(
       *node, controller.injectors(), event_pub,
-    [&controller]() {return controller.reload_scenario();});
+      [&controller]()
+      { return controller.reload_scenario(); });
 
   RCLCPP_INFO(node->get_logger(),
-              "Fault injector running with %zu injectors using scenario file %s",
-              controller.injectors().size(), scenario_file.c_str());
+              "Fault injector running with %zu injectors and %zu assertions using scenario file %s",
+              controller.injectors().size(), scenario.assertions.size(), scenario_file.c_str());
 
   rclcpp::spin(node);
 
