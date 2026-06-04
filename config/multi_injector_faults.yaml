@@ -60,6 +60,8 @@ faults:
   # Manual odometry yaw error.
   - id: odom_yaw_bias
     injector_id: odom
+    start: 5.0
+    duration: 10.0
     active_on_startup: false
     config:
       yaw_bias_deg: 10.0
@@ -68,6 +70,8 @@ faults:
   - id: odom_covariance_inflation
     injector_id: odom
     active_on_startup: false
+    start: 3.0
+    duration: 15.0
     config:
       pose_covariance_scale: 10.0
       pose_covariance_floor: 0.05
@@ -144,14 +148,26 @@ faults:
       x_bias: 0.25
 
 assertions:
-  - id: odom_bias_activates
+  - id: odom_yaw_bias_activates
     type: fault_event
-    fault_id: odom_bias
+    fault_id: odom_yaw_bias
     state: active
     within: 6.0
 
-  - id: odom_bias_deactivates
+  - id: odom__yawbias_deactivates
     type: fault_event
-    fault_id: odom_bias
+    fault_id: odom_yaw_bias
     state: inactive
-    within: 16.0
+    within: 17.0
+
+  - id: odom_covariance_activates
+    type: fault_event
+    fault_id: odom_covariance_inflation
+    state: active
+    within: 4.0
+
+  - id: odom_covariance_deactivates
+    type: fault_event
+    fault_id: odom_covariance_inflation
+    state: inactive
+    within: 20.0

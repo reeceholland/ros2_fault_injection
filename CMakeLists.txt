@@ -40,6 +40,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultConfig.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
+  "msg/AssertionEvent.msg"
   DEPENDENCIES builtin_interfaces
 )
 

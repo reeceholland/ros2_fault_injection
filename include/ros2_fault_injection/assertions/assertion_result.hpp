@@ -11,19 +11,20 @@
 
 namespace ros2_fault_injection
 {
-enum class AssertionState
-{
-  Pending,
-  Passed,
-  Failed,
-};
+  enum class AssertionState
+  {
+    Pending,
+    Passed,
+    Failed,
+  };
 
-struct AssertionResult
-{
-  std::string id;
-  AssertionState state;
-  std::string message;
-};
+  struct AssertionResult
+  {
+    std::string id;
+    std::string type;
+    AssertionState state;
+    std::string message;
+  };
 } // namespace ros2_fault_injection
 
 #endif // ROS2_FAULT_INJECTION__ASSERTION_RESULT_HPP_
