@@ -345,3 +345,70 @@ TEST(ScenarioValidator, ExternalPluginTypeWarnsButDoesNotFail)
   ASSERT_FALSE(result.warnings.empty());
   EXPECT_NE(result.warnings.front().find("assuming external plugin"), std::string::npos);
 }
+
+TEST(ScenarioValidator, AcceptsScenarioWithValidFaultEventAssertion)
+{
+  ros2_fault_injection::ScenarioConfig scenario;
+
+  ros2_fault_injection::InjectorConfig injector;
+  injector.id = "odom";
+  injector.type = "odom";
+  ros2_fault_injection::TopicEndpointConfig topic;
+  topic.input_topic = "/odom_raw";
+  topic.output_topic = "/odom";
+  topic.qos_depth = 10;
+  injector.topic = topic;
+  scenario.injectors.push_back(injector);
+  scenario.injector = injector;
+
+  ros2_fault_injection::FaultConfig fault;
+  fault.id = "odom_bias";
+  fault.injector_id = "odom";
+  fault.config["x_bias"] = "1.0";
+  scenario.faults.push_back(fault);
+
+  ros2_fault_injection::AssertionConfig assertion;
+  assertion.id = "odom_bias_activates";
+  assertion.type = "fault_event";
+  assertion.fault_id = "odom_bias";
+  assertion.state = "active";
+  assertion.within = 6.0;
+  scenario.assertions.push_back(assertion);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+  EXPECT_TRUE(result.ok());
+}
+
+TEST(ScenarioValidator, RejectsScenarioWithInvalidFaultEventAssertion)
+{
+  ros2_fault_injection::ScenarioConfig scenario;
+
+  ros2_fault_injection::InjectorConfig injector;
+  injector.id = "odom";
+  injector.type = "odom";
+  ros2_fault_injection::TopicEndpointConfig topic;
+  topic.input_topic = "/odom_raw";
+  topic.output_topic = "/odom";
+  topic.qos_depth = 10;
+  injector.topic = topic;
+  scenario.injectors.push_back(injector);
+  scenario.injector = injector;
+
+  ros2_fault_injection::FaultConfig fault;
+  fault.id = "odom_bias";
+  fault.injector_id = "odom";
+  fault.config["x_bias"] = "1.0";
+  scenario.faults.push_back(fault);
+
+  ros2_fault_injection::AssertionConfig assertion;
+  assertion.id = "invalid_assertion";
+  assertion.type = "fault_event";
+  assertion.fault_id = "nonexistent_fault";
+  assertion.state = "active";
+  assertion.within = 6.0;
+  scenario.assertions.push_back(assertion);
+
+  const auto result = ros2_fault_injection::validate_scenario(scenario);
+  EXPECT_FALSE(result.ok());
+  ASSERT_EQ(result.errors.size(), 1u);
+}

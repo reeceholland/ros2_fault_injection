@@ -1,0 +1,5 @@
+builtin_interfaces/Time stamp
+string assertion_id
+string assertion_type
+string state
+string message

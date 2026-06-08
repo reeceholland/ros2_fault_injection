@@ -17,6 +17,7 @@
 #include "ros2_fault_injection/core/fault_injector_factory.hpp"
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/assertions/fault_assertion_runner.hpp"
 
 namespace ros2_fault_injection
 {
@@ -71,6 +72,7 @@ private:
   FaultInjectorFactory factory_;
   FaultScheduler scheduler_;
   InjectorMap injectors_;
+  std::unique_ptr<FaultAssertionRunner> assertion_runner_;
 };
 
 } // namespace ros2_fault_injection

@@ -40,6 +40,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultConfig.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
+  "msg/AssertionEvent.msg"
   DEPENDENCIES builtin_interfaces
 )
 
@@ -66,6 +67,8 @@ add_library(${PROJECT_NAME}_core
   src/utils/fault_descriptions.cpp
   src/injectors/trigger_service_fault_injector.cpp
   src/injectors/tf_fault_injector.cpp
+  src/assertions/fault_assertion_runner.cpp
+  src/assertions/fault_event_assertion.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -254,6 +257,21 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_injector_factory
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_fault_event_assertion
+    test/assertions/test_fault_event_assertion.cpp
+  )
+  target_link_libraries(test_fault_event_assertion
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_fault_assertion_runner
+    test/assertions/test_fault_assertion_runner.cpp
+  )
+  target_link_libraries(test_fault_assertion_runner
+    ${PROJECT_NAME}_core
+  )
+  
   add_launch_test(
   test/launch/test_fault_services_launch.py
   ENV

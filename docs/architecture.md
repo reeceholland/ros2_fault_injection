@@ -10,7 +10,8 @@ scenario YAML
   -> FaultInjectorFactory / pluginlib
   -> typed injectors
   -> FaultScheduler
-  -> services and events
+  -> FaultAssertionRunner
+  -> services, fault events, and assertion events
   -> optional RViz panel
 ```
 
@@ -24,6 +25,7 @@ A scenario YAML file describes the runtime layout:
 - `injectors` define the proxy endpoints and injector type.
 - `faults` define named fault configs owned by an injector.
 - scheduling fields such as `active_on_startup`, `start`, and `duration` describe when faults should be active.
+- `assertions` define expected outcomes that should be observed while the scenario runs.
 
 `ScenarioConfig` parses the YAML into typed C++ structs. `ScenarioValidator` checks the parsed scenario before
 the node starts or before a reload is accepted.
@@ -36,6 +38,7 @@ the node starts or before a reload is accepted.
 - creates injectors through `FaultInjectorFactory`
 - registers faults with their owning injector
 - starts the scheduler
+- starts the assertion runner
 - exposes the injector map used by runtime services
 
 It is intentionally the place where the scenario becomes a running fault injection system.
@@ -86,7 +89,15 @@ client -> /service -> injector -> /service_raw -> real server
 - faults with `duration` are disabled after the duration expires
 - manual-only faults remain inactive until changed through the service API
 
-Scheduler actions publish fault events so UI tools and logs can show what happened.
+Scheduler actions publish fault events so UI tools, assertions, and logs can show what happened.
+
+## Assertions
+
+`FaultAssertionRunner` evaluates optional scenario assertions while the node is running. The first supported assertion type is `fault_event`, which listens to `/fault_injection/events` and passes when a named fault reaches an expected state such as `active` or `inactive`.
+
+Assertion results are published on `/fault_injection/assertion_events` as `ros2_fault_injection/msg/AssertionEvent`. Pending assertions are kept internal; the runner publishes when an assertion changes to `passed` or `failed`.
+
+This makes assertions useful for smoke tests and demonstrations: the same YAML file can define the fault schedule and the expected evidence that the schedule happened.
 
 ## Runtime Services
 
@@ -105,10 +116,9 @@ injector/controller behavior, and publish events when runtime state changes.
 
 ## Events
 
-`FaultEventPublisher` emits structured events on `/fault_injection/events`.
+`FaultEventPublisher` emits structured fault events on `/fault_injection/events`. `FaultAssertionRunner` emits assertion result events on `/fault_injection/assertion_events`.
 
-Events are published for scheduled changes, startup activation, manual state changes, config updates, and
-other runtime actions. The RViz panel uses this topic to show recent activity.
+Fault events are published for scheduled changes, startup activation, manual state changes, config updates, and other runtime actions. Assertion events are published when expected outcomes pass or fail. The RViz panel and command-line tools can use these topics to show recent activity.
 
 ## RViz Panel
 

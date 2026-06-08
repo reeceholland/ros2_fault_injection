@@ -22,6 +22,9 @@ FaultController::FaultController(
 : node_(node), scenario_file_(std::move(scenario_file)), scenario_(std::move(scenario)),
   events_(events), factory_(node), scheduler_(node, events)
 {
+  assertion_runner_ = std::make_unique<FaultAssertionRunner>(node_);
+  assertion_runner_->start(scenario_.assertions);
+
   create_injectors();
   register_faults();
   schedule_faults();
@@ -39,7 +42,7 @@ void FaultController::create_injectors()
 
     if (!injector) {
       RCLCPP_ERROR(node_.get_logger(), "Unknown injector type '%s' for injector '%s'",
-                   injector_config.type.c_str(), injector_config.id.c_str());
+                     injector_config.type.c_str(), injector_config.id.c_str());
 
       continue;
     }
@@ -55,7 +58,7 @@ void FaultController::register_faults()
 
     if (injector_it == injectors_.end()) {
       RCLCPP_WARN(node_.get_logger(), "Fault '%s' targets unknown injector_id '%s', skipping",
-                  fault.id.c_str(), fault.injector_id.c_str());
+                    fault.id.c_str(), fault.injector_id.c_str());
 
       continue;
     }
@@ -83,20 +86,20 @@ ReloadScenarioResult FaultController::reload_scenario()
 {
   ScenarioConfig new_scenario;
   RCLCPP_INFO(node_.get_logger(), "Attempting to reload scenario from file '%s'",
-              scenario_file_.c_str());
+                scenario_file_.c_str());
 
   try {
     new_scenario = load_scenario_config(scenario_file_);
   } catch (const std::exception & error) {
     RCLCPP_ERROR(node_.get_logger(), "Failed to reload scenario config %s : %s",
-                 scenario_file_.c_str(), error.what());
+                   scenario_file_.c_str(), error.what());
 
     return ReloadScenarioResult{false,
       "failed to load scenario config: " + std::string(error.what())};
   }
 
   RCLCPP_INFO(node_.get_logger(), "Validating new scenario configuration from file '%s'",
-              scenario_file_.c_str());
+                scenario_file_.c_str());
   const auto validation_result = validate_scenario(new_scenario);
 
   if (!validation_result.ok()) {
@@ -132,7 +135,7 @@ ReloadScenarioResult FaultController::reload_scenario()
   schedule_faults();
 
   RCLCPP_INFO(node_.get_logger(), "Scenario reloaded successfully from file '%s'",
-              scenario_file_.c_str());
+                scenario_file_.c_str());
   return ReloadScenarioResult{
     true,
     "Scenario reloaded successfully",
@@ -146,7 +149,7 @@ ReloadScenarioResult FaultController::validate_reload_compatible(
   }
 
   for (const auto & current : scenario_.injectors) {
-    const auto * updated = find_injector(new_scenario, current.id);
+    const auto *updated = find_injector(new_scenario, current.id);
 
     if (updated == nullptr) {
       return {false, "Reload cannot remove injector '" + current.id + "'"};
@@ -156,7 +159,7 @@ ReloadScenarioResult FaultController::validate_reload_compatible(
       return {false, "Reload cannot change type for injector '" + current.id + "'"};
     }
 
-    // Topic injector endpoint compatibility.
+      // Topic injector endpoint compatibility.
     if (current.topic.has_value() != updated->topic.has_value()) {
       return {false, "Reload cannot change endpoint kind for injector '" + current.id + "'"};
     }
@@ -170,7 +173,7 @@ ReloadScenarioResult FaultController::validate_reload_compatible(
       }
     }
 
-    // Trigger service endpoint compatibility.
+      // Trigger service endpoint compatibility.
     if (current.trigger_service.has_value() != updated->trigger_service.has_value()) {
       return {false, "Reload cannot change endpoint kind for injector '" + current.id + "'"};
     }

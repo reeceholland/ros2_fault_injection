@@ -5,6 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 #include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/assertions/assertion_config.hpp"
 
 #include <chrono>
 #include <stdexcept>
@@ -82,8 +83,8 @@ FaultConfig parse_fault(const YAML::Node & node)
   }
 
   if (node["config"]) {
-    // Store values as strings for now. Individual injectors decide how to
-    // interpret keys such as x_bias, drop_probability, or delay_ms.
+        // Store values as strings for now. Individual injectors decide how to
+        // interpret keys such as x_bias, drop_probability, or delay_ms.
     for (const auto & item : node["config"]) {
       const auto key = item.first.as<std::string>();
       const auto value = node_to_string(item.second);
@@ -94,7 +95,29 @@ FaultConfig parse_fault(const YAML::Node & node)
   return fault;
 }
 
-}  // namespace
+AssertionConfig parse_assertion(const YAML::Node & node)
+{
+  AssertionConfig assertion;
+
+  assertion.id = required_string(node, "id");
+  assertion.type = required_string(node, "type");
+
+  if (assertion.type == "fault_event") {
+    assertion.fault_id = required_string(node, "fault_id");
+    assertion.state = required_string(node, "state");
+  }
+
+  if (node["within"]) {
+    assertion.within = node["within"].as<double>();
+  }
+
+  if (node["duration"]) {
+    assertion.duration = node["duration"].as<double>();
+  }
+
+  return assertion;
+}
+}   // namespace
 
 ScenarioConfig load_scenario_config(const std::string & path)
 {
@@ -121,8 +144,8 @@ ScenarioConfig load_scenario_config(const std::string & path)
     for (const auto & fault_node : root["faults"]) {
       auto fault = parse_fault(fault_node);
 
-      // active_on_startup: true means the fault is active as soon as the
-      // framework starts. Keep active as a deprecated alias for older scenarios.
+        // active_on_startup: true means the fault is active as soon as the
+        // framework starts. Keep active as a deprecated alias for older scenarios.
       const bool active_on_startup =
         (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
         (fault_node["active"] && fault_node["active"].as<bool>());
@@ -132,6 +155,15 @@ ScenarioConfig load_scenario_config(const std::string & path)
       }
 
       scenario.faults.push_back(std::move(fault));
+    }
+  }
+
+  if (root["assertions"]) {
+    if (!root["assertions"].IsSequence()) {
+      throw std::runtime_error("Scenario 'assertions' block must be a sequence");
+    }
+    for (const auto & assertion_node : root["assertions"]) {
+      scenario.assertions.push_back(parse_assertion(assertion_node));
     }
   }
 
@@ -151,4 +183,4 @@ const InjectorConfig * find_injector(
   return nullptr;
 }
 
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
