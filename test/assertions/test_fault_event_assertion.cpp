@@ -88,23 +88,6 @@ TEST(FaultEventAssertionTest, IgnoresDifferentState)
   EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Pending);
 }
 
-TEST(FaultEventAssertionTest, FailsWhenWithinDeadlineExpires)
-{
-  ros2_fault_injection::AssertionConfig config;
-  config.id = "odom_bias_activates";
-  config.type = "fault_event";
-  config.fault_id = "odom_bias";
-  config.state = "active";
-  config.within = 5.0; // seconds
-
-  ros2_fault_injection::FaultEventAssertion assertion(config);
-  assertion.update(6.0); // Simulate 6 seconds elapsed
-
-  auto result = assertion.result();
-  EXPECT_EQ(result.id, "odom_bias_activates");
-  EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Failed);
-}
-
 TEST(FaultEventAssertionTest, DoesNotFailBeforeDeadline)
 {
   ros2_fault_injection::AssertionConfig config;
@@ -119,5 +102,68 @@ TEST(FaultEventAssertionTest, DoesNotFailBeforeDeadline)
 
   auto result = assertion.result();
   EXPECT_EQ(result.id, "odom_bias_activates");
+  EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Pending);
+}
+
+TEST(FaultEventAssertionTest, FailsWhenWithinDeadlineExpires)
+{
+  ros2_fault_injection::AssertionConfig config;
+  config.id = "odom_bias_activates";
+  config.type = "fault_event";
+  config.fault_id = "odom_bias";
+  config.state = "active";
+  config.within = 2.0;
+
+  ros2_fault_injection::FaultEventAssertion assertion(config);
+
+  assertion.update(2.1);
+
+  const auto result = assertion.result();
+
+  EXPECT_EQ(result.id, "odom_bias_activates");
+  EXPECT_EQ(result.type, "fault_event");
+  EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Failed);
+  EXPECT_NE(result.message.find("Timed out"), std::string::npos);
+  EXPECT_NE(result.message.find("odom_bias"), std::string::npos);
+  EXPECT_NE(result.message.find("active"), std::string::npos);
+}
+
+TEST(FaultEventAssertionTest, PassedAssertionDoesNotLaterFail)
+{
+  ros2_fault_injection::AssertionConfig config;
+  config.id = "odom_bias_activates";
+  config.type = "fault_event";
+  config.fault_id = "odom_bias";
+  config.state = "active";
+  config.within = 2.0;
+
+  ros2_fault_injection::FaultEventAssertion assertion(config);
+
+  ros2_fault_injection::msg::FaultEvent event;
+  event.fault_id = "odom_bias";
+  event.state = "active";
+
+  assertion.observe(event);
+  assertion.update(999.0);
+
+  const auto result = assertion.result();
+
+  EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Passed);
+}
+
+TEST(FaultEventAssertionTest, DoesNotFailWithoutDeadline)
+{
+  ros2_fault_injection::AssertionConfig config;
+  config.id = "odom_bias_activates";
+  config.type = "fault_event";
+  config.fault_id = "odom_bias";
+  config.state = "active";
+
+  ros2_fault_injection::FaultEventAssertion assertion(config);
+
+  assertion.update(999.0);
+
+  const auto result = assertion.result();
+
   EXPECT_EQ(result.state, ros2_fault_injection::AssertionState::Pending);
 }

@@ -15,198 +15,172 @@
 
 namespace ros2_fault_injection
 {
-  namespace
-  {
+namespace
+{
 
-    std::string required_string(const YAML::Node &node, const std::string &key)
-    {
-      if (!node[key])
-      {
-        throw std::runtime_error("Missing required key: " + key);
-      }
+std::string required_string(const YAML::Node & node, const std::string & key)
+{
+  if (!node[key]) {
+    throw std::runtime_error("Missing required key: " + key);
+  }
 
-      return node[key].as<std::string>();
-    }
+  return node[key].as<std::string>();
+}
 
-    std::string node_to_string(const YAML::Node &node)
-    {
-      if (node.IsScalar())
-      {
-        return node.as<std::string>();
-      }
+std::string node_to_string(const YAML::Node & node)
+{
+  if (node.IsScalar()) {
+    return node.as<std::string>();
+  }
 
-      throw std::runtime_error("Expected scalar YAML value");
-    }
+  throw std::runtime_error("Expected scalar YAML value");
+}
 
-    InjectorConfig parse_injector(const YAML::Node &node)
-    {
-      InjectorConfig config;
-      config.id = required_string(node, "id");
-      config.type = required_string(node, "type");
+InjectorConfig parse_injector(const YAML::Node & node)
+{
+  InjectorConfig config;
+  config.id = required_string(node, "id");
+  config.type = required_string(node, "type");
 
-      if (node["trigger_service"] || config.type == "trigger_service")
-      {
-        const auto service_node = node["trigger_service"] ? node["trigger_service"] : node;
+  if (node["trigger_service"] || config.type == "trigger_service") {
+    const auto service_node = node["trigger_service"] ? node["trigger_service"] : node;
 
-        TriggerServiceEndpointConfig service;
-        service.proxy_service = required_string(service_node, "proxy_service");
-        service.target_service = required_string(service_node, "target_service");
-        config.trigger_service = service;
-        return config;
-      }
+    TriggerServiceEndpointConfig service;
+    service.proxy_service = required_string(service_node, "proxy_service");
+    service.target_service = required_string(service_node, "target_service");
+    config.trigger_service = service;
+    return config;
+  }
 
-      const auto topic_node = node["topic"] ? node["topic"] : node;
+  const auto topic_node = node["topic"] ? node["topic"] : node;
 
-      TopicEndpointConfig topic;
-      topic.input_topic = required_string(topic_node, "input_topic");
-      topic.output_topic = required_string(topic_node, "output_topic");
+  TopicEndpointConfig topic;
+  topic.input_topic = required_string(topic_node, "input_topic");
+  topic.output_topic = required_string(topic_node, "output_topic");
 
-      if (topic_node["qos_depth"])
-      {
-        topic.qos_depth = topic_node["qos_depth"].as<std::size_t>();
-      }
+  if (topic_node["qos_depth"]) {
+    topic.qos_depth = topic_node["qos_depth"].as<std::size_t>();
+  }
 
-      config.topic = topic;
-      return config;
-    }
+  config.topic = topic;
+  return config;
+}
 
-    FaultConfig parse_fault(const YAML::Node &node)
-    {
-      FaultConfig fault;
-      fault.id = required_string(node, "id");
-      fault.injector_id = required_string(node, "injector_id");
+FaultConfig parse_fault(const YAML::Node & node)
+{
+  FaultConfig fault;
+  fault.id = required_string(node, "id");
+  fault.injector_id = required_string(node, "injector_id");
 
-      if (node["start"])
-      {
-        const auto seconds = node["start"].as<double>();
-        fault.start = std::chrono::milliseconds{static_cast<int64_t>(seconds * 1000.0)};
-      }
+  if (node["start"]) {
+    const auto seconds = node["start"].as<double>();
+    fault.start = std::chrono::milliseconds{static_cast<int64_t>(seconds * 1000.0)};
+  }
 
-      if (node["duration"])
-      {
-        const auto seconds = node["duration"].as<double>();
-        fault.duration = std::chrono::milliseconds{static_cast<int64_t>(seconds * 1000.0)};
-      }
+  if (node["duration"]) {
+    const auto seconds = node["duration"].as<double>();
+    fault.duration = std::chrono::milliseconds{static_cast<int64_t>(seconds * 1000.0)};
+  }
 
-      if (node["config"])
-      {
+  if (node["config"]) {
         // Store values as strings for now. Individual injectors decide how to
         // interpret keys such as x_bias, drop_probability, or delay_ms.
-        for (const auto &item : node["config"])
-        {
-          const auto key = item.first.as<std::string>();
-          const auto value = node_to_string(item.second);
-          fault.config[key] = value;
-        }
-      }
+    for (const auto & item : node["config"]) {
+      const auto key = item.first.as<std::string>();
+      const auto value = node_to_string(item.second);
+      fault.config[key] = value;
+    }
+  }
 
-      return fault;
+  return fault;
+}
+
+AssertionConfig parse_assertion(const YAML::Node & node)
+{
+  AssertionConfig assertion;
+
+  assertion.id = required_string(node, "id");
+  assertion.type = required_string(node, "type");
+
+  if (assertion.type == "fault_event") {
+    assertion.fault_id = required_string(node, "fault_id");
+    assertion.state = required_string(node, "state");
+  }
+
+  if (node["within"]) {
+    assertion.within = node["within"].as<double>();
+  }
+
+  if (node["duration"]) {
+    assertion.duration = node["duration"].as<double>();
+  }
+
+  return assertion;
+}
+}   // namespace
+
+ScenarioConfig load_scenario_config(const std::string & path)
+{
+  const auto root = YAML::LoadFile(path);
+
+  ScenarioConfig scenario;
+
+  if (root["injectors"]) {
+    for (const auto & injector_node : root["injectors"]) {
+      scenario.injectors.push_back(parse_injector(injector_node));
     }
 
-    AssertionConfig parse_assertion(const YAML::Node &node)
-    {
-      AssertionConfig assertion;
-
-      assertion.id = required_string(node, "id");
-      assertion.type = required_string(node, "type");
-
-      if (assertion.type == "fault_event")
-      {
-        assertion.fault_id = required_string(node, "fault_id");
-        assertion.state = required_string(node, "state");
-      }
-
-      if (node["within"])
-      {
-        assertion.within = node["within"].as<double>();
-      }
-
-      if (node["duration"])
-      {
-        assertion.duration = node["duration"].as<double>();
-      }
-
-      return assertion;
+    if (!scenario.injectors.empty()) {
+      scenario.injector = scenario.injectors.front();
     }
-  } // namespace
+  } else if (root["injector"]) {
+    scenario.injector = parse_injector(root["injector"]);
+    scenario.injectors.push_back(scenario.injector);
+  } else {
+    throw std::runtime_error("Scenario is missing required 'injector' or 'injectors' block");
+  }
 
-  ScenarioConfig load_scenario_config(const std::string &path)
-  {
-    const auto root = YAML::LoadFile(path);
-
-    ScenarioConfig scenario;
-
-    if (root["injectors"])
-    {
-      for (const auto &injector_node : root["injectors"])
-      {
-        scenario.injectors.push_back(parse_injector(injector_node));
-      }
-
-      if (!scenario.injectors.empty())
-      {
-        scenario.injector = scenario.injectors.front();
-      }
-    }
-    else if (root["injector"])
-    {
-      scenario.injector = parse_injector(root["injector"]);
-      scenario.injectors.push_back(scenario.injector);
-    }
-    else
-    {
-      throw std::runtime_error("Scenario is missing required 'injector' or 'injectors' block");
-    }
-
-    if (root["faults"])
-    {
-      for (const auto &fault_node : root["faults"])
-      {
-        auto fault = parse_fault(fault_node);
+  if (root["faults"]) {
+    for (const auto & fault_node : root["faults"]) {
+      auto fault = parse_fault(fault_node);
 
         // active_on_startup: true means the fault is active as soon as the
         // framework starts. Keep active as a deprecated alias for older scenarios.
-        const bool active_on_startup =
-            (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
-            (fault_node["active"] && fault_node["active"].as<bool>());
+      const bool active_on_startup =
+        (fault_node["active_on_startup"] && fault_node["active_on_startup"].as<bool>()) ||
+        (fault_node["active"] && fault_node["active"].as<bool>());
 
-        if (active_on_startup)
-        {
-          scenario.initially_active_faults.push_back(fault.id);
-        }
-
-        scenario.faults.push_back(std::move(fault));
+      if (active_on_startup) {
+        scenario.initially_active_faults.push_back(fault.id);
       }
+
+      scenario.faults.push_back(std::move(fault));
     }
-
-    if (root["assertions"])
-    {
-      if (!root["assertions"].IsSequence())
-      {
-        throw std::runtime_error("Scenario 'assertions' block must be a sequence");
-      }
-      for (const auto &assertion_node : root["assertions"])
-      {
-        scenario.assertions.push_back(parse_assertion(assertion_node));
-      }
-    }
-
-    return scenario;
   }
 
-  const InjectorConfig *find_injector(
-      const ScenarioConfig &scenario,
-      const std::string &injector_id)
-  {
-    for (const auto &injector : scenario.injectors)
-    {
-      if (injector.id == injector_id)
-      {
-        return &injector;
-      }
+  if (root["assertions"]) {
+    if (!root["assertions"].IsSequence()) {
+      throw std::runtime_error("Scenario 'assertions' block must be a sequence");
     }
-
-    return nullptr;
+    for (const auto & assertion_node : root["assertions"]) {
+      scenario.assertions.push_back(parse_assertion(assertion_node));
+    }
   }
+
+  return scenario;
+}
+
+const InjectorConfig * find_injector(
+  const ScenarioConfig & scenario,
+  const std::string & injector_id)
+{
+  for (const auto & injector : scenario.injectors) {
+    if (injector.id == injector_id) {
+      return &injector;
+    }
+  }
+
+  return nullptr;
+}
 
 } // namespace ros2_fault_injection

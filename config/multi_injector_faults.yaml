@@ -154,7 +154,7 @@ assertions:
     state: active
     within: 6.0
 
-  - id: odom__yawbias_deactivates
+  - id: odom_yaw_bias_deactivates
     type: fault_event
     fault_id: odom_yaw_bias
     state: inactive

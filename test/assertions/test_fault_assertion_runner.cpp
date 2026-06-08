@@ -11,7 +11,6 @@
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
-#include "ros2_fault_injection/assertions/fault_assertion_runner.hpp"
 
 #include "gtest/gtest.h"
 
@@ -20,74 +19,87 @@ using namespace std::chrono_literals;
 namespace ros2_fault_injection
 {
 
-TEST(FaultAssertionRunner, StartsFaultEventAssertions)
-    {
-        rclcpp::Node node("test_fault_assertion_runner");
-        ros2_fault_injection::FaultAssertionRunner runner(node);
+class FaultAssertionRunnerTest : public ::testing::Test
+{
+protected:
+  static void SetUpTestSuite()
+  {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+  }
+  static void TearDownTestSuite()
+  {
+    if (rclcpp::ok()) {
+      rclcpp::shutdown();
+    }
+  }
+};
 
-        ros2_fault_injection::AssertionConfig config;
-        config.id = "test_assertion";
-        config.type = "fault_event";
-        config.fault_id = "test_fault";
-        config.state = "active";
+TEST_F(FaultAssertionRunnerTest, StartsFaultEventAssertions)
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_fault_assertion_runner");
+    FaultAssertionRunner runner(*node);
 
-        runner.start({config});
-        auto results = runner.results();
+    AssertionConfig config;
+    config.id = "test_assertion";
+    config.type = "fault_event";
+    config.fault_id = "test_fault";
+    config.state = "active";
 
-        ASSERT_EQ(results.size(), 1);
-        EXPECT_EQ(results[0].id, "test_assertion");
-        EXPECT_EQ(results[0].state, ros2_fault_injection::AssertionState::Pending);
+    runner.start({config});
+    auto results = runner.results();
 
-        rclcpp::shutdown();
+    ASSERT_EQ(results.size(), 1u);
+    EXPECT_EQ(results[0].id, "test_assertion");
+    EXPECT_EQ(results[0].state, AssertionState::Pending);
 }
 
-TEST(FaultAssertionRunner, PassesAssertionWhenEventPublished)
-    {
-        auto node = std::make_shared<rclcpp::Node>("test_fault_assertion_runner");
+TEST_F(FaultAssertionRunnerTest, PassesAssertionWhenEventPublished)
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_fault_assertion_runner");
 
-        ros2_fault_injection::AssertionConfig config;
-        config.id = "odom_bias_activates";
-        config.type = "fault_event";
-        config.fault_id = "odom_bias";
-        config.state = "active";
-        config.within = 2.0;
+    AssertionConfig config;
+    config.id = "odom_bias_activates";
+    config.type = "fault_event";
+    config.fault_id = "odom_bias";
+    config.state = "active";
+    config.within = 2.0;
 
-        FaultAssertionRunner runner(*node);
-        runner.start({config});
+    FaultAssertionRunner runner(*node);
+    runner.start({config});
 
-        auto publisher = node->create_publisher<msg::FaultEvent>("/fault_injection/events", 10);
+    auto publisher = node->create_publisher<msg::FaultEvent>("/fault_injection/events", 10);
 
-        ros2_fault_injection::msg::FaultEvent event;
-        event.fault_id = "odom_bias";
-        event.state = "active";
-        event.source = "test";
+    msg::FaultEvent event;
+    event.fault_id = "odom_bias";
+    event.state = "active";
+    event.source = "test";
 
-        const auto start = std::chrono::steady_clock::now();
-        while (publisher->get_subscription_count() == 0 &&
+    const auto start = std::chrono::steady_clock::now();
+    while (publisher->get_subscription_count() == 0 &&
     std::chrono::steady_clock::now() - start < 500ms)
   {
     rclcpp::spin_some(node);
     std::this_thread::sleep_for(10ms);
-        }
+    }
 
-        publisher->publish(event);
+    publisher->publish(event);
 
-        const auto spin_start = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - spin_start < 2s) {
+    const auto spin_start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - spin_start < 2s) {
     rclcpp::spin_some(node);
     const auto results = runner.results();
     ASSERT_EQ(results.size(), 1);
 
-    if (results.front().state == ros2_fault_injection::AssertionState::Passed) {
+    if (results.front().state == AssertionState::Passed) {
       break;
     }
     std::this_thread::sleep_for(10ms);
-        }
-        const auto results = runner.results();
-        ASSERT_EQ(results.size(), 1u);
-        EXPECT_EQ(results.front().state, ros2_fault_injection::AssertionState::Passed);
-
-        rclcpp::shutdown();
+    }
+    const auto results = runner.results();
+    ASSERT_EQ(results.size(), 1u);
+    EXPECT_EQ(results.front().state, AssertionState::Passed);
 }
 
 }

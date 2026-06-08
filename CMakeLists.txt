@@ -264,6 +264,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_event_assertion
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_fault_assertion_runner
+    test/assertions/test_fault_assertion_runner.cpp
+  )
+  target_link_libraries(test_fault_assertion_runner
+    ${PROJECT_NAME}_core
+  )
   
   add_launch_test(
   test/launch/test_fault_services_launch.py
