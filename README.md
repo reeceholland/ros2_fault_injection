@@ -3,7 +3,7 @@
 [![CI](https://github.com/reeceholland/ros2_fault_injection/actions/workflows/ci.yml/badge.svg)](https://github.com/reeceholland/ros2_fault_injection/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/ros2-fault-injection/badge/?version=latest)](https://ros2-fault-injection.readthedocs.io/en/latest/?badge=latest)
 
-`ros2_fault_injection` is a C++ ROS 2 framework for inserting controlled faults into robot data streams.
+`ros2_fault_injection` is a C++ ROS 2 framework for inserting controlled faults into robot topics, transforms, and services, then checking expected fault outcomes with scenario assertions.
 
 Documentation is available at [ros2-fault-injection.readthedocs.io](https://ros2-fault-injection.readthedocs.io/).
 
@@ -19,7 +19,7 @@ Service injectors use the same proxy idea:
 client -> /service -> fault injector -> /service_raw -> real server
 ```
 
-This keeps the framework understandable and testable while covering both data streams and command/control interactions.
+This keeps the framework understandable and testable while covering both data streams and command/control interactions. Scenarios can also include assertions that watch fault events and publish pass/fail results for expected outcomes.
 
 Injectors are discovered through `pluginlib`. The built-in injector types are registered in `fault_injector_plugins.xml`, and additional packages can provide their own `FaultInjectorPlugin` wrappers without editing the core factory.
 
@@ -130,7 +130,7 @@ When using TF injection, remap the original TF publisher to `/tf_raw` and let th
 
 ## Scenario YAML
 
-A scenario defines one or more injectors and the faults assigned to them.
+A scenario defines one or more injectors, the faults assigned to them, and optional assertions for expected outcomes.
 
 ```yaml
 injectors:
@@ -208,6 +208,19 @@ faults:
       parent_frame: odom
       child_frame: base_link
       yaw_bias_deg: 10.0
+
+assertions:
+  - id: odom_bias_activates
+    type: fault_event
+    fault_id: odom_bias
+    state: active
+    within: 6.0
+
+  - id: odom_bias_deactivates
+    type: fault_event
+    fault_id: odom_bias
+    state: inactive
+    within: 17.0
 ```
 
 ### Fault Activation Rules
@@ -222,6 +235,24 @@ faults:
 `start` and `duration` are written in seconds in YAML and stored internally as milliseconds.
 
 Topic injectors use a `topic` block containing `input_topic`, `output_topic`, and `qos_depth`. Trigger service injectors use a `trigger_service` block containing `proxy_service` and `target_service`.
+
+### Assertions
+
+Assertions describe expected outcomes from a scenario. They do not inject faults themselves; they observe framework events and publish pass/fail results.
+
+Currently supported assertion type:
+
+| Type | Required fields | Behavior |
+| --- | --- | --- |
+| `fault_event` | `id`, `type`, `fault_id`, `state` | Passes when the named fault publishes the requested state. |
+
+Optional assertion fields:
+
+| Field | Meaning |
+| --- | --- |
+| `within` | Fails the assertion if the expected event is not observed within this many seconds. |
+
+`fault_event` assertions support `state: active` and `state: inactive`. The validator rejects assertions that reference unknown fault IDs, unsupported states, duplicate assertion IDs, or negative timing values.
 
 ## Build
 
@@ -391,6 +422,33 @@ string details
 
 Events are published when scheduled faults activate/deactivate and when faults are changed through the service API.
 
+## Assertions
+
+Assertion results are published as typed events:
+
+```bash
+ros2 topic echo /fault_injection/assertion_events
+```
+
+The assertion event message is `ros2_fault_injection/msg/AssertionEvent`:
+
+```text
+builtin_interfaces/Time stamp
+string assertion_id
+string assertion_type
+string state
+string message
+```
+
+Common assertion states:
+
+| State | Meaning |
+| --- | --- |
+| `passed` | The expected condition was observed. |
+| `failed` | The expected condition was not observed before its deadline, or otherwise failed. |
+
+Assertions are useful for automated scenario checks. For example, a scheduled `odom_bias` fault can have one assertion that expects an `active` event shortly after startup and another that expects an `inactive` event after its configured duration.
+
 ## Rover Integration Pattern
 
 For the rover stack, use fault injection as a boundary between raw producer topics and consumer-facing topics:
@@ -456,7 +514,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, fault event assertions, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
 
 ## Development Notes
 

@@ -374,3 +374,45 @@ Common event sources:
 | `startup` | Fault was activated during scenario startup. |
 | `scheduled` | Fault changed because of a scheduled start or stop. |
 | `manual` | Fault changed because of a service call. |
+
+
+## Assertion Events
+
+Topic:
+
+```text
+/fault_injection/assertion_events
+```
+
+Type:
+
+```text
+ros2_fault_injection/msg/AssertionEvent
+```
+
+Message:
+
+```text
+builtin_interfaces/Time stamp
+string assertion_id
+string assertion_type
+string state
+string message
+```
+
+Example:
+
+```bash
+ros2 topic echo /fault_injection/assertion_events
+```
+
+Assertion events are published by the assertion runner when an assertion changes from pending to a terminal state.
+
+Common assertion states:
+
+| State | Meaning |
+| --- | --- |
+| `passed` | The expected scenario outcome was observed. |
+| `failed` | The expected scenario outcome was not observed before its deadline, or otherwise failed. |
+
+For a `fault_event` assertion, `assertion_type` is `fault_event`, and the message describes the expected fault ID and state.

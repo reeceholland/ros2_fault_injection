@@ -1,6 +1,6 @@
 # Fault Configuration
 
-Scenarios are YAML files that describe one or more injectors and the faults each injector can apply.
+Scenarios are YAML files that describe one or more injectors, the faults each injector can apply, and optional assertions for expected outcomes.
 
 At runtime, each fault is registered against an `injector_id`. The injector type decides which keys are valid inside that fault's `config` map.
 
@@ -210,3 +210,37 @@ ros2 service call /fault_injection/set_fault_config ros2_fault_injection/srv/Set
 ```
 
 Only keys listed by the owning injector schema are accepted, and values are validated before being stored. Scheduling fields such as `start`, `duration`, and `active_on_startup` are part of the scenario and are not changed through `SetFaultConfig`.
+
+
+## Assertions
+
+Assertions are optional scenario entries that check whether expected events happen while the scenario runs. They do not mutate messages or services. They observe framework output and publish pass/fail results.
+
+Currently supported assertion type: `fault_event`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | Unique assertion name used in assertion events. |
+| `type` | string | Assertion type. Currently `fault_event`. |
+| `fault_id` | string | Fault event to watch. Must reference an existing fault ID. |
+| `state` | string | Expected fault state. Supported values: `active`, `inactive`. |
+| `within` | seconds | Optional deadline. The assertion fails if the expected event is not observed before this time. |
+
+Example:
+
+```yaml
+assertions:
+  - id: odom_bias_activates
+    type: fault_event
+    fault_id: odom_bias
+    state: active
+    within: 6.0
+
+  - id: odom_bias_deactivates
+    type: fault_event
+    fault_id: odom_bias
+    state: inactive
+    within: 17.0
+```
+
+The validator rejects duplicate assertion IDs, unsupported assertion types, unknown fault IDs, unsupported states, and negative timing values. Assertion results are published on `/fault_injection/assertion_events`.
