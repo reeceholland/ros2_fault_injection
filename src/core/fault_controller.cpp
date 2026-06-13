@@ -22,7 +22,7 @@ FaultController::FaultController(
 : node_(node), scenario_file_(std::move(scenario_file)), scenario_(std::move(scenario)),
   events_(events), factory_(node), scheduler_(node, events)
 {
-  assertion_runner_ = std::make_unique<FaultAssertionRunner>(node_);
+  assertion_runner_ = std::make_unique<assertions::FaultAssertionRunner>(node_);
   assertion_runner_->start(scenario_.assertions);
 
   create_injectors();

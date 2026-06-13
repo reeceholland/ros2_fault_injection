@@ -16,7 +16,7 @@
 
 using namespace std::chrono_literals;
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 
 class FaultAssertionRunnerTest : public ::testing::Test

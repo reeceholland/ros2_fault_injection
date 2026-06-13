@@ -72,7 +72,7 @@ private:
   FaultInjectorFactory factory_;
   FaultScheduler scheduler_;
   InjectorMap injectors_;
-  std::unique_ptr<FaultAssertionRunner> assertion_runner_;
+  std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;
 };
 
 } // namespace ros2_fault_injection

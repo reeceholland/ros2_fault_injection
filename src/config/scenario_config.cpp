@@ -17,7 +17,6 @@ namespace ros2_fault_injection
 {
 namespace
 {
-
 std::string required_string(const YAML::Node & node, const std::string & key)
 {
   if (!node[key]) {
@@ -95,9 +94,9 @@ FaultConfig parse_fault(const YAML::Node & node)
   return fault;
 }
 
-AssertionConfig parse_assertion(const YAML::Node & node)
+assertions::AssertionConfig parse_assertion(const YAML::Node & node)
 {
-  AssertionConfig assertion;
+  assertions::AssertionConfig assertion;
 
   assertion.id = required_string(node, "id");
   assertion.type = required_string(node, "type");
@@ -105,6 +104,16 @@ AssertionConfig parse_assertion(const YAML::Node & node)
   if (assertion.type == "fault_event") {
     assertion.fault_id = required_string(node, "fault_id");
     assertion.state = required_string(node, "state");
+  } else if (assertion.type == "topic_hz") {
+    assertion.topic = required_string(node, "topic");
+
+    if (node["min_hz"]) {
+      assertion.min_hz = node["min_hz"].as<double>();
+    }
+
+    if (node["window"]) {
+      assertion.window = node["window"].as<double>();
+    }
   }
 
   if (node["within"]) {

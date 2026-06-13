@@ -367,7 +367,7 @@ TEST(ScenarioValidator, AcceptsScenarioWithValidFaultEventAssertion)
   fault.config["x_bias"] = "1.0";
   scenario.faults.push_back(fault);
 
-  ros2_fault_injection::AssertionConfig assertion;
+  ros2_fault_injection::assertions::AssertionConfig assertion;
   assertion.id = "odom_bias_activates";
   assertion.type = "fault_event";
   assertion.fault_id = "odom_bias";
@@ -400,7 +400,7 @@ TEST(ScenarioValidator, RejectsScenarioWithInvalidFaultEventAssertion)
   fault.config["x_bias"] = "1.0";
   scenario.faults.push_back(fault);
 
-  ros2_fault_injection::AssertionConfig assertion;
+  ros2_fault_injection::assertions::AssertionConfig assertion;
   assertion.id = "invalid_assertion";
   assertion.type = "fault_event";
   assertion.fault_id = "nonexistent_fault";

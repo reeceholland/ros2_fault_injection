@@ -69,6 +69,7 @@ add_library(${PROJECT_NAME}_core
   src/injectors/tf_fault_injector.cpp
   src/assertions/fault_assertion_runner.cpp
   src/assertions/fault_event_assertion.cpp
+  src/assertions/topic_hz_assertion.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -265,11 +266,19 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_core
   )
 
+  ament_add_gtest(test_topic_hz_assertion
+    test/assertions/test_topic_hz_assertion.cpp
+  )
+  target_link_libraries(test_topic_hz_assertion
+    ${PROJECT_NAME}_core
+  )
+
   ament_add_gtest(test_fault_assertion_runner
     test/assertions/test_fault_assertion_runner.cpp
   )
   target_link_libraries(test_fault_assertion_runner
     ${PROJECT_NAME}_core
+    "${cpp_typesupport_target}"
   )
   
   add_launch_test(

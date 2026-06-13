@@ -34,7 +34,7 @@ struct ScenarioConfig
   std::vector<std::string> initially_active_faults;
 
     /// Assertions configured by the scenario.
-  std::vector<AssertionConfig> assertions;
+  std::vector<assertions::AssertionConfig> assertions;
 };
 
   /**

@@ -4,12 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#ifndef ROS2_FAULT_INJECTION__ASSERTION_RESULT_HPP_
-#define ROS2_FAULT_INJECTION__ASSERTION_RESULT_HPP_
+#ifndef ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_RESULT_HPP_
+#define ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_RESULT_HPP_
 
 #include <string>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 enum class AssertionState
 {
@@ -25,6 +25,6 @@ struct AssertionResult
   AssertionState state;
   std::string message;
 };
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::assertions
 
-#endif // ROS2_FAULT_INJECTION__ASSERTION_RESULT_HPP_
+#endif // ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_RESULT_HPP_
