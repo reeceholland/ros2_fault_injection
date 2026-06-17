@@ -12,7 +12,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/publisher.hpp"
-#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/generic_subscription.hpp"
 
 #include "ros2_fault_injection/assertions/topic_hz_assertion.hpp"
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
@@ -44,7 +44,7 @@ private:
   std::unordered_map<std::string, AssertionState> last_published_states_;
 
   rclcpp::Subscription<msg::FaultEvent>::SharedPtr fault_event_subscription_;
-  std::vector<rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr> odom_topic_hz_subscriptions_;
+  std::vector<std::shared_ptr<rclcpp::GenericSubscription>> topic_hz_subscriptions_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<msg::AssertionEvent>::SharedPtr assertion_event_publisher_;
 };

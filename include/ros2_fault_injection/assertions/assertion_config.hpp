@@ -17,6 +17,7 @@ struct AssertionConfig
   std::string id;
   std::string type;
   std::string topic;
+  std::string message_type;
   std::string fault_id;
   std::string state;
   std::optional<double> min_hz;

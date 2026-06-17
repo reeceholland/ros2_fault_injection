@@ -43,7 +43,7 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
 {
   fault_event_assertions_.clear();
   topic_hz_assertions_.clear();
-  odom_topic_hz_subscriptions_.clear();
+  topic_hz_subscriptions_.clear();
   last_published_states_.clear();
 
   for (const auto & config : assertions) {
@@ -53,13 +53,12 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
       const auto assertion_index = topic_hz_assertions_.size();
       topic_hz_assertions_.emplace_back(config);
 
-      odom_topic_hz_subscriptions_.push_back(
-            node_.create_subscription<nav_msgs::msg::Odometry>(
-                config.topic, 10,
-          [this, assertion_index](const nav_msgs::msg::Odometry::SharedPtr)
+      topic_hz_subscriptions_.push_back(node_.create_generic_subscription(
+            config.topic, config.message_type, rclcpp::QoS(10),
+          [this, assertion_index](std::shared_ptr<rclcpp::SerializedMessage>)
           {
             topic_hz_assertions_.at(assertion_index).observe_message(node_.now());
-                }));
+            }));
     } else {
       RCLCPP_ERROR(node_.get_logger(), "Unknown assertion type '%s' for assertion '%s'",
                      config.type.c_str(), config.id.c_str());
@@ -80,7 +79,7 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
     {update();});
 
   RCLCPP_INFO(node_.get_logger(), "Started %zu assertions",
-      fault_event_assertions_.size() + topic_hz_assertions_.size());
+                fault_event_assertions_.size() + topic_hz_assertions_.size());
 }
 
 std::vector<AssertionResult> FaultAssertionRunner::results() const

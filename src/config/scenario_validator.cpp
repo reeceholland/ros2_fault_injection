@@ -243,7 +243,7 @@ void validate_assertions(
     } else if (!fault_exists(scenario, assertion.fault_id)) {
       result.errors.push_back(
             "assertion '" + assertion.id + "' references unknown fault_id '" + assertion.fault_id +
-          "'");
+            "'");
     }
 
     if (assertion.state != "active" && assertion.state != "inactive") {
@@ -272,7 +272,11 @@ void validate_assertions(
     {
       result.warnings.push_back(
             "assertion '" + assertion.id +
-          "' has within smaller than window; it may fail before a full measurement window is available");
+            "' has within smaller than window; it may fail before a full measurement window is available");
+    }
+
+    if (assertion.message_type.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' message_type must not be empty");
     }
   } else {
     result.errors.push_back(

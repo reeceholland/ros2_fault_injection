@@ -112,6 +112,7 @@ TEST_F(FaultAssertionRunnerTest, TopicHzAssertionPassesWhenOdomPublishesFastEnou
     config.id = "odom_stays_above_10hz";
     config.type = "topic_hz";
     config.topic = "/odom";
+    config.message_type = "nav_msgs/msg/Odometry";
     config.min_hz = 5.0;
     config.window = 0.5;
     config.within = 2.0;
@@ -155,6 +156,7 @@ TEST_F(FaultAssertionRunnerTest, TopicHzAssertionFailsWhenOdomPublishesTooSlowly
     config.id = "odom_stays_above_10hz";
     config.type = "topic_hz";
     config.topic = "/odom";
+    config.message_type = "nav_msgs/msg/Odometry";
     config.min_hz = 5.0;
     config.window = 0.5;
     config.within = 2.0;

@@ -106,6 +106,7 @@ assertions::AssertionConfig parse_assertion(const YAML::Node & node)
     assertion.state = required_string(node, "state");
   } else if (assertion.type == "topic_hz") {
     assertion.topic = required_string(node, "topic");
+    assertion.message_type = required_string(node, "message_type");
 
     if (node["min_hz"]) {
       assertion.min_hz = node["min_hz"].as<double>();
