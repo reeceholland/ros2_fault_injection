@@ -12,6 +12,8 @@
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
 
+#include "nav_msgs/msg/odometry.hpp"
+
 #include "gtest/gtest.h"
 
 using namespace std::chrono_literals;
@@ -102,4 +104,89 @@ TEST_F(FaultAssertionRunnerTest, PassesAssertionWhenEventPublished)
     EXPECT_EQ(results.front().state, AssertionState::Passed);
 }
 
+TEST_F(FaultAssertionRunnerTest, TopicHzAssertionPassesWhenOdomPublishesFastEnough)
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_fault_assertion_runner");
+
+    AssertionConfig config;
+    config.id = "odom_stays_above_10hz";
+    config.type = "topic_hz";
+    config.topic = "/odom";
+    config.min_hz = 5.0;
+    config.window = 0.5;
+    config.within = 2.0;
+
+    FaultAssertionRunner runner(*node);
+    runner.start({config});
+
+    auto publisher = node->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
+
+    const auto start = std::chrono::steady_clock::now();
+    while (publisher->get_subscription_count() == 0 &&
+    std::chrono::steady_clock::now() - start < 500ms)
+  {
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(10ms);
+    }
+
+    ASSERT_GT(publisher->get_subscription_count(), 0u);
+
+    nav_msgs::msg::Odometry msg;
+
+    const auto publish_start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - publish_start < 1s) {
+    publisher->publish(msg);
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(50ms);
+    }
+
+    const auto results = runner.results();
+    ASSERT_EQ(results.size(), 1u);
+    EXPECT_EQ(results.front().id, "odom_stays_above_10hz");
+    EXPECT_EQ(results.front().type, "topic_hz");
+    EXPECT_EQ(results.front().state, AssertionState::Passed);
+}
+
+TEST_F(FaultAssertionRunnerTest, TopicHzAssertionFailsWhenOdomPublishesTooSlowly)
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_fault_assertion_runner");
+
+    AssertionConfig config;
+    config.id = "odom_stays_above_10hz";
+    config.type = "topic_hz";
+    config.topic = "/odom";
+    config.min_hz = 5.0;
+    config.window = 0.5;
+    config.within = 2.0;
+
+    FaultAssertionRunner runner(*node);
+    runner.start({config});
+
+    auto publisher = node->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
+
+    const auto start = std::chrono::steady_clock::now();
+    while (publisher->get_subscription_count() == 0 &&
+    std::chrono::steady_clock::now() - start < 500ms)
+  {
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(10ms);
+    }
+
+    ASSERT_GT(publisher->get_subscription_count(), 0u);
+
+    nav_msgs::msg::Odometry msg;
+
+    const auto publish_start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - publish_start < 3s) {
+    publisher->publish(msg);
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(300ms);
+    }
+
+    const auto results = runner.results();
+    ASSERT_EQ(results.size(), 1u);
+    EXPECT_EQ(results.front().id, "odom_stays_above_10hz");
+    EXPECT_EQ(results.front().type, "topic_hz");
+    EXPECT_EQ(results.front().state, AssertionState::Failed);
+}
 }
