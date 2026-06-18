@@ -6,7 +6,7 @@
 
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 FaultEventAssertion::FaultEventAssertion(const AssertionConfig & config)
 : config_(config)
@@ -59,4 +59,4 @@ AssertionResult FaultEventAssertion::result() const
 {
   return result_;
 }
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::assertions

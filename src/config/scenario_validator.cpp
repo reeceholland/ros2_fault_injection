@@ -24,7 +24,6 @@ namespace ros2_fault_injection
 {
 namespace
 {
-
 bool fault_exists(const ScenarioConfig & scenario, const std::string & fault_id)
 {
   return std::find_if(
@@ -226,7 +225,7 @@ void validate_fault(
 }
 
 void validate_assertions(
-  const ScenarioConfig & scenario, const AssertionConfig & assertion,
+  const ScenarioConfig & scenario, const assertions::AssertionConfig & assertion,
   ValidationResult & result)
 {
   if (assertion.id.empty()) {
@@ -235,25 +234,54 @@ void validate_assertions(
 
   if (assertion.type.empty()) {
     result.errors.push_back("assertion '" + assertion.id + "' type must not be empty");
-  }
-
-  if (assertion.type != "fault_event") {
-    result.errors.push_back(
-          "assertion '" + assertion.id + "' has unsupported type '" + assertion.type + "'");
     return;
   }
 
-  if (assertion.fault_id.empty()) {
-    result.errors.push_back("assertion '" + assertion.id + "' fault_id must not be empty");
-  } else if (!fault_exists(scenario, assertion.fault_id)) {
-    result.errors.push_back(
-          "assertion '" + assertion.id + "' references unknown fault_id '" + assertion.fault_id +
-        "'");
-  }
+  if (assertion.type == "fault_event") {
+    if (assertion.fault_id.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' fault_id must not be empty");
+    } else if (!fault_exists(scenario, assertion.fault_id)) {
+      result.errors.push_back(
+            "assertion '" + assertion.id + "' references unknown fault_id '" + assertion.fault_id +
+            "'");
+    }
 
-  if (assertion.state != "active" && assertion.state != "inactive") {
+    if (assertion.state != "active" && assertion.state != "inactive") {
+      result.errors.push_back(
+            "assertion '" + assertion.id + "' has unsupported state '" + assertion.state + "'");
+    }
+  } else if (assertion.type == "topic_hz") {
+    if (assertion.topic.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' topic must not be empty");
+    }
+
+    if (!assertion.min_hz.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' min_hz must be set");
+    } else if (assertion.min_hz.value() <= 0.0) {
+      result.errors.push_back("assertion '" + assertion.id + "' min_hz must be greater than 0");
+    }
+
+    if (!assertion.window.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' window must be set");
+    } else if (assertion.window.value() <= 0.0) {
+      result.errors.push_back("assertion '" + assertion.id + "' window must be greater than 0");
+    }
+
+    if (assertion.window.has_value() && assertion.within.has_value() &&
+      assertion.within.value() < assertion.window.value())
+    {
+      result.warnings.push_back(
+            "assertion '" + assertion.id +
+            "' has within smaller than window; it may fail before a full measurement window is available");
+    }
+
+    if (assertion.message_type.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' message_type must not be empty");
+    }
+  } else {
     result.errors.push_back(
-          "assertion '" + assertion.id + "' has unsupported state '" + assertion.state + "'");
+          "assertion '" + assertion.id + "' has unsupported type '" + assertion.type + "'");
+    return;
   }
 
   if (assertion.within.has_value() && assertion.within.value() < 0.0) {

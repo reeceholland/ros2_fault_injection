@@ -171,3 +171,19 @@ assertions:
     fault_id: odom_covariance_inflation
     state: inactive
     within: 20.0
+  
+  - id: odom_stays_above_10hz
+    type: topic_hz
+    topic: /odom
+    message_type: nav_msgs/msg/Odometry
+    min_hz: 10.0
+    window: 3.0
+    within: 8.0
+
+  - id: scan_stays_above_5hz
+    type: topic_hz
+    topic: /scan
+    message_type: sensor_msgs/msg/LaserScan
+    min_hz: 5.0
+    window: 3.0
+    within: 8.0

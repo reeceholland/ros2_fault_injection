@@ -14,7 +14,7 @@
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/msg/fault_event.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 
   /**
@@ -64,6 +64,6 @@ private:
   AssertionResult result_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::assertions
 
 #endif // ROS2_FAULT_INJECTION__ASSERTIONS__FAULT_EVENT_ASSERTION_HPP_

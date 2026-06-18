@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/msg/assertion_event.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 namespace
 {
@@ -42,12 +42,26 @@ FaultAssertionRunner::FaultAssertionRunner(rclcpp::Node & node)
 void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions)
 {
   fault_event_assertions_.clear();
+  topic_hz_assertions_.clear();
+  topic_hz_subscriptions_.clear();
+  last_published_states_.clear();
 
   for (const auto & config : assertions) {
     if (config.type == "fault_event") {
       fault_event_assertions_.emplace_back(config);
+    } else if (config.type == "topic_hz") {
+      const auto assertion_index = topic_hz_assertions_.size();
+      topic_hz_assertions_.emplace_back(config);
+
+      topic_hz_subscriptions_.push_back(node_.create_generic_subscription(
+            config.topic, config.message_type, rclcpp::QoS(10),
+          [this, assertion_index](std::shared_ptr<rclcpp::SerializedMessage>)
+          {
+            topic_hz_assertions_.at(assertion_index).observe_message(node_.now());
+            }));
     } else {
-      RCLCPP_WARN(node_.get_logger(), "Unsupported assertion type: %s", config.type.c_str());
+      RCLCPP_ERROR(node_.get_logger(), "Unknown assertion type '%s' for assertion '%s'",
+                     config.type.c_str(), config.id.c_str());
     }
   }
 
@@ -64,18 +78,22 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
         std::chrono::milliseconds(100), [this]()
     {update();});
 
-  RCLCPP_INFO(node_.get_logger(), "Started %zu assertions", fault_event_assertions_.size());
+  RCLCPP_INFO(node_.get_logger(), "Started %zu assertions",
+                fault_event_assertions_.size() + topic_hz_assertions_.size());
 }
 
 std::vector<AssertionResult> FaultAssertionRunner::results() const
 {
   std::vector<AssertionResult> results;
-  results.reserve(fault_event_assertions_.size());
+  results.reserve(fault_event_assertions_.size() + topic_hz_assertions_.size());
 
   for (const auto & assertion : fault_event_assertions_) {
     results.push_back(assertion.result());
   }
 
+  for (const auto & assertion : topic_hz_assertions_) {
+    results.push_back(assertion.result());
+  }
   return results;
 }
 
@@ -90,10 +108,15 @@ void FaultAssertionRunner::on_fault_event(const msg::FaultEvent & event)
 
 void FaultAssertionRunner::update()
 {
-  double elapsed_seconds = (node_.now() - start_time_).seconds();
+  const auto now = node_.now();
+  const double elapsed_seconds = (now - start_time_).seconds();
 
   for (auto & assertion : fault_event_assertions_) {
     assertion.update(elapsed_seconds);
+  }
+
+  for (auto & assertion : topic_hz_assertions_) {
+    assertion.update(elapsed_seconds, now);
   }
 
   publish_assertion_event();

@@ -4,19 +4,20 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#ifndef ROS2_FAULT_INJECTION__ASSERTION_CONFIG_HPP_
-#define ROS2_FAULT_INJECTION__ASSERTION_CONFIG_HPP_
+#ifndef ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_CONFIG_HPP_
+#define ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_CONFIG_HPP_
 
 #include <optional>
 #include <string>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::assertions
 {
 struct AssertionConfig
 {
   std::string id;
   std::string type;
   std::string topic;
+  std::string message_type;
   std::string fault_id;
   std::string state;
   std::optional<double> min_hz;
@@ -24,6 +25,6 @@ struct AssertionConfig
   std::optional<double> within;
   std::optional<double> duration;
 };
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::assertions
 
-#endif // ROS2_FAULT_INJECTION__ASSERTION_CONFIG_HPP_
+#endif // ROS2_FAULT_INJECTION__ASSERTIONS__ASSERTION_CONFIG_HPP_
