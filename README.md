@@ -221,6 +221,14 @@ assertions:
     fault_id: odom_bias
     state: inactive
     within: 17.0
+
+  - id: odom_stays_above_10hz
+    type: topic_hz
+    topic: /odom
+    message_type: nav_msgs/msg/Odometry
+    min_hz: 10.0
+    window: 3.0
+    within: 8.0
 ```
 
 ### Fault Activation Rules
@@ -240,19 +248,22 @@ Topic injectors use a `topic` block containing `input_topic`, `output_topic`, an
 
 Assertions describe expected outcomes from a scenario. They do not inject faults themselves; they observe framework events and publish pass/fail results.
 
-Currently supported assertion type:
+Currently supported assertion types:
 
 | Type | Required fields | Behavior |
 | --- | --- | --- |
 | `fault_event` | `id`, `type`, `fault_id`, `state` | Passes when the named fault publishes the requested state. |
+| `topic_hz` | `id`, `type`, `topic`, `message_type`, `min_hz`, `window` | Passes when the topic publishes at or above `min_hz` over the configured window. |
 
 Optional assertion fields:
 
 | Field | Meaning |
 | --- | --- |
-| `within` | Fails the assertion if the expected event is not observed within this many seconds. |
+| `within` | Fails the assertion if the expected condition is not observed within this many seconds. |
 
-`fault_event` assertions support `state: active` and `state: inactive`. The validator rejects assertions that reference unknown fault IDs, unsupported states, duplicate assertion IDs, or negative timing values.
+`fault_event` assertions support `state: active` and `state: inactive`. `topic_hz` assertions use ROS 2 generic subscriptions, so the runner counts serialized messages without needing a typed callback for every message type. The `message_type` field must use the ROS interface name, such as `nav_msgs/msg/Odometry` or `sensor_msgs/msg/LaserScan`.
+
+The validator rejects assertions that reference unknown fault IDs, unsupported states, missing topic rate fields, duplicate assertion IDs, or negative timing values.
 
 ## Build
 
@@ -449,6 +460,37 @@ Common assertion states:
 
 Assertions are useful for automated scenario checks. For example, a scheduled `odom_bias` fault can have one assertion that expects an `active` event shortly after startup and another that expects an `inactive` event after its configured duration.
 
+The scenario monitor also publishes a continuously updated summary:
+
+```bash
+ros2 topic echo /fault_injection/scenario_status
+```
+
+The status message is `ros2_fault_injection/msg/ScenarioStatus`:
+
+```text
+builtin_interfaces/Time stamp
+string state
+uint32 pending_count
+uint32 passed_count
+uint32 failed_count
+string[] failed_assertion_ids
+string[] failed_messages
+```
+
+Example running status:
+
+```yaml
+state: running
+pending_count: 2
+passed_count: 1
+failed_count: 0
+failed_assertion_ids: []
+failed_messages: []
+```
+
+If any assertion fails, the scenario state becomes `failed` and the failed assertion IDs and messages are included.
+
 ## Rover Integration Pattern
 
 For the rover stack, use fault injection as a boundary between raw producer topics and consumer-facing topics:
@@ -514,7 +556,7 @@ source install/setup.bash
 colcon test --packages-select ros2_fault_injection --event-handlers console_direct+
 ```
 
-Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, fault event assertions, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
+Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, fault event assertions, topic Hz assertions, scenario status monitoring, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
 
 ## Development Notes
 
