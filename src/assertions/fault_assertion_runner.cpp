@@ -37,7 +37,7 @@ std::string assertion_state_to_string(AssertionState state)
 }
 }   // namespace
 FaultAssertionRunner::FaultAssertionRunner(rclcpp::Node & node)
-: node_(node) {}
+: node_(node), scenario_monitor_(node) {}
 
 void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions)
 {
@@ -120,6 +120,7 @@ void FaultAssertionRunner::update()
   }
 
   publish_assertion_event();
+  scenario_monitor_.publish(results());
 }
 
 void FaultAssertionRunner::publish_assertion_event()

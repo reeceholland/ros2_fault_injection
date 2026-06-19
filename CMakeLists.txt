@@ -41,7 +41,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   "msg/AssertionEvent.msg"
-  DEPENDENCIES builtin_interfaces
+  "msg/ScenarioStatus.msg"
+  DEPENDENCIES builtin_interfaces std_msgs
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -70,6 +71,7 @@ add_library(${PROJECT_NAME}_core
   src/assertions/fault_assertion_runner.cpp
   src/assertions/fault_event_assertion.cpp
   src/assertions/topic_hz_assertion.cpp
+  src/assertions/scenario_monitor.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -270,6 +272,13 @@ if(BUILD_TESTING)
     test/assertions/test_topic_hz_assertion.cpp
   )
   target_link_libraries(test_topic_hz_assertion
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_scenario_monitor
+    test/assertions/test_scenario_monitor.cpp
+  )
+  target_link_libraries(test_scenario_monitor
     ${PROJECT_NAME}_core
   )
 

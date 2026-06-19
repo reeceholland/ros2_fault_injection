@@ -18,6 +18,7 @@
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
+#include "ros2_fault_injection/assertions/scenario_monitor.hpp"
 #include "ros2_fault_injection/msg/assertion_event.hpp"
 
 namespace ros2_fault_injection::assertions
@@ -47,6 +48,7 @@ private:
   std::vector<std::shared_ptr<rclcpp::GenericSubscription>> topic_hz_subscriptions_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<msg::AssertionEvent>::SharedPtr assertion_event_publisher_;
+  ScenarioMonitor scenario_monitor_;
 };
 } // namespace ros2_fault_injection::assertions
 
