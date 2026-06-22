@@ -75,7 +75,11 @@ int main(int argc, char **argv)
   auto fault_service_manager = std::make_shared<ros2_fault_injection::FaultServiceManager>(
       *node, controller.injectors(), event_pub,
     [&controller]()
-    {return controller.reload_scenario();});
+    {return controller.reload_scenario();},
+    [&controller]()
+    {return controller.scenario_file();},
+    [&controller]()
+    {return controller.read_scenario_file();});
 
   RCLCPP_INFO(node->get_logger(),
               "Fault injector running with %zu injectors and %zu assertions using scenario file %s",

@@ -9,6 +9,9 @@
 #include <exception>
 #include <string>
 #include <utility>
+#include <fstream>
+#include <optional>
+#include <sstream>
 
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/config/scenario_validator.hpp"
@@ -188,6 +191,30 @@ ReloadScenarioResult FaultController::validate_reload_compatible(
   }
 
   return {true, "Scenario is compatible with running injectors"};
+}
+
+std::string FaultController::scenario_file() const
+{
+  return scenario_file_;
+}
+
+const std::optional<std::string> FaultController::read_scenario_file() const
+{
+  if (scenario_file_.empty()) {
+    RCLCPP_ERROR(node_.get_logger(), "No scenario file configured for controller");
+    return std::nullopt;
+  }
+
+  std::ifstream file(scenario_file_);
+
+  if (!file.is_open()) {
+    RCLCPP_ERROR(node_.get_logger(), "Failed to open scenario file '%s'", scenario_file_.c_str());
+    return std::nullopt;
+  }
+
+  std::ostringstream buffer;
+  buffer << file.rdbuf();
+  return buffer.str();
 }
 
 } // namespace ros2_fault_injection

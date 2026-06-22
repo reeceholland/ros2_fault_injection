@@ -1,0 +1,5 @@
+---
+bool success
+string message
+string scenario_file
+string content

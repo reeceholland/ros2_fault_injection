@@ -59,6 +59,10 @@ public:
 
   ReloadScenarioResult reload_scenario();
 
+  std::string scenario_file() const;
+
+  const std::optional<std::string> read_scenario_file() const;
+
 private:
   void create_injectors();
   void register_faults();
