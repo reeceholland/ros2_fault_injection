@@ -17,6 +17,7 @@
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/msg/assertion_event.hpp"
+#include "ros2_fault_injection/msg/scenario_status.hpp"
 
 namespace ros2_fault_injection::assertions
 {
@@ -73,6 +74,8 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
 
   assertion_event_publisher_ = node_.create_publisher<msg::AssertionEvent>(
         "/fault_injection/assertion_events", 10);
+  scenario_status_publisher_ = node_.create_publisher<msg::ScenarioStatus>(
+        "/fault_injection/scenario_status", 10);
 
   timer_ = node_.create_wall_timer(
         std::chrono::milliseconds(100), [this]()
@@ -120,6 +123,43 @@ void FaultAssertionRunner::update()
   }
 
   publish_assertion_event();
+  publish_scenario_status();
+}
+
+void FaultAssertionRunner::publish_scenario_status()
+{
+  if (!scenario_status_publisher_) {
+    return;
+  }
+
+  msg::ScenarioStatus status;
+  status.stamp = node_.now();
+
+  for (const auto & result : results()) {
+    switch (result.state) {
+      case AssertionState::Pending:
+        ++status.pending_count;
+        break;
+      case AssertionState::Passed:
+        ++status.passed_count;
+        break;
+      case AssertionState::Failed:
+        ++status.failed_count;
+        status.failed_assertion_ids.push_back(result.id);
+        status.failed_messages.push_back(result.message);
+        break;
+    }
+  }
+
+  if (status.failed_count > 0) {
+    status.state = "failed";
+  } else if (status.pending_count > 0) {
+    status.state = "running";
+  } else {
+    status.state = "passed";
+  }
+
+  scenario_status_publisher_->publish(status);
 }
 
 void FaultAssertionRunner::publish_assertion_event()

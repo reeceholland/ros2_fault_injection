@@ -231,6 +231,21 @@ std::optional<msg::FaultEvent> call_set_fault_state_and_wait_for_event(
   return *latest_event;
 }
 
+ReloadScenarioResult test_reload_callback()
+{
+  return ReloadScenarioResult{false, "test reload callback"};
+}
+
+std::string test_scenario_file_provider()
+{
+  return "/tmp/test_scenario.yaml";
+}
+
+std::optional<std::string> test_scenario_content_provider()
+{
+  return std::string{"injectors: []\n"};
+}
+
 }   // namespace
 
 TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
@@ -245,12 +260,9 @@ TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher, []()
-    {
-      return ros2_fault_injection::ReloadScenarioResult{
-      false,
-      "test reload callback"};
-    });
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -288,12 +300,9 @@ TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher, []()
-    {
-      return ros2_fault_injection::ReloadScenarioResult{
-      false,
-      "test reload callback"};
-    });
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -330,9 +339,9 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -388,9 +397,9 @@ TEST(FaultServiceManager, GetFaultConfigReturnsCurrentConfig)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -433,9 +442,9 @@ TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
     injectors["imu"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -460,50 +469,49 @@ TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
 }
 
 TEST(FaultServiceManager, SetFaultConfigAllowsInjectorOwnedKeyUnknownToCentralSchema)
-{
-  rclcpp::init(0, nullptr);
+  {
+    rclcpp::init(0, nullptr);
 
-  auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_plugin_config_update");
-  auto injector = std::make_shared<FakeFaultInjector>("custom", "custom");
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_plugin_config_update");
+    auto injector = std::make_shared<FakeFaultInjector>("custom", "custom");
 
-  auto fault = make_fault();
-  fault.id = "custom_fault";
-  fault.injector_id = "custom";
-  injector->add_fault(fault);
+    auto fault = make_fault();
+    fault.id = "custom_fault";
+    fault.injector_id = "custom";
+    injector->add_fault(fault);
 
-  FaultConfigField field;
-  field.key = "plugin_only_key";
-  injector->add_schema_field(field);
+    FaultConfigField field;
+    field.key = "plugin_only_key";
+    injector->add_schema_field(field);
 
-  FaultServiceManager::InjectorMap injectors;
-  injectors["custom"] = injector;
+    FaultServiceManager::InjectorMap injectors;
+    injectors["custom"] = injector;
 
-  FaultEventPublisher event_publisher(*node);
-  FaultServiceManager services(*node, injectors, event_publisher,
-    []() {
-      return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};
-    });
+    FaultEventPublisher event_publisher(*node);
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
-  auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
-  ASSERT_TRUE(client->wait_for_service(500ms));
+    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    ASSERT_TRUE(client->wait_for_service(500ms));
 
-  auto request = std::make_shared<srv::SetFaultConfig::Request>();
-  request->fault_id = "custom_fault";
-  request->key = "plugin_only_key";
-  request->value = "plugin_value";
+    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    request->fault_id = "custom_fault";
+    request->key = "plugin_only_key";
+    request->value = "plugin_value";
 
-  auto future = client->async_send_request(request);
-  const auto result =
+    auto future = client->async_send_request(request);
+    const auto result =
     rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
 
-  ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
-  ASSERT_TRUE(future.get()->success);
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+    ASSERT_TRUE(future.get()->success);
 
-  const auto updated_fault = injector->get_fault_config("custom_fault");
-  ASSERT_TRUE(updated_fault.has_value());
-  EXPECT_EQ(updated_fault->config.at("plugin_only_key"), "plugin_value");
+    const auto updated_fault = injector->get_fault_config("custom_fault");
+    ASSERT_TRUE(updated_fault.has_value());
+    EXPECT_EQ(updated_fault->config.at("plugin_only_key"), "plugin_value");
 
-  rclcpp::shutdown();
+    rclcpp::shutdown();
 }
 
 TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
@@ -523,9 +531,9 @@ TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
     injectors["motor_feedback"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {return ros2_fault_injection::ReloadScenarioResult{false, "test reload callback"};});
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -570,13 +578,9 @@ TEST(FaultServiceManager, GetFaultSchemaUsesInjectorOwnedSchema)
     injectors["custom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
-    FaultServiceManager services(*node, injectors, event_publisher,
-    []()
-    {
-      return ros2_fault_injection::ReloadScenarioResult{
-      false,
-      "test reload callback"};
-    });
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider);
 
     auto client = node->create_client<srv::GetFaultSchema>("fault_injection/get_fault_schema");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -593,6 +597,120 @@ TEST(FaultServiceManager, GetFaultSchemaUsesInjectorOwnedSchema)
 
     const auto & keys = response->keys;
     EXPECT_NE(std::find(keys.begin(), keys.end(), "plugin_only_key"), keys.end());
+
+    rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, GetScenarioReturnsScenarioFileAndContent)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario");
+    auto injector = std::make_shared<FakeFaultInjector>("odom");
+
+    FaultServiceManager::InjectorMap injectors;
+    injectors["odom"] = injector;
+
+    FaultEventPublisher event_publisher(*node);
+
+    FaultServiceManager services(
+    *node, injectors, event_publisher, test_reload_callback,
+    []()
+    {return "/tmp/test_scenario.yaml";},
+    []()
+    {return std::optional<std::string>{"injectors: []\n"};});
+
+    auto client = node->create_client<srv::GetScenario>("fault_injection/get_scenario");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto future = client->async_send_request(request);
+
+    const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+
+    const auto response = future.get();
+    ASSERT_TRUE(response->success);
+    EXPECT_EQ(response->scenario_file, "/tmp/test_scenario.yaml");
+    EXPECT_EQ(response->content, "injectors: []\n");
+    EXPECT_NE(response->message.find("Retrieved scenario"), std::string::npos);
+
+    rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, GetScenarioFailsWhenContentUnavailable)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node =
+    std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_unavailable");
+    FaultServiceManager::InjectorMap injectors;
+    FaultEventPublisher event_publisher(*node);
+
+    FaultServiceManager services(
+    *node, injectors, event_publisher,
+    test_reload_callback,
+    []()
+    {return "/tmp/missing_scenario.yaml";},
+    []()
+    {return std::nullopt;});
+
+    auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto future = client->async_send_request(request);
+
+    const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+
+    const auto response = future.get();
+    EXPECT_FALSE(response->success);
+    EXPECT_EQ(response->scenario_file, "/tmp/missing_scenario.yaml") << response->message;
+    EXPECT_TRUE(response->content.empty());
+    EXPECT_NE(response->message.find("failed"), std::string::npos);
+
+    rclcpp::shutdown();
+}
+
+TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
+  {
+    rclcpp::init(0, nullptr);
+
+    auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_latest");
+    FaultServiceManager::InjectorMap injectors;
+    FaultEventPublisher event_publisher(*node);
+
+    std::string content = "version: one\n";
+
+    FaultServiceManager services(
+    *node, injectors, event_publisher,
+    test_reload_callback,
+    []()
+    {return "/tmp/test_scenario.yaml";},
+    [&content]()
+    {return std::optional<std::string>{content};});
+
+    auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
+    ASSERT_TRUE(client->wait_for_service(500ms));
+
+    content = "version: two\n";
+
+    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto future = client->async_send_request(request);
+
+    const auto result =
+    rclcpp::spin_until_future_complete(node, future, std::chrono::milliseconds{500});
+
+    ASSERT_EQ(result, rclcpp::FutureReturnCode::SUCCESS);
+
+    const auto response = future.get();
+    EXPECT_TRUE(response->success);
+    EXPECT_EQ(response->content, "version: two\n");
 
     rclcpp::shutdown();
 }
