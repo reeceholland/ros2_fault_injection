@@ -39,6 +39,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultSchema.srv"
   "srv/GetFaultConfig.srv"
   "srv/GetScenario.srv"
+  "srv/RequestReport.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   "msg/AssertionEvent.msg"

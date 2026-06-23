@@ -79,7 +79,18 @@ int main(int argc, char **argv)
     [&controller]()
     {return controller.scenario_file();},
     [&controller]()
-    {return controller.read_scenario_file();});
+    {return controller.read_scenario_file();},
+    [&controller]()
+    {
+      const auto report = controller.create_report();
+
+      return ros2_fault_injection::FaultServiceManager::ReportResult{
+      true,
+      "Created scenario report",
+      report.scenario_file,
+      report.final_result,
+      controller.create_report_markdown()};
+      });
 
   RCLCPP_INFO(node->get_logger(),
               "Fault injector running with %zu injectors and %zu assertions using scenario file %s",

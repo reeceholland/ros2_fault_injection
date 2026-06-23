@@ -18,6 +18,7 @@
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/assertions/fault_assertion_runner.hpp"
+#include "ros2_fault_injection/core/scenario_report.hpp"
 
 namespace ros2_fault_injection
 {
@@ -62,6 +63,8 @@ public:
   std::string scenario_file() const;
 
   const std::optional<std::string> read_scenario_file() const;
+
+  core::ScenarioReport create_report() const;
 
   std::string create_report_markdown() const;
 
