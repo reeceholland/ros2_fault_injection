@@ -63,6 +63,8 @@ public:
 
   const std::optional<std::string> read_scenario_file() const;
 
+  std::string create_report_markdown() const;
+
 private:
   void create_injectors();
   void register_faults();

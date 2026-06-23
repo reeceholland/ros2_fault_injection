@@ -15,6 +15,7 @@
 
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/config/scenario_validator.hpp"
+#include "ros2_fault_injection/core/report_creator.hpp"
 
 namespace ros2_fault_injection
 {
@@ -217,4 +218,11 @@ const std::optional<std::string> FaultController::read_scenario_file() const
   return buffer.str();
 }
 
+std::string FaultController::create_report_markdown() const
+{
+  core::ReportCreator report_creator(node_);
+  const auto assertion_results = assertion_runner_ ? assertion_runner_->results() : std::vector<assertions::AssertionResult>{};
+  const auto report = report_creator.create_report(scenario_file_, injectors_, assertion_results);
+  return report_creator.to_markdown(report);
+}
 } // namespace ros2_fault_injection
