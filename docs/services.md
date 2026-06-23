@@ -359,6 +359,85 @@ ros2 topic echo /fault_injection/events
 
 Events are published when scheduled faults activate or deactivate and when faults are changed through the service API.
 
+## Assertion Events
+
+Topic:
+
+```text
+/fault_injection/assertion_events
+```
+
+Type:
+
+```text
+ros2_fault_injection/msg/AssertionEvent
+```
+
+Message:
+
+```text
+builtin_interfaces/Time stamp
+string assertion_id
+string assertion_type
+string state
+string message
+```
+
+Example:
+
+```bash
+ros2 topic echo /fault_injection/assertion_events
+```
+
+Assertion events are edge-triggered. They are published when an assertion changes from pending to `passed` or `failed`.
+
+## Scenario Status
+
+Topic:
+
+```text
+/fault_injection/scenario_status
+```
+
+Type:
+
+```text
+ros2_fault_injection/msg/ScenarioStatus
+```
+
+Message:
+
+```text
+builtin_interfaces/Time stamp
+string state
+uint32 pending_count
+uint32 passed_count
+uint32 failed_count
+string[] failed_assertion_ids
+string[] failed_messages
+```
+
+Example:
+
+```bash
+ros2 topic echo /fault_injection/scenario_status
+```
+
+Example output:
+
+```yaml
+state: failed
+pending_count: 0
+passed_count: 2
+failed_count: 1
+failed_assertion_ids:
+- odom_stays_above_10hz
+failed_messages:
+- Timed out waiting for topic /odom to reach 10.000000 Hz
+```
+
+Scenario status is a continuously published snapshot. Use it when a UI, script, or log needs the current scenario health instead of only assertion state-change events.
+
 Common event states:
 
 | State | Meaning |

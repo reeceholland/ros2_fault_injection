@@ -93,11 +93,13 @@ Scheduler actions publish fault events so UI tools, assertions, and logs can sho
 
 ## Assertions
 
-`FaultAssertionRunner` evaluates optional scenario assertions while the node is running. The first supported assertion type is `fault_event`, which listens to `/fault_injection/events` and passes when a named fault reaches an expected state such as `active` or `inactive`.
+`FaultAssertionRunner` evaluates optional scenario assertions while the node is running. `fault_event` assertions listen to `/fault_injection/events` and pass when a named fault reaches an expected state such as `active` or `inactive`. `topic_hz` assertions use generic ROS 2 subscriptions to count serialized messages and pass when a topic stays above a configured publish rate.
 
-Assertion results are published on `/fault_injection/assertion_events` as `ros2_fault_injection/msg/AssertionEvent`. Pending assertions are kept internal; the runner publishes when an assertion changes to `passed` or `failed`.
+Assertion state changes are published on `/fault_injection/assertion_events` as `ros2_fault_injection/msg/AssertionEvent`. Pending assertions are kept internal; the runner publishes when an assertion changes to `passed` or `failed`.
 
-This makes assertions useful for smoke tests and demonstrations: the same YAML file can define the fault schedule and the expected evidence that the schedule happened.
+`ScenarioMonitor` publishes a continuous summary on `/fault_injection/scenario_status` as `ros2_fault_injection/msg/ScenarioStatus`. The summary reports pending, passed, and failed assertion counts plus failed assertion IDs and messages. This gives UI tools and logs an active scenario health signal instead of only edge-triggered assertion events.
+
+This makes assertions useful for smoke tests and demonstrations: the same YAML file can define the fault schedule, the expected evidence that the schedule happened, and basic runtime health checks such as topic frequency.
 
 ## Runtime Services
 
@@ -116,9 +118,9 @@ injector/controller behavior, and publish events when runtime state changes.
 
 ## Events
 
-`FaultEventPublisher` emits structured fault events on `/fault_injection/events`. `FaultAssertionRunner` emits assertion result events on `/fault_injection/assertion_events`.
+`FaultEventPublisher` emits structured fault events on `/fault_injection/events`. `FaultAssertionRunner` emits assertion result events on `/fault_injection/assertion_events`. `ScenarioMonitor` emits the current scenario summary on `/fault_injection/scenario_status`.
 
-Fault events are published for scheduled changes, startup activation, manual state changes, config updates, and other runtime actions. Assertion events are published when expected outcomes pass or fail. The RViz panel and command-line tools can use these topics to show recent activity.
+Fault events are published for scheduled changes, startup activation, manual state changes, config updates, and other runtime actions. Assertion events are published when expected outcomes pass or fail. Scenario status is published continuously while assertions are running. The RViz panel and command-line tools can use these topics to show recent activity and current scenario health.
 
 ## RViz Panel
 

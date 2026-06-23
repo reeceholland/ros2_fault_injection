@@ -214,17 +214,38 @@ Only keys listed by the owning injector schema are accepted, and values are vali
 
 ## Assertions
 
-Assertions are optional scenario entries that check whether expected events happen while the scenario runs. They do not mutate messages or services. They observe framework output and publish pass/fail results.
+Assertions are optional scenario entries that check whether expected outcomes happen while the scenario runs. They do not mutate messages or services. They observe framework output and publish pass/fail results.
 
-Currently supported assertion type: `fault_event`.
+Supported assertion types:
+
+| Type | Description |
+| --- | --- |
+| `fault_event` | Passes when a named fault publishes an expected state. |
+| `topic_hz` | Passes when a topic publishes at or above a minimum frequency. |
+
+Common fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | string | Unique assertion name used in assertion events. |
-| `type` | string | Assertion type. Currently `fault_event`. |
+| `id` | string | Unique assertion name used in assertion events and scenario status. |
+| `type` | string | Assertion type, such as `fault_event` or `topic_hz`. |
+| `within` | seconds | Optional deadline. The assertion fails if the expected condition is not observed before this time. |
+
+`fault_event` fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
 | `fault_id` | string | Fault event to watch. Must reference an existing fault ID. |
 | `state` | string | Expected fault state. Supported values: `active`, `inactive`. |
-| `within` | seconds | Optional deadline. The assertion fails if the expected event is not observed before this time. |
+
+`topic_hz` fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `topic` | string | Topic to monitor. |
+| `message_type` | string | ROS interface type, such as `nav_msgs/msg/Odometry`. |
+| `min_hz` | number | Minimum acceptable publish frequency. Must be greater than `0.0`. |
+| `window` | seconds | Rolling measurement window used to estimate topic frequency. Must be greater than `0.0`. |
 
 Example:
 
@@ -241,6 +262,14 @@ assertions:
     fault_id: odom_bias
     state: inactive
     within: 17.0
+
+  - id: odom_stays_above_10hz
+    type: topic_hz
+    topic: /odom
+    message_type: nav_msgs/msg/Odometry
+    min_hz: 10.0
+    window: 3.0
+    within: 8.0
 ```
 
-The validator rejects duplicate assertion IDs, unsupported assertion types, unknown fault IDs, unsupported states, and negative timing values. Assertion results are published on `/fault_injection/assertion_events`.
+The validator rejects duplicate assertion IDs, unsupported assertion types, unknown fault IDs, unsupported states, missing topic rate fields, invalid timing values, and non-positive `min_hz` or `window` values. Assertion state changes are published on `/fault_injection/assertion_events`; the current scenario summary is published on `/fault_injection/scenario_status`.
