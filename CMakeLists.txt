@@ -38,11 +38,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ReloadScenario.srv"
   "srv/GetFaultSchema.srv"
   "srv/GetFaultConfig.srv"
+  "srv/GetScenario.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   "msg/AssertionEvent.msg"
   "msg/ScenarioStatus.msg"
-  DEPENDENCIES builtin_interfaces std_msgs
+  DEPENDENCIES builtin_interfaces
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target

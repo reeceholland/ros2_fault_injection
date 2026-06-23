@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 #include "ros2_fault_injection/utils/fault_descriptions.hpp"
@@ -42,9 +43,11 @@ const FaultConfigField * find_schema_field(
 
 FaultServiceManager::FaultServiceManager(
   rclcpp::Node & node, const InjectorMap & injectors,
-  FaultEventPublisher & events, ReloadScenarioCallback reload_scenario_callback)
+  FaultEventPublisher & events, ReloadScenarioCallback reload_scenario_callback,
+  ScenarioFileProvider scenario_provider, ScenarioContentProvider scenario_content_provider)
 : node_(node), injectors_(injectors), events_(events),
-  reload_scenario_callback_(reload_scenario_callback)
+  reload_scenario_callback_(reload_scenario_callback), scenario_provider_(scenario_provider),
+  scenario_content_provider_(scenario_content_provider)
 {
   set_fault_state_service_ = node_.create_service<srv::SetFaultState>(
         "fault_injection/set_fault_state",
@@ -91,6 +94,12 @@ FaultServiceManager::FaultServiceManager(
     [this](const std::shared_ptr<srv::GetFaultConfig::Request> request,
     std::shared_ptr<srv::GetFaultConfig::Response> response)
     {handle_get_fault_config(request, response);});
+
+  get_scenario_service_ = node_.create_service<srv::GetScenario>(
+        "fault_injection/get_scenario",
+    [this](const std::shared_ptr<srv::GetScenario::Request> request,
+    std::shared_ptr<srv::GetScenario::Response> response)
+    {handle_get_scenario(request, response);});
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
@@ -390,6 +399,40 @@ void FaultServiceManager::handle_get_fault_config(
     response->keys.push_back(key);
     response->values.push_back(fault_config->config.at(key));
   }
+}
+
+void FaultServiceManager::handle_get_scenario(
+  const std::shared_ptr<srv::GetScenario::Request> request,
+  std::shared_ptr<srv::GetScenario::Response> response)
+{
+  (void)request;
+  auto result = scenario_provider_();
+  if (result.empty()) {
+    response->success = false;
+    response->message = "No scenario file provided by scenario provider callback";
+    RCLCPP_WARN(node_.get_logger(), "Scenario provider callback did not provide a scenario file");
+    return;
+  }
+
+  response->scenario_file = result;
+
+  if (!scenario_content_provider_) {
+    response->success = false;
+    response->message = "No scenario content provider callback provided";
+    RCLCPP_WARN(node_.get_logger(), "No scenario content provider callback provided");
+    return;
+  }
+
+  auto content_result = scenario_content_provider_();
+  if (!content_result.has_value()) {
+    response->success = false;
+    response->message = "Scenario content provider callback failed to provide content";
+    RCLCPP_WARN(node_.get_logger(), "Scenario content provider callback failed to provide content");
+    return;
+  }
+  response->success = true;
+  response->message = "Retrieved scenario: " + result;
+  response->content = content_result.value();
 }
 
 } // namespace ros2_fault_injection

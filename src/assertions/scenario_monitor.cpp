@@ -35,7 +35,7 @@ ScenarioMonitor::ScenarioMonitor(rclcpp::Node & node)
 void ScenarioMonitor::publish(const std::vector<AssertionResult> & results)
 {
   msg::ScenarioStatus status;
-  status.header.stamp = node_.now();
+  status.stamp = node_.now();
 
   for (const auto & result : results) {
     switch (result.state) {
@@ -53,7 +53,7 @@ void ScenarioMonitor::publish(const std::vector<AssertionResult> & results)
         {
           ++status.failed_count;
           status.failed_assertion_ids.push_back(result.id);
-          status.failed_msgs.push_back(result.message);
+          status.failed_messages.push_back(result.message);
           break;
         }
     }
