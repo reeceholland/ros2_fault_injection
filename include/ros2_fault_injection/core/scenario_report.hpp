@@ -17,19 +17,19 @@
 
 namespace ros2_fault_injection::core
 {
-  struct ScenarioReport
-  {
-    std::string scenario_file;
-    rclcpp::Time start_at;
-    rclcpp::Time finished_at;
+struct ScenarioReport
+{
+  std::string scenario_file;
+  rclcpp::Time start_at;
+  rclcpp::Time finished_at;
 
-    std::vector<std::string> injector_ids;
-    std::vector<std::string> fault_ids;
-    std::vector<assertions::AssertionResult> assertion_results;
+  std::vector<std::string> injector_ids;
+  std::vector<std::string> fault_ids;
+  std::vector<assertions::AssertionResult> assertion_results;
 
-    std::string final_result;
+  std::string final_result;
 
-    std::vector<FaultEventRecord> fault_events;
-  };
+  std::vector<FaultEventRecord> fault_events;
+};
 
 }

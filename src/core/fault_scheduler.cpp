@@ -16,68 +16,65 @@
 namespace ros2_fault_injection
 {
 
-  FaultScheduler::FaultScheduler(rclcpp::Node &node, FaultEventPublisher &event_pub, core::FaultEventRecorder &event_recorder)
-      : node_(node), event_pub_(event_pub), fault_event_recorder_(event_recorder) {}
+FaultScheduler::FaultScheduler(
+  rclcpp::Node & node, FaultEventPublisher & event_pub,
+  core::FaultEventRecorder & event_recorder)
+: node_(node), event_pub_(event_pub), fault_event_recorder_(event_recorder) {}
 
-  void FaultScheduler::schedule(
-      const std::vector<FaultConfig> &faults, FaultInjector &injector,
-      const std::vector<std::string> &initially_active_faults)
-  {
-    for (const auto &fault : faults)
-    {
-      if (is_initially_active(fault, initially_active_faults))
-      {
-        injector.activate_fault(fault.id);
-        FaultEvent event;
-        event.fault_id = fault.id;
-        event.state = "active";
-        event.injector_id = injector.id();
-        event.source = "startup";
-        event.details = describe_config(fault.config);
-        publish_event(event);
+void FaultScheduler::schedule(
+  const std::vector<FaultConfig> & faults, FaultInjector & injector,
+  const std::vector<std::string> & initially_active_faults)
+{
+  for (const auto & fault : faults) {
+    if (is_initially_active(fault, initially_active_faults)) {
+      injector.activate_fault(fault.id);
+      FaultEvent event;
+      event.fault_id = fault.id;
+      event.state = "active";
+      event.injector_id = injector.id();
+      event.source = "startup";
+      event.details = describe_config(fault.config);
+      publish_event(event);
 
-        RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately", fault.id.c_str());
+      RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately", fault.id.c_str());
 
-        if (fault.duration)
-        {
-          schedule_stop_after(injector, fault, *fault.duration);
-        }
-
-        continue;
+      if (fault.duration) {
+        schedule_stop_after(injector, fault, *fault.duration);
       }
 
-      if (!fault.start)
-      {
-        RCLCPP_INFO(node_.get_logger(),
+      continue;
+    }
+
+    if (!fault.start) {
+      RCLCPP_INFO(node_.get_logger(),
                     "Fault '%s' has no start time; leaving it inactive for manual control",
                     fault.id.c_str());
-        continue;
-      }
+      continue;
+    }
 
-      schedule_start(injector, fault);
+    schedule_start(injector, fault);
 
-      if (fault.duration)
-      {
-        schedule_stop(injector, fault);
-      }
+    if (fault.duration) {
+      schedule_stop(injector, fault);
     }
   }
+}
 
-  bool FaultScheduler::is_initially_active(
-      const FaultConfig &fault, const std::vector<std::string> &initially_active_faults) const
-  {
-    return std::find(initially_active_faults.begin(), initially_active_faults.end(), fault.id) !=
-           initially_active_faults.end();
-  }
+bool FaultScheduler::is_initially_active(
+  const FaultConfig & fault, const std::vector<std::string> & initially_active_faults) const
+{
+  return std::find(initially_active_faults.begin(), initially_active_faults.end(), fault.id) !=
+         initially_active_faults.end();
+}
 
-  void FaultScheduler::schedule_start(FaultInjector &injector, const FaultConfig &fault)
-  {
-    const auto start_delay = std::max(*fault.start, std::chrono::milliseconds{1});
+void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig & fault)
+{
+  const auto start_delay = std::max(*fault.start, std::chrono::milliseconds{1});
 
-    auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-    *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
-                                            {
+  *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
+      {
         (*timer_holder)->cancel();
 
         injector.activate_fault(fault.id);
@@ -90,26 +87,27 @@ namespace ros2_fault_injection
         event.details = describe_config(fault.config);
         publish_event(event);
 
-        RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str()); });
+        RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str());
+                                                                                             });
 
-    timers_.push_back(*timer_holder);
-  }
+  timers_.push_back(*timer_holder);
+}
 
-  void FaultScheduler::schedule_stop(FaultInjector &injector, const FaultConfig &fault)
-  {
-    schedule_stop_after(injector, fault, *fault.start + *fault.duration);
-  }
+void FaultScheduler::schedule_stop(FaultInjector & injector, const FaultConfig & fault)
+{
+  schedule_stop_after(injector, fault, *fault.start + *fault.duration);
+}
 
-  void FaultScheduler::schedule_stop_after(
-      FaultInjector &injector, const FaultConfig &fault,
-      std::chrono::milliseconds delay)
-  {
-    const auto stop_delay = std::max(delay, std::chrono::milliseconds{1});
+void FaultScheduler::schedule_stop_after(
+  FaultInjector & injector, const FaultConfig & fault,
+  std::chrono::milliseconds delay)
+{
+  const auto stop_delay = std::max(delay, std::chrono::milliseconds{1});
 
-    auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-    *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
-                                            {
+  *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
+      {
         (*timer_holder)->cancel();
 
         injector.deactivate_fault(fault.id);
@@ -122,20 +120,21 @@ namespace ros2_fault_injection
         event.details = describe_config(fault.config);
         publish_event(event);
 
-        RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str()); });
+        RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str());
+                                                                                               });
 
-    timers_.push_back(*timer_holder);
-  }
+  timers_.push_back(*timer_holder);
+}
 
-  void FaultScheduler::publish_event(const FaultEvent &event)
-  {
-    event_pub_.publish(event);
-    fault_event_recorder_.record(core::to_record(event, node_.now()));
-  }
+void FaultScheduler::publish_event(const FaultEvent & event)
+{
+  event_pub_.publish(event);
+  fault_event_recorder_.record(core::to_record(event, node_.now()));
+}
 
-  void FaultScheduler::clear()
-  {
-    timers_.clear();
-  }
+void FaultScheduler::clear()
+{
+  timers_.clear();
+}
 
 } // namespace ros2_fault_injection
