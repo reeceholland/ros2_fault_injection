@@ -67,6 +67,7 @@ add_library(${PROJECT_NAME}_core
   src/core/builtin_fault_injector_plugin.cpp
   src/core/fault_service_manager.cpp
   src/core/fault_controller.cpp
+  src/core/fault_event_recorder.cpp
   src/config/fault_config_schema.cpp
   src/utils/fault_descriptions.cpp
   src/injectors/trigger_service_fault_injector.cpp

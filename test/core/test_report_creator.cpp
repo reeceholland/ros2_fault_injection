@@ -80,7 +80,7 @@ TEST(ReportCreatorTest, CreatesFailedReportWhenAnyAssertionFails)
   rfi::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
-      {passed, failed});
+      {passed, failed}, {});
 
   EXPECT_EQ(report.scenario_file, "/tmp/scenario.yaml");
   EXPECT_EQ(report.final_result, "failed");
@@ -111,7 +111,7 @@ TEST(ReportCreatorTest, CreatesPassedReportWhenAllAssertionsPassed)
   rfi::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
-      {passed1, passed2});
+      {passed1, passed2}, {});
 
   EXPECT_EQ(report.scenario_file, "/tmp/scenario.yaml");
   EXPECT_EQ(report.final_result, "passed");
@@ -142,7 +142,7 @@ TEST(ReportCreatorTest, CreatesRunningReportWhenAnyAssertionPending)
   rfi::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
-      {pending, passed});
+      {pending, passed}, {});
 
   EXPECT_EQ(report.scenario_file, "/tmp/scenario.yaml");
   EXPECT_EQ(report.final_result, "pending");
@@ -167,7 +167,7 @@ TEST(ReportCreatorTest, MarkdownIncludesScenarioFileInjectorsFaultsAndAssertions
   rfi::InjectorMap injectors;
   injectors["injector1"] = std::make_shared<FakeFaultInjector>();
 
-  const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {passed});
+  const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {passed}, {});
   const auto markdown = report_creator.to_markdown(report);
 
   EXPECT_NE(markdown.find("/tmp/scenario.yaml"), std::string::npos);
@@ -190,7 +190,7 @@ TEST(ReportCreatorTest, MarkdownHandlesEmptyAssertions)
   rfi::InjectorMap injectors;
   injectors["injector1"] = std::make_shared<FakeFaultInjector>();
 
-  const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {});
+  const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {}, {});
   const auto markdown = report_creator.to_markdown(report);
 
   EXPECT_NE(markdown.find("/tmp/scenario.yaml"), std::string::npos);

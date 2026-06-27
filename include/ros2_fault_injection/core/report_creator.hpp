@@ -16,19 +16,20 @@
 
 namespace ros2_fault_injection::core
 {
-class ReportCreator
-{
-public:
-  explicit ReportCreator(rclcpp::Node & node);
+  class ReportCreator
+  {
+  public:
+    explicit ReportCreator(rclcpp::Node &node);
 
-  ScenarioReport create_report(
-    const std::string & scenario_file, const InjectorMap & injectors,
-    const std::vector<assertions::AssertionResult> & assertion_results);
+    ScenarioReport create_report(
+        const std::string &scenario_file, const InjectorMap &injectors,
+        const std::vector<assertions::AssertionResult> &assertion_results,
+        const std::vector<FaultEventRecord> &fault_events);
 
-  std::string to_markdown(const ScenarioReport & report) const;
+    std::string to_markdown(const ScenarioReport &report) const;
 
-private:
-  rclcpp::Node & node_;
-};
+  private:
+    rclcpp::Node &node_;
+  };
 
 } // namespace ros2_fault_injection::core
