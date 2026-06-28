@@ -20,7 +20,7 @@
 
 using namespace std::chrono_literals;
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 namespace
 {
@@ -258,4 +258,4 @@ TEST(TfFaultInjector, DropProbabilityOneDropsMatchingTransform) {
   rclcpp::shutdown();
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors

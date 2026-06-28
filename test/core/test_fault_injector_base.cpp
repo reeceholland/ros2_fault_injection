@@ -7,15 +7,29 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/core/fault_injector_factory.hpp"
+#include "ros2_fault_injection/core/fault_scheduler.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection
-{
+namespace rfi_core = ros2_fault_injection::core;
+namespace rfi_config = ros2_fault_injection::config;
+namespace rfi_msg = ros2_fault_injection::msg;
+namespace rfi_srv = ros2_fault_injection::srv;
 
-class TestFaultInjector : public FaultInjectorBase {
+
+class TestFaultInjector : public rfi_core::FaultInjectorBase {
 public:
-  TestFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
-  : FaultInjectorBase(node, config) {}
+  TestFaultInjector(rclcpp::Node & node, const rfi_config::InjectorConfig & config)
+  : rfi_core::FaultInjectorBase(node, config) {}
 };
 
 TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
@@ -23,10 +37,10 @@ TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -34,7 +48,7 @@ TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -58,10 +72,10 @@ TEST(FaultInjectorBase, StartsWithNoFaults) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -81,10 +95,10 @@ TEST(FaultInjectorBase, AddFaultRegistersItInactive) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -92,7 +106,7 @@ TEST(FaultInjectorBase, AddFaultRegistersItInactive) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -110,10 +124,10 @@ TEST(FaultInjectorBase, ActivateKnownFault) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -121,7 +135,7 @@ TEST(FaultInjectorBase, ActivateKnownFault) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -140,10 +154,10 @@ TEST(FaultInjectorBase, DeactivateKnownFault) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -151,7 +165,7 @@ TEST(FaultInjectorBase, DeactivateKnownFault) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -171,10 +185,10 @@ TEST(FaultInjectorBase, UnknownActivateDoesNotCreateFault) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -195,10 +209,10 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -206,7 +220,7 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "fault1";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -215,7 +229,7 @@ TEST(FaultInjectorBase, SameIdReplacesConfigAndResetsInactive) {
   injector.activate_fault("fault1");
 
   // Add a new fault with the same ID but different config
-  FaultConfig new_fault;
+  rfi_config::FaultConfig new_fault;
   new_fault.id = "fault1";
   new_fault.injector_id = "odom";
   new_fault.config["x_bias"] = "2.0";
@@ -236,10 +250,10 @@ TEST(FaultInjectorBase, SetFaultConfigValueUpdatesExistingFault) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -247,7 +261,7 @@ TEST(FaultInjectorBase, SetFaultConfigValueUpdatesExistingFault) {
 
   TestFaultInjector injector(*node, injector_config);
 
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_yaw_bias";
   fault.injector_id = "odom";
   fault.config["yaw_bias_deg"] = "10.0";
@@ -270,10 +284,10 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_injector_base");
 
-  InjectorConfig injector_config;
+  rfi_config::InjectorConfig injector_config;
   injector_config.id = "odom";
   injector_config.type = "odom";
-  injector_config.topic = TopicEndpointConfig{
+  injector_config.topic = rfi_config::TopicEndpointConfig{
     "/odom_raw",
     "/odom",
     10,
@@ -288,5 +302,3 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
 
   rclcpp::shutdown();
 }
-
-}  // namespace ros2_fault_injection

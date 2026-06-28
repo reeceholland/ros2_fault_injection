@@ -29,7 +29,7 @@
 #include "ros2_fault_injection/srv/get_scenario.hpp"
 #include "ros2_fault_injection/srv/request_report.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
   /**
@@ -130,6 +130,10 @@ private:
   core::FaultEventRecorder & fault_event_recorder_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultServiceManager;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_SERVICE_MANAGER_HPP_

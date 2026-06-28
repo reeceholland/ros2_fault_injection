@@ -13,7 +13,7 @@
 #include <rclcpp/publisher.hpp>
 #include "ros2_fault_injection/msg/fault_event.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 /**
@@ -64,6 +64,11 @@ private:
   rclcpp::Publisher<msg::FaultEvent>::SharedPtr pub_;
 };
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultEvent;
+using core::FaultEventPublisher;
+}  // namespace ros2_fault_injection
 #endif  // ROS2_FAULT_INJECTION__FAULT_EVENT_PUBLISHER_HPP_

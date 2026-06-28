@@ -6,6 +6,7 @@
 
 #include "ros2_fault_injection/core/fault_controller.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <string>
 #include <utility>
@@ -18,7 +19,7 @@
 #include "ros2_fault_injection/core/report_creator.hpp"
 #include "ros2_fault_injection/core/scenario_report.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 FaultController::FaultController(
@@ -233,4 +234,35 @@ std::string FaultController::create_report_markdown() const
   core::ReportCreator report_creator(node_);
   return report_creator.to_markdown(create_report());
 }
-} // namespace ros2_fault_injection
+
+std::vector<assertions::AssertionResult> FaultController::assertion_results() const
+{
+  if (!assertion_runner_) {
+    return {};
+  }
+  return assertion_runner_->results();
+}
+
+bool FaultController::assertions_complete() const
+{
+  const auto results = assertion_results();
+  return std::none_of(
+        results.begin(), results.end(),
+    [](const assertions::AssertionResult & result)
+    {
+      return result.state == assertions::AssertionState::Pending;
+        });
+}
+
+bool FaultController::assertions_passed() const
+{
+  const auto results = assertion_results();
+  return std::all_of(
+        results.begin(), results.end(),
+    [](const assertions::AssertionResult & result)
+    {
+      return result.state == assertions::AssertionState::Passed;
+        });
+}
+
+} // namespace ros2_fault_injection::core

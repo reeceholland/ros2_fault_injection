@@ -61,7 +61,7 @@ ros2_fault_injection::ScenarioConfig valid_scan_scenario()
 
 } // namespace
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
 TEST(ScenarioValidator, AcceptsValidOdomScenario)
@@ -317,7 +317,7 @@ TEST(ScenarioValidator, AcceptsSpecialFloatSectorValue)
     EXPECT_TRUE(result.warnings.empty());
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config
 
 TEST(ScenarioValidator, ExternalPluginTypeWarnsButDoesNotFail)
 {

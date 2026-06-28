@@ -8,7 +8,9 @@
 #define ROS2_FAULT_INJECTION__FAULT_CONTROLLER_HPP_
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <rclcpp/node.hpp>
 
@@ -21,7 +23,7 @@
 #include "ros2_fault_injection/assertions/fault_assertion_runner.hpp"
 #include "ros2_fault_injection/core/scenario_report.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 struct ReloadScenarioResult
@@ -74,6 +76,12 @@ public:
     return fault_event_recorder_;
   }
 
+  std::vector<assertions::AssertionResult> assertion_results() const;
+
+  bool assertions_complete() const;
+
+  bool assertions_passed() const;
+
 private:
   void create_injectors();
   void register_faults();
@@ -91,6 +99,11 @@ private:
   std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultController;
+using core::ReloadScenarioResult;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_CONTROLLER_HPP_

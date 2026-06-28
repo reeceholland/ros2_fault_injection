@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_event_recorder.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
   /**
@@ -72,6 +72,10 @@ private:
   core::FaultEventRecorder & fault_event_recorder_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultScheduler;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_SCHEDULER_HPP_

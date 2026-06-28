@@ -11,7 +11,7 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
 TEST(FaultConfigSchema, AcceptsValidFaultConfig)
@@ -50,4 +50,4 @@ TEST(FaultConfigSchema, ValidatesRuntimeConfigValues)
   EXPECT_TRUE(validate_config_value("tf", "parent_frame", "").has_value());
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::config

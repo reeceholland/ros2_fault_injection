@@ -13,7 +13,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
 struct TopicEndpointConfig
@@ -73,6 +73,14 @@ struct FaultConfig
   /// Injector-specific fault parameters parsed from YAML.
   std::unordered_map<std::string, std::string> config;
 };
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::config
 
+
+namespace ros2_fault_injection
+{
+using config::FaultConfig;
+using config::InjectorConfig;
+using config::TopicEndpointConfig;
+using config::TriggerServiceEndpointConfig;
+}  // namespace ros2_fault_injection
 #endif  // ROS2_FAULT_INJECTION__FAULT_CONFIG_HPP_

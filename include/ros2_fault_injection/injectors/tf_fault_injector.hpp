@@ -15,7 +15,7 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
 class TfFaultInjector : public FaultInjectorBase {
@@ -36,6 +36,10 @@ private:
   rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr publisher_;
 };
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors
 
+namespace ros2_fault_injection
+{
+using injectors::TfFaultInjector;
+}  // namespace ros2_fault_injection
 #endif

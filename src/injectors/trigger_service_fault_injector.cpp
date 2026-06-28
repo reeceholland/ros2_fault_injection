@@ -6,7 +6,7 @@
 
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 TriggerServiceFaultInjector::TriggerServiceFaultInjector(
   rclcpp::Node & node,
@@ -116,4 +116,4 @@ std::vector<FaultConfigField> TriggerServiceFaultInjector::config_schema() const
   return static_config_schema();
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors

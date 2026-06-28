@@ -14,7 +14,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
 OdomFaultInjector::OdomFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
@@ -249,4 +249,4 @@ std::vector<FaultConfigField> OdomFaultInjector::config_schema() const
   return static_config_schema();
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::injectors

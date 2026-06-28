@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
   /**
@@ -64,6 +64,10 @@ private:
   std::deque<DelayedOdom> delayed_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::injectors
 
+namespace ros2_fault_injection
+{
+using injectors::OdomFaultInjector;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__ODOM_FAULT_INJECTOR_HPP_

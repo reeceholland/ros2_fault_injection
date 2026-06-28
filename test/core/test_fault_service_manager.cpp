@@ -16,6 +16,17 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/core/fault_injector_factory.hpp"
+#include "ros2_fault_injection/core/fault_scheduler.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_service_manager.hpp"
@@ -24,16 +35,20 @@
 #include "ros2_fault_injection/srv/get_fault_config.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
-namespace ros2_fault_injection
-{
+namespace rfi_core = ros2_fault_injection::core;
+namespace rfi_config = ros2_fault_injection::config;
+namespace rfi_msg = ros2_fault_injection::msg;
+namespace rfi_srv = ros2_fault_injection::srv;
+
+
 namespace
 {
 
 using namespace std::chrono_literals;
 
-FaultConfigField make_test_schema_field(const std::string & key)
+rfi_config::FaultConfigField make_test_schema_field(const std::string & key)
 {
-  FaultConfigField field;
+  rfi_config::FaultConfigField field;
   field.key = key;
 
   if (key == "drop_probability") {
@@ -76,13 +91,13 @@ FaultConfigField make_test_schema_field(const std::string & key)
   return field;
 }
 
-class FakeFaultInjector : public FaultInjector
+class FakeFaultInjector : public rfi_core::FaultInjector
 {
 public:
   explicit FakeFaultInjector(std::string id, std::string type = "odom")
   : id_(std::move(id)), type_(std::move(type))
   {
-    for (const auto & key : allowed_config_keys_for_injector_type(type_)) {
+    for (const auto & key : rfi_config::allowed_config_keys_for_injector_type(type_)) {
       schema_.push_back(make_test_schema_field(key));
     }
   }
@@ -97,7 +112,7 @@ public:
     return type_;
   }
 
-  void add_fault(const FaultConfig & fault_config) override
+  void add_fault(const rfi_config::FaultConfig & fault_config) override
   {
     faults_[fault_config.id] = fault_config;
     active_.erase(fault_config.id);
@@ -120,7 +135,8 @@ public:
     return faults_.find(fault_id) != faults_.end();
   }
 
-  std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const override
+  std::optional<rfi_config::FaultConfig> get_fault_config(
+    const std::string & fault_id) const override
   {
     const auto it = faults_.find(fault_id);
     if (it == faults_.end()) {
@@ -168,12 +184,12 @@ public:
     active_.clear();
   }
 
-  std::vector<FaultConfigField> config_schema() const override
+  std::vector<rfi_config::FaultConfigField> config_schema() const override
   {
     return schema_;
   }
 
-  void add_schema_field(const FaultConfigField & field)
+  void add_schema_field(const rfi_config::FaultConfigField & field)
   {
     schema_.push_back(field);
   }
@@ -181,14 +197,14 @@ public:
 private:
   std::string id_;
   std::string type_;
-  std::unordered_map<std::string, FaultConfig> faults_;
+  std::unordered_map<std::string, rfi_config::FaultConfig> faults_;
   std::unordered_set<std::string> active_;
-  std::vector<FaultConfigField> schema_;
+  std::vector<rfi_config::FaultConfigField> schema_;
 };
 
-FaultConfig make_fault()
+rfi_config::FaultConfig make_fault()
 {
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = "odom_bias";
   fault.injector_id = "odom";
   fault.config["x_bias"] = "1.0";
@@ -205,12 +221,12 @@ void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds du
   }
 }
 
-std::optional<msg::FaultEvent> call_set_fault_state_and_wait_for_event(
+std::optional<rfi_msg::FaultEvent> call_set_fault_state_and_wait_for_event(
   const rclcpp::Node::SharedPtr & node, bool active,
-  const rclcpp::Client<srv::SetFaultState>::SharedPtr & client,
-  const std::shared_ptr<msg::FaultEvent> & latest_event)
+  const rclcpp::Client<rfi_srv::SetFaultState>::SharedPtr & client,
+  const std::shared_ptr<rfi_msg::FaultEvent> & latest_event)
 {
-  auto request = std::make_shared<srv::SetFaultState::Request>();
+  auto request = std::make_shared<rfi_srv::SetFaultState::Request>();
   request->fault_id = "odom_bias";
   request->active = active;
 
@@ -231,9 +247,9 @@ std::optional<msg::FaultEvent> call_set_fault_state_and_wait_for_event(
   return *latest_event;
 }
 
-ReloadScenarioResult test_reload_callback()
+rfi_core::ReloadScenarioResult test_reload_callback()
 {
-  return ReloadScenarioResult{false, "test reload callback"};
+  return rfi_core::ReloadScenarioResult{false, "test reload callback"};
 }
 
 std::string test_scenario_file_provider()
@@ -246,9 +262,9 @@ std::optional<std::string> test_scenario_content_provider()
   return std::string{"injectors: []\n"};
 }
 
-FaultServiceManager::ReportResult test_request_report_callback()
+rfi_core::FaultServiceManager::ReportResult test_request_report_callback()
 {
-  return FaultServiceManager::ReportResult{
+  return rfi_core::FaultServiceManager::ReportResult{
     true, "Created scenario report", "/tmp/test_scenario.yaml", "passed",
     "# Fault Injection Scenario Report\n"};
 }
@@ -263,22 +279,22 @@ TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
     auto injector = std::make_shared<FakeFaultInjector>("odom");
     injector->add_fault(make_fault());
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["odom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto latest_event = std::make_shared<msg::FaultEvent>();
-    auto subscription = node->create_subscription<msg::FaultEvent>(
+    auto latest_event = std::make_shared<rfi_msg::FaultEvent>();
+    auto subscription = node->create_subscription<rfi_msg::FaultEvent>(
         "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event)
+    [latest_event](const rfi_msg::FaultEvent & event)
     {*latest_event = event;});
 
-    auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
+    auto client = node->create_client<rfi_srv::SetFaultState>("fault_injection/set_fault_state");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
     const auto event = call_set_fault_state_and_wait_for_event(node, true, client, latest_event);
@@ -304,22 +320,22 @@ TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent)
     injector->add_fault(make_fault());
     injector->activate_fault("odom_bias");
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["odom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto latest_event = std::make_shared<msg::FaultEvent>();
-    auto subscription = node->create_subscription<msg::FaultEvent>(
+    auto latest_event = std::make_shared<rfi_msg::FaultEvent>();
+    auto subscription = node->create_subscription<rfi_msg::FaultEvent>(
         "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event)
+    [latest_event](const rfi_msg::FaultEvent & event)
     {*latest_event = event;});
 
-    auto client = node->create_client<srv::SetFaultState>("fault_injection/set_fault_state");
+    auto client = node->create_client<rfi_srv::SetFaultState>("fault_injection/set_fault_state");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
     const auto event = call_set_fault_state_and_wait_for_event(node, false, client, latest_event);
@@ -344,25 +360,25 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
     auto injector = std::make_shared<FakeFaultInjector>("odom");
     injector->add_fault(make_fault());
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["odom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto latest_event = std::make_shared<msg::FaultEvent>();
-    auto subscription = node->create_subscription<msg::FaultEvent>(
+    auto latest_event = std::make_shared<rfi_msg::FaultEvent>();
+    auto subscription = node->create_subscription<rfi_msg::FaultEvent>(
         "fault_injection/events", 10,
-    [latest_event](const msg::FaultEvent & event)
+    [latest_event](const rfi_msg::FaultEvent & event)
     {*latest_event = event;});
 
-    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    auto client = node->create_client<rfi_srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    auto request = std::make_shared<rfi_srv::SetFaultConfig::Request>();
     request->fault_id = "odom_bias";
     request->key = "x_bias";
     request->value = "2.0";
@@ -396,26 +412,26 @@ TEST(FaultServiceManager, GetFaultConfigReturnsCurrentConfig)
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_config");
     auto injector = std::make_shared<FakeFaultInjector>("odom", "odom");
 
-    FaultConfig fault;
+    rfi_config::FaultConfig fault;
     fault.id = "odom_bias";
     fault.injector_id = "odom";
     fault.config["x_bias"] = "1.0";
     fault.config["drop_probability"] = "0.25";
     injector->add_fault(fault);
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["odom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
+    auto client = node->create_client<rfi_srv::GetFaultConfig>("fault_injection/get_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::GetFaultConfig::Request>();
+    auto request = std::make_shared<rfi_srv::GetFaultConfig::Request>();
     request->fault_id = "odom_bias";
 
     auto future = client->async_send_request(request);
@@ -443,25 +459,25 @@ TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_invalid_config_update");
     auto injector = std::make_shared<FakeFaultInjector>("imu", "imu");
 
-    FaultConfig fault;
+    rfi_config::FaultConfig fault;
     fault.id = "imu_linear_acceleration_noise";
     fault.injector_id = "imu";
     fault.config["drop_probability"] = "0.5";
     injector->add_fault(fault);
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["imu"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    auto client = node->create_client<rfi_srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    auto request = std::make_shared<rfi_srv::SetFaultConfig::Request>();
     request->fault_id = "imu_linear_acceleration_noise";
     request->key = "drop_probability";
     request->value = "Helloo";
@@ -492,23 +508,23 @@ TEST(FaultServiceManager, SetFaultConfigAllowsInjectorOwnedKeyUnknownToCentralSc
     fault.injector_id = "custom";
     injector->add_fault(fault);
 
-    FaultConfigField field;
+    rfi_config::FaultConfigField field;
     field.key = "plugin_only_key";
     injector->add_schema_field(field);
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["custom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    auto client = node->create_client<rfi_srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    auto request = std::make_shared<rfi_srv::SetFaultConfig::Request>();
     request->fault_id = "custom_fault";
     request->key = "plugin_only_key";
     request->value = "plugin_value";
@@ -534,25 +550,25 @@ TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_config_update_type");
     auto injector = std::make_shared<FakeFaultInjector>("motor_feedback", "joint_state");
 
-    FaultConfig fault;
+    rfi_config::FaultConfig fault;
     fault.id = "motor_velocity_bias";
     fault.injector_id = "motor_feedback";
     fault.config["velocity_bias"] = "0.1";
     injector->add_fault(fault);
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["motor_feedback"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
+    auto client = node->create_client<rfi_srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::SetFaultConfig::Request>();
+    auto request = std::make_shared<rfi_srv::SetFaultConfig::Request>();
     request->fault_id = "motor_velocity_bias";
     request->key = "velocity_bias";
     request->value = "0.25";
@@ -584,23 +600,23 @@ TEST(FaultServiceManager, GetFaultSchemaUsesInjectorOwnedSchema)
     fault.injector_id = "custom";
     injector->add_fault(fault);
 
-    FaultConfigField field;
+    rfi_config::FaultConfigField field;
     field.key = "plugin_only_key";
     injector->add_schema_field(field);
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["custom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultServiceManager services(
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
-    auto client = node->create_client<srv::GetFaultSchema>("fault_injection/get_fault_schema");
+    auto client = node->create_client<rfi_srv::GetFaultSchema>("fault_injection/get_fault_schema");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::GetFaultSchema::Request>();
+    auto request = std::make_shared<rfi_srv::GetFaultSchema::Request>();
     request->fault_id = "custom_fault";
 
     auto future = client->async_send_request(request);
@@ -623,23 +639,23 @@ TEST(FaultServiceManager, GetScenarioReturnsScenarioFileAndContent)
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario");
     auto injector = std::make_shared<FakeFaultInjector>("odom");
 
-    FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
     injectors["odom"] = injector;
 
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
 
-    FaultServiceManager services(
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder, test_reload_callback,
     []()
     {return "/tmp/test_scenario.yaml";},
     []()
     {return std::optional<std::string>{"injectors: []\n"};}, test_request_report_callback);
 
-    auto client = node->create_client<srv::GetScenario>("fault_injection/get_scenario");
+    auto client = node->create_client<rfi_srv::GetScenario>("fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto request = std::make_shared<rfi_srv::GetScenario::Request>();
     auto future = client->async_send_request(request);
 
     const auto result =
@@ -662,11 +678,11 @@ TEST(FaultServiceManager, GetScenarioFailsWhenContentUnavailable)
 
     auto node =
     std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_unavailable");
-    FaultServiceManager::InjectorMap injectors;
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
 
-    FaultServiceManager services(
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder,
     test_reload_callback,
     []()
@@ -674,10 +690,10 @@ TEST(FaultServiceManager, GetScenarioFailsWhenContentUnavailable)
     []()
     {return std::nullopt;}, test_request_report_callback);
 
-    auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
+    auto client = node->create_client<rfi_srv::GetScenario>("/fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
-    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto request = std::make_shared<rfi_srv::GetScenario::Request>();
     auto future = client->async_send_request(request);
 
     const auto result =
@@ -699,13 +715,13 @@ TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
     rclcpp::init(0, nullptr);
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_latest");
-    FaultServiceManager::InjectorMap injectors;
-    FaultEventPublisher event_publisher(*node);
-    core::FaultEventRecorder event_recorder;
+    rfi_core::FaultServiceManager::InjectorMap injectors;
+    rfi_core::FaultEventPublisher event_publisher(*node);
+    rfi_core::FaultEventRecorder event_recorder;
 
     std::string content = "version: one\n";
 
-    FaultServiceManager services(
+    rfi_core::FaultServiceManager services(
     *node, injectors, event_publisher, event_recorder,
     test_reload_callback,
     []()
@@ -713,12 +729,12 @@ TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
     [&content]()
     {return std::optional<std::string>{content};}, test_request_report_callback);
 
-    auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
+    auto client = node->create_client<rfi_srv::GetScenario>("/fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));
 
     content = "version: two\n";
 
-    auto request = std::make_shared<srv::GetScenario::Request>();
+    auto request = std::make_shared<rfi_srv::GetScenario::Request>();
     auto future = client->async_send_request(request);
 
     const auto result =
@@ -732,5 +748,3 @@ TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
 
     rclcpp::shutdown();
 }
-
-} // namespace ros2_fault_injection

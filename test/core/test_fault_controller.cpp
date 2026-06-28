@@ -15,8 +15,23 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
-namespace ros2_fault_injection
-{
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/core/fault_injector_factory.hpp"
+#include "ros2_fault_injection/core/fault_scheduler.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+
+namespace rfi_core = ros2_fault_injection::core;
+namespace rfi_config = ros2_fault_injection::config;
+namespace rfi_msg = ros2_fault_injection::msg;
+namespace rfi_srv = ros2_fault_injection::srv;
+
+
 namespace
 {
 
@@ -110,10 +125,10 @@ TEST_F(FaultControllerTest, ValidReloadUpdatesFaultConfig) {
     write_temp_yaml("ros2_fault_injection_reload_valid.yaml", odom_scenario_yaml("1.0"));
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_controller_reload_valid");
-  FaultEventPublisher event_publisher(*node);
+  rfi_core::FaultEventPublisher event_publisher(*node);
 
-  auto scenario = load_scenario_config(path);
-  FaultController controller(*node, path, scenario, event_publisher);
+  auto scenario = rfi_config::load_scenario_config(path);
+  rfi_core::FaultController controller(*node, path, scenario, event_publisher);
 
   auto injector = controller.injectors().at("odom");
   ASSERT_TRUE(injector->has_fault("odom_bias"));
@@ -137,10 +152,10 @@ TEST_F(FaultControllerTest, InvalidReloadDoesNotChangeFaultConfig) {
     write_temp_yaml("ros2_fault_injection_reload_invalid.yaml", odom_scenario_yaml("1.0"));
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_controller_reload_invalid");
-  FaultEventPublisher event_publisher(*node);
+  rfi_core::FaultEventPublisher event_publisher(*node);
 
-  auto scenario = load_scenario_config(path);
-  FaultController controller(*node, path, scenario, event_publisher);
+  auto scenario = rfi_config::load_scenario_config(path);
+  rfi_core::FaultController controller(*node, path, scenario, event_publisher);
 
   auto injector = controller.injectors().at("odom");
   ASSERT_TRUE(injector->has_fault("odom_drop"));
@@ -167,10 +182,10 @@ TEST_F(FaultControllerTest, ReloadWithChangedInjectorsIsRejected) {
     "ros2_fault_injection_reload_changed_injectors.yaml", odom_scenario_yaml("1.0"));
 
   auto node = std::make_shared<rclcpp::Node>("test_fault_controller_reload_changed_injectors");
-  FaultEventPublisher event_publisher(*node);
+  rfi_core::FaultEventPublisher event_publisher(*node);
 
-  auto scenario = load_scenario_config(path);
-  FaultController controller(*node, path, scenario, event_publisher);
+  auto scenario = rfi_config::load_scenario_config(path);
+  rfi_core::FaultController controller(*node, path, scenario, event_publisher);
 
   write_temp_yaml(
     "ros2_fault_injection_reload_changed_injectors.yaml",
@@ -188,5 +203,3 @@ TEST_F(FaultControllerTest, ReloadWithChangedInjectorsIsRejected) {
   ASSERT_TRUE(original_bias_fault.has_value());
   EXPECT_EQ(original_bias_fault->config.at("x_bias"), "1.0");
 }
-
-}  // namespace ros2_fault_injection

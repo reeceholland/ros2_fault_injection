@@ -20,7 +20,7 @@
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 namespace
 {
@@ -332,4 +332,4 @@ ValidationResult validate_scenario(const ScenarioConfig & scenario)
   return result;
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config

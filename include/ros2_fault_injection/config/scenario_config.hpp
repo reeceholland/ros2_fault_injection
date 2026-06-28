@@ -13,7 +13,7 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
   /**
@@ -57,6 +57,13 @@ const InjectorConfig * find_injector(
   const ScenarioConfig & scenario,
   const std::string & injector_id);
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config
 
+
+namespace ros2_fault_injection
+{
+using config::ScenarioConfig;
+using config::find_injector;
+using config::load_scenario_config;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__SCENARIO_CONFIG_HPP_

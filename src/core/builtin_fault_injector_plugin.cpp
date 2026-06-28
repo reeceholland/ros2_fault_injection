@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 std::string OdomFaultInjectorPlugin::type() const
@@ -29,7 +29,7 @@ std::string OdomFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> OdomFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<OdomFaultInjector>(node, config);
+  return std::make_shared<injectors::OdomFaultInjector>(node, config);
 }
 
 std::string ScanFaultInjectorPlugin::type() const
@@ -40,7 +40,7 @@ std::string ScanFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> ScanFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<ScanFaultInjector>(node, config);
+  return std::make_shared<injectors::ScanFaultInjector>(node, config);
 }
 
 std::string JointStateFaultInjectorPlugin::type() const
@@ -51,7 +51,7 @@ std::string JointStateFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> JointStateFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<JointStateFaultInjector>(node, config);
+  return std::make_shared<injectors::JointStateFaultInjector>(node, config);
 }
 
 std::string ImuFaultInjectorPlugin::type() const
@@ -62,7 +62,7 @@ std::string ImuFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> ImuFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<ImuFaultInjector>(node, config);
+  return std::make_shared<injectors::ImuFaultInjector>(node, config);
 }
 
 std::string TfFaultInjectorPlugin::type() const
@@ -73,7 +73,7 @@ std::string TfFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> TfFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<TfFaultInjector>(node, config);
+  return std::make_shared<injectors::TfFaultInjector>(node, config);
 }
 
 std::string TriggerServiceFaultInjectorPlugin::type() const
@@ -84,26 +84,26 @@ std::string TriggerServiceFaultInjectorPlugin::type() const
 std::shared_ptr<FaultInjector> TriggerServiceFaultInjectorPlugin::create(
   rclcpp::Node & node, const InjectorConfig & config)
 {
-  return std::make_shared<TriggerServiceFaultInjector>(node, config);
+  return std::make_shared<injectors::TriggerServiceFaultInjector>(node, config);
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core
 
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::OdomFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::OdomFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::ScanFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::ScanFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::JointStateFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::JointStateFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::ImuFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::ImuFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::TfFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::TfFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
-  ros2_fault_injection::TriggerServiceFaultInjectorPlugin,
-  ros2_fault_injection::FaultInjectorPlugin)
+  ros2_fault_injection::core::TriggerServiceFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)

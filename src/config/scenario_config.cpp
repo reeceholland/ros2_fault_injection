@@ -13,7 +13,7 @@
 
 #include <yaml-cpp/yaml.h>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 namespace
 {
@@ -193,4 +193,4 @@ const InjectorConfig * find_injector(
   return nullptr;
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config

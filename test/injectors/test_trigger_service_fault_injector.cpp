@@ -17,7 +17,7 @@
 
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 namespace
 {
@@ -223,4 +223,4 @@ TEST(TriggerServiceFaultInjector, DelayFaultDelaysResponse) {
   rclcpp::shutdown();
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors

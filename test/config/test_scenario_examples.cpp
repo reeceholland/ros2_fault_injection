@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 namespace
 {
@@ -47,4 +47,4 @@ TEST(ScenarioExamples, ShippedExampleConfigsParseAndValidate) {
   }
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::config

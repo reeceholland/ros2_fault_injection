@@ -13,7 +13,7 @@
 #include <limits>
 #include <random>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
 namespace
@@ -253,4 +253,4 @@ std::vector<FaultConfigField> ScanFaultInjector::config_schema() const
   return static_config_schema();
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors

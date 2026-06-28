@@ -12,12 +12,12 @@
 #include <pluginlib/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 FaultInjectorFactory::FaultInjectorFactory(rclcpp::Node & node)
 : node_(node),
-  loader_("ros2_fault_injection", "ros2_fault_injection::FaultInjectorPlugin")
+  loader_("ros2_fault_injection", "ros2_fault_injection::core::FaultInjectorPlugin")
 {
   load_plugins();
 }
@@ -58,4 +58,4 @@ std::shared_ptr<FaultInjector> FaultInjectorFactory::create(const InjectorConfig
   return nullptr;
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core

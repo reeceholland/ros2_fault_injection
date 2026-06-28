@@ -11,7 +11,7 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::utils
 {
 
 TEST(FaultDescriptions, DescribeConfigFormatsConfig) {
@@ -47,4 +47,4 @@ TEST(FaultDescriptions, DescribeConfigUpdateFormatsUpdate) {
   EXPECT_EQ(description, "config_update={x_bias=2.0}");
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::utils

@@ -12,7 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
 struct FaultConfigField
@@ -63,6 +63,14 @@ std::optional<std::string> validate_config_value(
   const FaultConfigField & field,
   const std::string & value);
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config
 
+
+namespace ros2_fault_injection
+{
+using config::FaultConfigField;
+using config::allowed_config_keys_for_injector_type;
+using config::is_allowed_config_key;
+using config::validate_config_value;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_CONFIG_SCHEMA_HPP_

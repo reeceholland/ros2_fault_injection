@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::utils
 {
 
 std::string describe_config(const std::unordered_map<std::string, std::string> & config)
@@ -67,4 +67,4 @@ std::string describe_config_update(const std::string & key, const std::string & 
   return "config_update={" + key + "=" + value + "}";
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::utils

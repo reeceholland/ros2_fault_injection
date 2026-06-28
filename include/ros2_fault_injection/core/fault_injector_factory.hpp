@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_injector_plugin.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 /**
@@ -49,6 +49,10 @@ private:
   std::unordered_map<std::string, std::string> plugin_names_by_type_;
 };
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultInjectorFactory;
+}  // namespace ros2_fault_injection
 #endif  // ROS2_FAULT_INJECTION__FAULT_INJECTOR_FACTORY_HPP_
