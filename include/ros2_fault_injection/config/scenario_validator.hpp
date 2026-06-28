@@ -12,7 +12,7 @@
 
 #include "ros2_fault_injection/config/scenario_config.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 
   /**
@@ -45,6 +45,12 @@ struct ValidationResult
    */
 ValidationResult validate_scenario(const ScenarioConfig & scenario);
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config
 
+
+namespace ros2_fault_injection
+{
+using config::ValidationResult;
+using config::validate_scenario;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__SCENARIO_VALIDATOR_HPP_

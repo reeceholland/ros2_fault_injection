@@ -11,18 +11,19 @@
 
 namespace rfi = ros2_fault_injection;
 namespace rfi_assertions = ros2_fault_injection::assertions;
+namespace rfi_config = ros2_fault_injection::config;
 namespace rfi_core = ros2_fault_injection::core;
 
 namespace
 {
 
-class FakeFaultInjector : public rfi::FaultInjector
+class FakeFaultInjector : public rfi_core::FaultInjector
 {
 public:
   std::string id() const override {return "injector1";}
   std::string type() const override {return "fake";}
 
-  void add_fault(const rfi::FaultConfig &) override {}
+  void add_fault(const rfi_config::FaultConfig &) override {}
   void clear_faults() override {}
 
   bool has_fault(const std::string &) const override {return false;}
@@ -39,7 +40,7 @@ public:
     return {};
   }
 
-  std::optional<rfi::FaultConfig> get_fault_config(const std::string &) const override
+  std::optional<rfi_config::FaultConfig> get_fault_config(const std::string &) const override
   {
     return std::nullopt;
   }
@@ -50,7 +51,7 @@ public:
     return false;
   }
 
-  std::vector<rfi::FaultConfigField> config_schema() const override
+  std::vector<rfi_config::FaultConfigField> config_schema() const override
   {
     return {};
   }
@@ -77,7 +78,7 @@ TEST(ReportCreatorTest, CreatesFailedReportWhenAnyAssertionFails)
   failed.state = rfi_assertions::AssertionState::Failed;
   failed.message = "Timed out waiting for /scan";
 
-  rfi::InjectorMap injectors;
+  rfi_core::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
       {passed, failed}, {});
@@ -108,7 +109,7 @@ TEST(ReportCreatorTest, CreatesPassedReportWhenAllAssertionsPassed)
   passed2.state = rfi_assertions::AssertionState::Passed;
   passed2.message = "Observed /scan above minimum rate";
 
-  rfi::InjectorMap injectors;
+  rfi_core::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
       {passed1, passed2}, {});
@@ -139,7 +140,7 @@ TEST(ReportCreatorTest, CreatesRunningReportWhenAnyAssertionPending)
   passed.state = rfi_assertions::AssertionState::Passed;
   passed.message = "Observed /scan above minimum rate";
 
-  rfi::InjectorMap injectors;
+  rfi_core::InjectorMap injectors;
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors,
       {pending, passed}, {});
@@ -164,7 +165,7 @@ TEST(ReportCreatorTest, MarkdownIncludesScenarioFileInjectorsFaultsAndAssertions
   passed.state = rfi_assertions::AssertionState::Passed;
   passed.message = "Observed /odom above minimum rate";
 
-  rfi::InjectorMap injectors;
+  rfi_core::InjectorMap injectors;
   injectors["injector1"] = std::make_shared<FakeFaultInjector>();
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {passed}, {});
@@ -187,7 +188,7 @@ TEST(ReportCreatorTest, MarkdownHandlesEmptyAssertions)
   auto node = std::make_shared<rclcpp::Node>("test_report_creator_markdown_empty_assertions");
   rfi_core::ReportCreator report_creator(*node);
 
-  rfi::InjectorMap injectors;
+  rfi_core::InjectorMap injectors;
   injectors["injector1"] = std::make_shared<FakeFaultInjector>();
 
   const auto report = report_creator.create_report("/tmp/scenario.yaml", injectors, {}, {});

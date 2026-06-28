@@ -8,7 +8,7 @@
 
 #include "ros2_fault_injection/msg/fault_event.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 FaultEventPublisher::FaultEventPublisher(rclcpp::Node & node)
@@ -29,4 +29,4 @@ void FaultEventPublisher::publish(const FaultEvent & event)
   pub_->publish(event_msg);
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core

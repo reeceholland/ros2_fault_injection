@@ -6,7 +6,7 @@
 
 #include "ros2_fault_injection/injectors/imu_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
 ImuFaultInjector::ImuFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
@@ -170,4 +170,4 @@ std::vector<FaultConfigField> ImuFaultInjector::config_schema() const
   return static_config_schema();
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::injectors

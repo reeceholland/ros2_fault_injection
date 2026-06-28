@@ -76,6 +76,7 @@ add_library(${PROJECT_NAME}_core
   src/assertions/fault_event_assertion.cpp
   src/assertions/topic_hz_assertion.cpp
   src/assertions/scenario_monitor.cpp
+  src/core/fault_scenario_runner.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -106,16 +107,23 @@ add_executable(fault_injector_node
   src/fault_injector_node.cpp
 )
 
-rosidl_get_typesupport_target(cpp_typesupport_target
-  ${PROJECT_NAME}
-  "rosidl_typesupport_cpp"
+add_executable(fault_scenario_runner_node
+  src/fault_scenario_runner_node.cpp
 )
 
 target_link_libraries(fault_injector_node
   ${PROJECT_NAME}_core
 )
 
+target_link_libraries(fault_scenario_runner_node
+  ${PROJECT_NAME}_core
+)
+
 ament_target_dependencies(fault_injector_node
+  rclcpp
+)
+
+ament_target_dependencies(fault_scenario_runner_node
   rclcpp
 )
 
@@ -129,6 +137,7 @@ install(TARGETS
 
 install(TARGETS
   fault_injector_node
+  fault_scenario_runner_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

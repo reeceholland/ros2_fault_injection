@@ -16,7 +16,7 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
   /**
@@ -122,6 +122,11 @@ public:
 
   /// Map of injector id to injector instance.
 using InjectorMap = std::unordered_map<std::string, std::shared_ptr<FaultInjector>>;
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultInjector;
+using core::InjectorMap;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_

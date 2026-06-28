@@ -18,7 +18,7 @@
 
 #include "ros2_fault_injection/core/fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
   /**
@@ -108,6 +108,10 @@ protected:
   std::mt19937 rng_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultInjectorBase;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_INJECTOR_BASE_HPP_

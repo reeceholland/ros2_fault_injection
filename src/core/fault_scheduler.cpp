@@ -13,7 +13,7 @@
 
 #include "ros2_fault_injection/utils/fault_descriptions.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 FaultScheduler::FaultScheduler(
@@ -137,4 +137,4 @@ void FaultScheduler::clear()
   timers_.clear();
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core

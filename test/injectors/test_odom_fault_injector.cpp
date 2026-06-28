@@ -15,7 +15,7 @@
 
 #include "ros2_fault_injection/injectors/odom_fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 namespace
 {
@@ -207,4 +207,4 @@ TEST(OdomFaultInjector, CovarianceUnchangedWithoutActiveFault) {
   rclcpp::shutdown();
 }
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::injectors

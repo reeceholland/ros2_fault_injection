@@ -11,11 +11,26 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/core/fault_injector_factory.hpp"
+#include "ros2_fault_injection/core/fault_scheduler.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/core/fault_injector_factory.hpp"
 
-namespace ros2_fault_injection
-{
+namespace rfi_core = ros2_fault_injection::core;
+namespace rfi_config = ros2_fault_injection::config;
+namespace rfi_msg = ros2_fault_injection::msg;
+namespace rfi_srv = ros2_fault_injection::srv;
+
+
 namespace
 {
 
@@ -37,13 +52,13 @@ protected:
   }
 };
 
-InjectorConfig make_topic_config(const std::string & type)
+rfi_config::InjectorConfig make_topic_config(const std::string & type)
 {
-  InjectorConfig config;
+  rfi_config::InjectorConfig config;
   config.id = type + "_injector";
   config.type = type;
 
-  TopicEndpointConfig topic;
+  rfi_config::TopicEndpointConfig topic;
   topic.input_topic = "/test/" + type + "_raw";
   topic.output_topic = "/test/" + type;
   topic.qos_depth = 10;
@@ -52,13 +67,13 @@ InjectorConfig make_topic_config(const std::string & type)
   return config;
 }
 
-InjectorConfig make_trigger_service_config()
+rfi_config::InjectorConfig make_trigger_service_config()
 {
-  InjectorConfig config;
+  rfi_config::InjectorConfig config;
   config.id = "trigger_service_injector";
   config.type = "trigger_service";
 
-  TriggerServiceEndpointConfig trigger_service;
+  rfi_config::TriggerServiceEndpointConfig trigger_service;
   trigger_service.proxy_service = "/test/trigger_proxy";
   trigger_service.target_service = "/test/trigger_target";
 
@@ -71,7 +86,7 @@ InjectorConfig make_trigger_service_config()
 TEST_F(FaultInjectorFactoryTest, CreatesBuiltInTopicInjectors)
   {
     auto node = std::make_shared<rclcpp::Node>("test_fault_injector_factory_topic");
-    FaultInjectorFactory factory(*node);
+    rfi_core::FaultInjectorFactory factory(*node);
 
     for (const auto & type : {"odom", "scan", "joint_state", "imu", "tf"}) {
     auto injector = factory.create(make_topic_config(type));
@@ -84,7 +99,7 @@ TEST_F(FaultInjectorFactoryTest, CreatesBuiltInTopicInjectors)
 TEST_F(FaultInjectorFactoryTest, CreatesBuiltInTriggerServiceInjector)
   {
     auto node = std::make_shared<rclcpp::Node>("test_fault_injector_factory_service");
-    FaultInjectorFactory factory(*node);
+    rfi_core::FaultInjectorFactory factory(*node);
 
     auto injector = factory.create(make_trigger_service_config());
 
@@ -95,7 +110,7 @@ TEST_F(FaultInjectorFactoryTest, CreatesBuiltInTriggerServiceInjector)
 TEST_F(FaultInjectorFactoryTest, UnknownInjectorTypeReturnsNullptr)
   {
     auto node = std::make_shared<rclcpp::Node>("test_fault_injector_factory_unknown");
-    FaultInjectorFactory factory(*node);
+    rfi_core::FaultInjectorFactory factory(*node);
 
     auto config = make_topic_config("unknown_type");
 
@@ -104,4 +119,3 @@ TEST_F(FaultInjectorFactoryTest, UnknownInjectorTypeReturnsNullptr)
     EXPECT_EQ(injector, nullptr);
 }
 
-} // namespace ros2_fault_injection

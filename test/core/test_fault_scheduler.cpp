@@ -16,18 +16,33 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
+#include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_controller.hpp"
+#include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_injector.hpp"
+#include "ros2_fault_injection/core/fault_injector_base.hpp"
+#include "ros2_fault_injection/core/fault_injector_factory.hpp"
+#include "ros2_fault_injection/core/fault_scheduler.hpp"
+#include "ros2_fault_injection/core/fault_service_manager.hpp"
+
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 
-namespace ros2_fault_injection
-{
+namespace rfi_core = ros2_fault_injection::core;
+namespace rfi_config = ros2_fault_injection::config;
+namespace rfi_msg = ros2_fault_injection::msg;
+namespace rfi_srv = ros2_fault_injection::srv;
+
+
 namespace
 {
 
 using namespace std::chrono_literals;
 
-class FakeFaultInjector : public FaultInjector
+class FakeFaultInjector : public rfi_core::FaultInjector
 {
 public:
   std::string id() const override
@@ -40,7 +55,7 @@ public:
     return "odom";
   }
 
-  void add_fault(const FaultConfig & fault_config) override
+  void add_fault(const rfi_config::FaultConfig & fault_config) override
   {
     faults_[fault_config.id] = fault_config;
     active_.erase(fault_config.id);
@@ -63,7 +78,7 @@ public:
     return faults_.find(fault_id) != faults_.end();
   }
 
-  std::optional<FaultConfig> get_fault_config(const std::string & fault_id) const override
+  std::optional<rfi_config::FaultConfig> get_fault_config(const std::string & fault_id) const override
   {
     const auto it = faults_.find(fault_id);
     if (it != faults_.end()) {
@@ -108,13 +123,13 @@ public:
     faults_.clear();
     active_.clear();
   }
-  std::vector<FaultConfigField> config_schema() const override
+  std::vector<rfi_config::FaultConfigField> config_schema() const override
   {
     return {};
   }
 
 private:
-  std::unordered_map<std::string, FaultConfig> faults_;
+  std::unordered_map<std::string, rfi_config::FaultConfig> faults_;
   std::unordered_set<std::string> active_;
 };
 
@@ -128,9 +143,9 @@ void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds du
   }
 }
 
-FaultConfig make_fault(const std::string & id)
+rfi_config::FaultConfig make_fault(const std::string & id)
 {
-  FaultConfig fault;
+  rfi_config::FaultConfig fault;
   fault.id = id;
   fault.injector_id = "fake_injector";
   return fault;
@@ -143,9 +158,9 @@ TEST(FaultScheduler, StartupActiveFaultStopsAfterDuration)
     rclcpp::init(0, nullptr);
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-    FaultEventPublisher events(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultScheduler scheduler(*node, events, event_recorder);
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
 
@@ -169,9 +184,9 @@ TEST(FaultScheduler, ScheduledFaultStartsAndStops)
     rclcpp::init(0, nullptr);
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-    FaultEventPublisher events(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultScheduler scheduler(*node, events, event_recorder);
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
 
@@ -200,9 +215,9 @@ TEST(FaultScheduler, ManualOnlyTestStaysInactive)
     rclcpp::init(0, nullptr);
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
-    FaultEventPublisher events(*node);
-    core::FaultEventRecorder event_recorder;
-    FaultScheduler scheduler(*node, events, event_recorder);
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder event_recorder;
+    rfi_core::FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
     auto fault = make_fault("manual_only_fault");
@@ -217,4 +232,3 @@ TEST(FaultScheduler, ManualOnlyTestStaysInactive)
 
     rclcpp::shutdown();
 }
-} // namespace ros2_fault_injection

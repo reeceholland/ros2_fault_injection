@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 namespace
 {
@@ -259,4 +259,4 @@ std::vector<FaultConfigField> FaultInjectorBase::config_schema() const
   return schema;
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core

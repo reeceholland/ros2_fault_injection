@@ -8,7 +8,7 @@
 
 #include <charconv>
 #include <system_error>
-namespace ros2_fault_injection
+namespace ros2_fault_injection::config
 {
 namespace
 {
@@ -339,4 +339,4 @@ std::optional<std::string> validate_config_value(
 
   return "config '" + field.key + "' has unsupported schema type '" + field.type + "'";
 }
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::config

@@ -15,7 +15,7 @@
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 
 /**
@@ -48,6 +48,10 @@ public:
     rclcpp::Node & node, const InjectorConfig & config) = 0;
 };
 
-}  // namespace ros2_fault_injection
+}  // namespace ros2_fault_injection::core
 
+namespace ros2_fault_injection
+{
+using core::FaultInjectorPlugin;
+}  // namespace ros2_fault_injection
 #endif  // ROS2_FAULT_INJECTION__FAULT_INJECTOR_PLUGIN_HPP_

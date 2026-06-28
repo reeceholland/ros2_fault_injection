@@ -18,7 +18,7 @@
 #include "ros2_fault_injection/utils/fault_descriptions.hpp"
 #include "ros2_fault_injection/msg/fault_status.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::core
 {
 namespace
 {
@@ -471,4 +471,4 @@ void FaultServiceManager::handle_request_report(
   response->report_markdown = result.report_markdown;
 }
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::core

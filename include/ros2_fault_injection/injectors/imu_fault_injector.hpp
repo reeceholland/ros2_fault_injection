@@ -17,7 +17,7 @@
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
-namespace ros2_fault_injection
+namespace ros2_fault_injection::injectors
 {
 
   /**
@@ -62,6 +62,10 @@ private:
   std::deque<DelayedImu> delayed_;
 };
 
-} // namespace ros2_fault_injection
+} // namespace ros2_fault_injection::injectors
 
+namespace ros2_fault_injection
+{
+using injectors::ImuFaultInjector;
+}  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__IMU_FAULT_INJECTOR_HPP_
