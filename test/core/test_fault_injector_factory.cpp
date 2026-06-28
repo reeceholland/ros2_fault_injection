@@ -118,4 +118,3 @@ TEST_F(FaultInjectorFactoryTest, UnknownInjectorTypeReturnsNullptr)
 
     EXPECT_EQ(injector, nullptr);
 }
-

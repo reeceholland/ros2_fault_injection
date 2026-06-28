@@ -135,7 +135,8 @@ public:
     return faults_.find(fault_id) != faults_.end();
   }
 
-  std::optional<rfi_config::FaultConfig> get_fault_config(const std::string & fault_id) const override
+  std::optional<rfi_config::FaultConfig> get_fault_config(
+    const std::string & fault_id) const override
   {
     const auto it = faults_.find(fault_id);
     if (it == faults_.end()) {
@@ -747,4 +748,3 @@ TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
 
     rclcpp::shutdown();
 }
-

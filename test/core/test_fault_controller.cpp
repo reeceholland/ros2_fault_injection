@@ -203,4 +203,3 @@ TEST_F(FaultControllerTest, ReloadWithChangedInjectorsIsRejected) {
   ASSERT_TRUE(original_bias_fault.has_value());
   EXPECT_EQ(original_bias_fault->config.at("x_bias"), "1.0");
 }
-

@@ -26,11 +26,11 @@
 namespace ros2_fault_injection::core
 {
 
-  struct ReloadScenarioResult
-  {
-    bool success{false};
-    std::string message;
-  };
+struct ReloadScenarioResult
+{
+  bool success{false};
+  std::string message;
+};
 
   /**
    * @brief Owns the runtime injector graph for one scenario.
@@ -39,9 +39,9 @@ namespace ros2_fault_injection::core
    * injector named by `FaultConfig::injector_id`, and starts scheduled fault
    * activation.
    */
-  class FaultController
-  {
-  public:
+class FaultController
+{
+public:
     /**
      * @brief Construct and start the controller.
      *
@@ -50,54 +50,54 @@ namespace ros2_fault_injection::core
      * @param scenario Parsed and validated scenario configuration.
      * @param events Shared event publisher used by scheduled faults.
      */
-    FaultController(
-        rclcpp::Node &node, std::string scenario_file, ScenarioConfig scenario,
-        FaultEventPublisher &events);
+  FaultController(
+    rclcpp::Node & node, std::string scenario_file, ScenarioConfig scenario,
+    FaultEventPublisher & events);
 
     /**
      * @brief Access the configured injectors by injector id.
      *
      * @return Map of injector id to injector instance.
      */
-    const InjectorMap &injectors() const;
+  const InjectorMap & injectors() const;
 
-    ReloadScenarioResult reload_scenario();
+  ReloadScenarioResult reload_scenario();
 
-    std::string scenario_file() const;
+  std::string scenario_file() const;
 
-    const std::optional<std::string> read_scenario_file() const;
+  const std::optional<std::string> read_scenario_file() const;
 
-    core::ScenarioReport create_report() const;
+  core::ScenarioReport create_report() const;
 
-    std::string create_report_markdown() const;
+  std::string create_report_markdown() const;
 
-    core::FaultEventRecorder &fault_event_recorder()
-    {
-      return fault_event_recorder_;
-    }
+  core::FaultEventRecorder & fault_event_recorder()
+  {
+    return fault_event_recorder_;
+  }
 
-    std::vector<assertions::AssertionResult> assertion_results() const;
+  std::vector<assertions::AssertionResult> assertion_results() const;
 
-    bool assertions_complete() const;
+  bool assertions_complete() const;
 
-    bool assertions_passed() const;
+  bool assertions_passed() const;
 
-  private:
-    void create_injectors();
-    void register_faults();
-    void schedule_faults();
-    ReloadScenarioResult validate_reload_compatible(const ScenarioConfig &new_scenario) const;
+private:
+  void create_injectors();
+  void register_faults();
+  void schedule_faults();
+  ReloadScenarioResult validate_reload_compatible(const ScenarioConfig & new_scenario) const;
 
-    rclcpp::Node &node_;
-    std::string scenario_file_;
-    ScenarioConfig scenario_;
-    FaultEventPublisher &events_;
-    FaultInjectorFactory factory_;
-    core::FaultEventRecorder fault_event_recorder_;
-    FaultScheduler scheduler_;
-    InjectorMap injectors_;
-    std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;
-  };
+  rclcpp::Node & node_;
+  std::string scenario_file_;
+  ScenarioConfig scenario_;
+  FaultEventPublisher & events_;
+  FaultInjectorFactory factory_;
+  core::FaultEventRecorder fault_event_recorder_;
+  FaultScheduler scheduler_;
+  InjectorMap injectors_;
+  std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;
+};
 
 } // namespace ros2_fault_injection::core
 

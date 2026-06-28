@@ -43,7 +43,7 @@ int main(int argc, char ** argv)
 
   try {
     scenario = ros2_fault_injection::load_scenario_config(scenario_file);
-  } catch (const std::exception &error) {
+  } catch (const std::exception & error) {
     RCLCPP_ERROR(node->get_logger(), "Failed to load scenario config '%s': %s",
                  scenario_file.c_str(), error.what());
     rclcpp::shutdown();
@@ -52,12 +52,12 @@ int main(int argc, char ** argv)
 
   const auto validation_result = ros2_fault_injection::validate_scenario(scenario);
 
-  for (const auto &warning : validation_result.warnings) {
+  for (const auto & warning : validation_result.warnings) {
     RCLCPP_WARN(node->get_logger(), "Scenario config warning: %s", warning.c_str());
   }
 
   if (!validation_result.ok()) {
-    for (const auto &error : validation_result.errors) {
+    for (const auto & error : validation_result.errors) {
       RCLCPP_ERROR(node->get_logger(), "Scenario config error: %s", error.c_str());
     }
 

@@ -26,7 +26,6 @@ namespace rfi_msg = ros2_fault_injection::msg;
 namespace rfi_srv = ros2_fault_injection::srv;
 
 
-
 class TestFaultInjector : public rfi_core::FaultInjectorBase {
 public:
   TestFaultInjector(rclcpp::Node & node, const rfi_config::InjectorConfig & config)
@@ -303,4 +302,3 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
 
   rclcpp::shutdown();
 }
-
