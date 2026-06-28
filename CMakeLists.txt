@@ -39,6 +39,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetFaultSchema.srv"
   "srv/GetFaultConfig.srv"
   "srv/GetScenario.srv"
+  "srv/RequestReport.srv"
   "msg/FaultStatus.msg"
   "msg/FaultEvent.msg"
   "msg/AssertionEvent.msg"
@@ -53,6 +54,7 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 
 add_library(${PROJECT_NAME}_core
   src/core/fault_injector_base.cpp
+  src/core/report_creator.cpp
   src/injectors/odom_fault_injector.cpp
   src/injectors/scan_fault_injector.cpp
   src/injectors/joint_state_fault_injector.cpp
@@ -65,6 +67,7 @@ add_library(${PROJECT_NAME}_core
   src/core/builtin_fault_injector_plugin.cpp
   src/core/fault_service_manager.cpp
   src/core/fault_controller.cpp
+  src/core/fault_event_recorder.cpp
   src/config/fault_config_schema.cpp
   src/utils/fault_descriptions.cpp
   src/injectors/trigger_service_fault_injector.cpp
@@ -280,6 +283,13 @@ if(BUILD_TESTING)
     test/assertions/test_scenario_monitor.cpp
   )
   target_link_libraries(test_scenario_monitor
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_report_creator
+    test/core/test_report_creator.cpp
+  )
+  target_link_libraries(test_report_creator
     ${PROJECT_NAME}_core
   )
 

@@ -13,6 +13,8 @@
 #include <functional>
 
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
+#include "ros2_fault_injection/core/fault_event_record.hpp"
 #include "ros2_fault_injection/utils/fault_descriptions.hpp"
 #include "ros2_fault_injection/msg/fault_status.hpp"
 
@@ -43,11 +45,15 @@ const FaultConfigField * find_schema_field(
 
 FaultServiceManager::FaultServiceManager(
   rclcpp::Node & node, const InjectorMap & injectors,
-  FaultEventPublisher & events, ReloadScenarioCallback reload_scenario_callback,
-  ScenarioFileProvider scenario_provider, ScenarioContentProvider scenario_content_provider)
+  FaultEventPublisher & events, core::FaultEventRecorder & fault_event_recorder,
+  ReloadScenarioCallback reload_scenario_callback,
+  ScenarioFileProvider scenario_provider, ScenarioContentProvider scenario_content_provider,
+  RequestReportCallback request_report_callback)
 : node_(node), injectors_(injectors), events_(events),
   reload_scenario_callback_(reload_scenario_callback), scenario_provider_(scenario_provider),
-  scenario_content_provider_(scenario_content_provider)
+  scenario_content_provider_(scenario_content_provider),
+  request_report_callback_(std::move(request_report_callback)),
+  fault_event_recorder_(fault_event_recorder)
 {
   set_fault_state_service_ = node_.create_service<srv::SetFaultState>(
         "fault_injection/set_fault_state",
@@ -100,6 +106,12 @@ FaultServiceManager::FaultServiceManager(
     [this](const std::shared_ptr<srv::GetScenario::Request> request,
     std::shared_ptr<srv::GetScenario::Response> response)
     {handle_get_scenario(request, response);});
+
+  request_report_service_ = node_.create_service<srv::RequestReport>(
+        "fault_injection/request_report",
+    [this](const std::shared_ptr<srv::RequestReport::Request> request,
+    std::shared_ptr<srv::RequestReport::Response> response)
+    {handle_request_report(request, response);});
 }
 
 std::shared_ptr<FaultInjector> FaultServiceManager::find_injector_for_fault(
@@ -196,6 +208,7 @@ void FaultServiceManager::handle_set_fault_state(
     event.source = "manual";
     event.details = describe_fault(fault_config.value());
     events_.publish(event);
+    fault_event_recorder_.record(core::to_record(event, node_.now()));
     RCLCPP_INFO(node_.get_logger(), "Activated fault: %s", request->fault_id.c_str());
   } else {
     injector->deactivate_fault(request->fault_id);
@@ -207,6 +220,7 @@ void FaultServiceManager::handle_set_fault_state(
     event.source = "manual";
     event.details = describe_fault(fault_config.value());
     events_.publish(event);
+    fault_event_recorder_.record(core::to_record(event, node_.now()));
     RCLCPP_INFO(node_.get_logger(), "Deactivated fault: %s", request->fault_id.c_str());
   }
 
@@ -303,7 +317,7 @@ void FaultServiceManager::handle_set_fault_config(
   event.source = "manual";
   event.details = describe_config_update(request->key, request->value);
   events_.publish(event);
-
+  fault_event_recorder_.record(core::to_record(event, node_.now()));
   RCLCPP_INFO(node_.get_logger(), "Updated fault '%s' config '%s' to '%s'",
                 request->fault_id.c_str(), request->key.c_str(), request->value.c_str());
 }
@@ -433,6 +447,28 @@ void FaultServiceManager::handle_get_scenario(
   response->success = true;
   response->message = "Retrieved scenario: " + result;
   response->content = content_result.value();
+}
+
+void FaultServiceManager::handle_request_report(
+  const std::shared_ptr<srv::RequestReport::Request> request,
+  std::shared_ptr<srv::RequestReport::Response> response)
+{
+  (void)request;
+
+  if (!request_report_callback_) {
+    response->success = false;
+    response->message = "No request report callback provided";
+    RCLCPP_WARN(node_.get_logger(), "No request report callback provided");
+    return;
+  }
+
+  const auto result = request_report_callback_();
+  response->success = result.success;
+  response->message = result.message;
+  response->final_result = result.final_result;
+  response->scenario_file = result.scenario_file;
+  response->final_result = result.final_result;
+  response->report_markdown = result.report_markdown;
 }
 
 } // namespace ros2_fault_injection

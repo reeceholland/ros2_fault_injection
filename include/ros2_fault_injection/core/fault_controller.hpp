@@ -13,11 +13,13 @@
 #include <rclcpp/node.hpp>
 
 #include "ros2_fault_injection/core/fault_event_publisher.hpp"
+#include "ros2_fault_injection/core/fault_event_recorder.hpp"
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/fault_injector_factory.hpp"
 #include "ros2_fault_injection/core/fault_scheduler.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
 #include "ros2_fault_injection/assertions/fault_assertion_runner.hpp"
+#include "ros2_fault_injection/core/scenario_report.hpp"
 
 namespace ros2_fault_injection
 {
@@ -63,6 +65,15 @@ public:
 
   const std::optional<std::string> read_scenario_file() const;
 
+  core::ScenarioReport create_report() const;
+
+  std::string create_report_markdown() const;
+
+  core::FaultEventRecorder & fault_event_recorder()
+  {
+    return fault_event_recorder_;
+  }
+
 private:
   void create_injectors();
   void register_faults();
@@ -74,6 +85,7 @@ private:
   ScenarioConfig scenario_;
   FaultEventPublisher & events_;
   FaultInjectorFactory factory_;
+  core::FaultEventRecorder fault_event_recorder_;
   FaultScheduler scheduler_;
   InjectorMap injectors_;
   std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;

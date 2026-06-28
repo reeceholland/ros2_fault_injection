@@ -246,6 +246,13 @@ std::optional<std::string> test_scenario_content_provider()
   return std::string{"injectors: []\n"};
 }
 
+FaultServiceManager::ReportResult test_request_report_callback()
+{
+  return FaultServiceManager::ReportResult{
+    true, "Created scenario report", "/tmp/test_scenario.yaml", "passed",
+    "# Fault Injection Scenario Report\n"};
+}
+
 }   // namespace
 
 TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
@@ -260,9 +267,10 @@ TEST(FaultServiceManager, SetFaultStatePublishesActiveEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -300,9 +308,10 @@ TEST(FaultServiceManager, SetFaultStatePublishesInactiveEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -339,9 +348,10 @@ TEST(FaultServiceManager, SetFaultConfigPublishesConfigUpdatedEvent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto latest_event = std::make_shared<msg::FaultEvent>();
     auto subscription = node->create_subscription<msg::FaultEvent>(
@@ -397,9 +407,10 @@ TEST(FaultServiceManager, GetFaultConfigReturnsCurrentConfig)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto client = node->create_client<srv::GetFaultConfig>("fault_injection/get_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -442,9 +453,10 @@ TEST(FaultServiceManager, SetFaultConfigRejectsInvalidValue)
     injectors["imu"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -488,9 +500,10 @@ TEST(FaultServiceManager, SetFaultConfigAllowsInjectorOwnedKeyUnknownToCentralSc
     injectors["custom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -531,9 +544,10 @@ TEST(FaultServiceManager, SetFaultConfigValidatesAgainstInjectorType)
     injectors["motor_feedback"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto client = node->create_client<srv::SetFaultConfig>("fault_injection/set_fault_config");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -578,9 +592,10 @@ TEST(FaultServiceManager, GetFaultSchemaUsesInjectorOwnedSchema)
     injectors["custom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
-    test_scenario_file_provider, test_scenario_content_provider);
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
+    test_scenario_file_provider, test_scenario_content_provider, test_request_report_callback);
 
     auto client = node->create_client<srv::GetFaultSchema>("fault_injection/get_fault_schema");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -612,13 +627,14 @@ TEST(FaultServiceManager, GetScenarioReturnsScenarioFileAndContent)
     injectors["odom"] = injector;
 
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
 
     FaultServiceManager services(
-    *node, injectors, event_publisher, test_reload_callback,
+    *node, injectors, event_publisher, event_recorder, test_reload_callback,
     []()
     {return "/tmp/test_scenario.yaml";},
     []()
-    {return std::optional<std::string>{"injectors: []\n"};});
+    {return std::optional<std::string>{"injectors: []\n"};}, test_request_report_callback);
 
     auto client = node->create_client<srv::GetScenario>("fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -648,14 +664,15 @@ TEST(FaultServiceManager, GetScenarioFailsWhenContentUnavailable)
     std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_unavailable");
     FaultServiceManager::InjectorMap injectors;
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
 
     FaultServiceManager services(
-    *node, injectors, event_publisher,
+    *node, injectors, event_publisher, event_recorder,
     test_reload_callback,
     []()
     {return "/tmp/missing_scenario.yaml";},
     []()
-    {return std::nullopt;});
+    {return std::nullopt;}, test_request_report_callback);
 
     auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));
@@ -684,16 +701,17 @@ TEST(FaultServiceManager, GetScenarioUsesLatestProviderValue)
     auto node = std::make_shared<rclcpp::Node>("test_fault_service_manager_get_scenario_latest");
     FaultServiceManager::InjectorMap injectors;
     FaultEventPublisher event_publisher(*node);
+    core::FaultEventRecorder event_recorder;
 
     std::string content = "version: one\n";
 
     FaultServiceManager services(
-    *node, injectors, event_publisher,
+    *node, injectors, event_publisher, event_recorder,
     test_reload_callback,
     []()
     {return "/tmp/test_scenario.yaml";},
     [&content]()
-    {return std::optional<std::string>{content};});
+    {return std::optional<std::string>{content};}, test_request_report_callback);
 
     auto client = node->create_client<srv::GetScenario>("/fault_injection/get_scenario");
     ASSERT_TRUE(client->wait_for_service(500ms));

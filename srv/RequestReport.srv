@@ -1,0 +1,6 @@
+---
+bool success
+string message
+string scenario_file
+string final_result
+string report_markdown

@@ -144,7 +144,8 @@ TEST(FaultScheduler, StartupActiveFaultStopsAfterDuration)
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
     FaultEventPublisher events(*node);
-    FaultScheduler scheduler(*node, events);
+    core::FaultEventRecorder event_recorder;
+    FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
 
@@ -169,7 +170,8 @@ TEST(FaultScheduler, ScheduledFaultStartsAndStops)
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
     FaultEventPublisher events(*node);
-    FaultScheduler scheduler(*node, events);
+    core::FaultEventRecorder event_recorder;
+    FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
 
@@ -199,7 +201,8 @@ TEST(FaultScheduler, ManualOnlyTestStaysInactive)
 
     auto node = std::make_shared<rclcpp::Node>("test_fault_scheduler");
     FaultEventPublisher events(*node);
-    FaultScheduler scheduler(*node, events);
+    core::FaultEventRecorder event_recorder;
+    FaultScheduler scheduler(*node, events, event_recorder);
 
     FakeFaultInjector injector;
     auto fault = make_fault("manual_only_fault");

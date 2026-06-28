@@ -16,8 +16,10 @@
 namespace ros2_fault_injection
 {
 
-FaultScheduler::FaultScheduler(rclcpp::Node & node, FaultEventPublisher & event_pub)
-: node_(node), event_pub_(event_pub) {}
+FaultScheduler::FaultScheduler(
+  rclcpp::Node & node, FaultEventPublisher & event_pub,
+  core::FaultEventRecorder & event_recorder)
+: node_(node), event_pub_(event_pub), fault_event_recorder_(event_recorder) {}
 
 void FaultScheduler::schedule(
   const std::vector<FaultConfig> & faults, FaultInjector & injector,
@@ -127,6 +129,7 @@ void FaultScheduler::schedule_stop_after(
 void FaultScheduler::publish_event(const FaultEvent & event)
 {
   event_pub_.publish(event);
+  fault_event_recorder_.record(core::to_record(event, node_.now()));
 }
 
 void FaultScheduler::clear()
