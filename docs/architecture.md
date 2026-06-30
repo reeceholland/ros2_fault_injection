@@ -112,9 +112,28 @@ This makes assertions useful for smoke tests and demonstrations: the same YAML f
 - set one config value
 - set active/inactive state
 - reload the current scenario file
+- get the current scenario YAML
+- request the current scenario report
 
 The services are intentionally thin. They validate requests against the owning injector schema, call
 injector/controller behavior, and publish events when runtime state changes.
+
+These services are intended for the long-running `fault_injector_node` path. RViz and command-line tools use that node when they need to inspect or control a scenario interactively.
+
+## Scenario Runner
+
+`fault_scenario_runner_node` is the headless execution path for CI and smoke tests. It creates the same controller, injectors, scheduler, assertions, and report data as the long-running node, but it exits when the run reaches a terminal result.
+
+The runner:
+
+- loads and validates a scenario file
+- starts the configured injectors and assertions
+- spins until all assertions complete or the timeout expires
+- creates a markdown scenario report
+- writes the report to `report_file` when that parameter is provided
+- exits with `0` when all assertions pass, or `1` when the scenario fails or times out
+
+Because the runner exits after completion, it is not the right process for RViz-driven inspection after a run. Use `fault_injector_node` when the `/fault_injection/*` services should remain available for report requests, scenario viewing, config edits, or manual fault control.
 
 ## Events
 

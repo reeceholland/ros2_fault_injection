@@ -278,14 +278,43 @@ source install/setup.bash
 
 ## Run
 
-Launch the injector with a scenario file:
+There are two common ways to run the framework.
+
+### Operator/RViz Mode
+
+Use `fault_injector_node` when you want the framework to stay alive for RViz, service calls, manual fault control, scenario reloads, and report requests.
 
 ```bash
 ros2 launch ros2_fault_injection fault_injector.launch.py \
   scenario_file:=/path/to/fault_injection_ws/install/ros2_fault_injection/share/ros2_fault_injection/config/multi_injector_faults.yaml
 ```
 
+This mode keeps the `/fault_injection/*` services available. RViz can request the current scenario, reload the scenario, edit fault config values, and request an in-memory markdown report through `/fault_injection/request_report`.
+
 When using `--symlink-install`, editing files in `config/` is usually reflected through the install space symlink. If in doubt, rebuild and source the workspace again.
+
+### Headless Scenario Runner Mode
+
+Use `fault_scenario_runner_node` for CI, smoke tests, or terminal-driven runs where the process should finish with a pass/fail exit code.
+
+```bash
+ros2 run ros2_fault_injection fault_scenario_runner_node \
+  --ros-args \
+  -p scenario_file:=/path/to/fault_injection_ws/src/ros2_fault_injection/config/multi_injector_faults.yaml \
+  -p timeout:=30.0 \
+  -p report_file:=/tmp/fault_injection_report.md
+```
+
+The runner starts the scenario, waits until all assertions pass/fail or the timeout expires, writes a markdown report to `report_file` when provided, and exits with:
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | All assertions passed. |
+| `1` | At least one assertion failed, the scenario timed out, config loading failed, or ROS shut down before completion. |
+
+Unlike `fault_injector_node`, the scenario runner exits when the run is complete. That means RViz cannot request services from it after completion. Use operator/RViz mode when you want to inspect or request reports interactively.
+
+Reports are only written to disk by `fault_scenario_runner_node` when `report_file` is set. The long-running injector node returns report markdown through `/fault_injection/request_report`; it does not save a report file by default.
 
 ## Runtime Services
 

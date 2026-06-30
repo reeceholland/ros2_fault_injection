@@ -4,6 +4,8 @@
 
 Use these services to list faults, inspect state, read current config values, activate or deactivate faults, update config values, and reload the scenario file without restarting the node.
 
+These services are available from the long-running `fault_injector_node` path, for example when started through `fault_injector.launch.py`. The headless `fault_scenario_runner_node` is intended for CI/smoke-test execution and exits once the scenario passes, fails, or times out, so it is not suitable for RViz service requests after completion.
+
 ## List Faults
 
 Service:
@@ -325,6 +327,92 @@ Reload cannot change:
 - the number of configured injectors
 
 If validation or compatibility checks fail, the currently running scenario remains unchanged.
+
+## Get Scenario
+
+Service:
+
+```text
+/fault_injection/get_scenario
+```
+
+Type:
+
+```text
+ros2_fault_injection/srv/GetScenario
+```
+
+Request:
+
+```text
+---
+```
+
+Response:
+
+```text
+bool success
+string message
+string scenario_file
+string content
+```
+
+Example:
+
+```bash
+ros2 service call /fault_injection/get_scenario ros2_fault_injection/srv/GetScenario {}
+```
+
+This returns the path to the active scenario file and the current YAML file content. RViz uses this to show the loaded scenario without requiring direct filesystem access.
+
+## Request Report
+
+Service:
+
+```text
+/fault_injection/request_report
+```
+
+Type:
+
+```text
+ros2_fault_injection/srv/RequestReport
+```
+
+Request:
+
+```text
+---
+```
+
+Response:
+
+```text
+bool success
+string message
+string final_result
+string markdown
+```
+
+Example:
+
+```bash
+ros2 service call /fault_injection/request_report ros2_fault_injection/srv/RequestReport {}
+```
+
+This creates a report from the currently running scenario state and returns the markdown in the service response. The long-running injector node does not save this report to disk by default; callers such as RViz can display or save the returned markdown.
+
+For headless runs, use `fault_scenario_runner_node` with the `report_file` parameter instead:
+
+```bash
+ros2 run ros2_fault_injection fault_scenario_runner_node \
+  --ros-args \
+  -p scenario_file:=/path/to/scenario.yaml \
+  -p timeout:=30.0 \
+  -p report_file:=/tmp/fault_injection_report.md
+```
+
+In runner mode, the report is written to `report_file` when provided and the process exits with `0` on pass or `1` on failure/timeout.
 
 ## Fault Events
 
