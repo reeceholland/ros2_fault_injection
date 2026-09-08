@@ -106,6 +106,11 @@ const std::unordered_set<std::string> kJointStateKeys = {
   "velocity_noise_stddev",
 };
 
+const std::unordered_set<std::string> kTwistKeys = {
+  "drop_probability",
+  "delay_ms",
+};
+
 const std::unordered_set<std::string> kImuKeys = {
   "drop_probability",
   "delay_ms",
@@ -159,6 +164,10 @@ const std::unordered_set<std::string> & allowed_config_keys_for_injector_type(
 
   if (injector_type == "imu") {
     return kImuKeys;
+  }
+
+  if (injector_type == "twist") {
+    return kTwistKeys;
   }
 
   if (injector_type == "trigger_service") {

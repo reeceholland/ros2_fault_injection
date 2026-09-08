@@ -35,6 +35,13 @@
   </class>
 
   <class
+    name="ros2_fault_injection/TwistFaultInjectorPlugin"
+    type="ros2_fault_injection::core::TwistFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::core::FaultInjectorPlugin">
+    <description>Creates Twist command fault injectors.</description>
+  </class>
+
+  <class
     name="ros2_fault_injection/TriggerServiceFaultInjectorPlugin"
     type="ros2_fault_injection::core::TriggerServiceFaultInjectorPlugin"
     base_class_type="ros2_fault_injection::core::FaultInjectorPlugin">

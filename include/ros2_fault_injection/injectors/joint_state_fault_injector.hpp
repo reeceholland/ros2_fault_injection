@@ -27,44 +27,44 @@ namespace ros2_fault_injection::injectors
    * Subscribes to the configured input topic, applies active joint state faults,
    * and republishes the result on the configured output topic.
    */
-class JointStateFaultInjector : public FaultInjectorBase
-{
-public:
+  class JointStateFaultInjector : public FaultInjectorBase
+  {
+  public:
     /**
      * @brief Create the joint state fault injector.
      *
      * @param node Node used to create publishers, subscriptions, and timers.
      * @param config Injector topic and QoS configuration.
      */
-  explicit JointStateFaultInjector(rclcpp::Node & node, const InjectorConfig & config);
+    explicit JointStateFaultInjector(rclcpp::Node &node, const InjectorConfig &config);
 
-  static std::vector<FaultConfigField> static_config_schema();
+    static std::vector<FaultConfigField> static_config_schema();
 
-  std::vector<FaultConfigField> config_schema() const override;
+    std::vector<FaultConfigField> config_schema() const override;
 
-private:
-  struct DelayedJointState
-  {
-    sensor_msgs::msg::JointState msg;
-    rclcpp::Time release_time;
+  private:
+    struct DelayedJointState
+    {
+      sensor_msgs::msg::JointState msg;
+      rclcpp::Time release_time;
+    };
+
+    void on_joint_state(const sensor_msgs::msg::JointState::SharedPtr msg);
+    void flush_delayed();
+
+    void apply_bias(sensor_msgs::msg::JointState &msg);
+    void apply_noise(sensor_msgs::msg::JointState &msg);
+
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_;
+    rclcpp::TimerBase::SharedPtr timer_;
+    std::deque<DelayedJointState> delayed_;
   };
-
-  void on_joint_state(const sensor_msgs::msg::JointState::SharedPtr msg);
-  void flush_delayed();
-
-  void apply_bias(sensor_msgs::msg::JointState & msg);
-  void apply_noise(sensor_msgs::msg::JointState & msg);
-
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_;
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_;
-  rclcpp::TimerBase::SharedPtr timer_;
-  std::deque<DelayedJointState> delayed_;
-};
 
 } // namespace ros2_fault_injection::injectors
 
 namespace ros2_fault_injection
 {
-using injectors::JointStateFaultInjector;
-}  // namespace ros2_fault_injection
+  using injectors::JointStateFaultInjector;
+} // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_

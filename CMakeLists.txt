@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
@@ -59,6 +60,7 @@ add_library(${PROJECT_NAME}_core
   src/injectors/scan_fault_injector.cpp
   src/injectors/joint_state_fault_injector.cpp
   src/injectors/imu_fault_injector.cpp
+  src/injectors/twist_fault_injector.cpp
   src/config/scenario_config.cpp
   src/core/fault_scheduler.cpp
   src/core/fault_event_publisher.cpp
@@ -94,6 +96,7 @@ ament_target_dependencies(${PROJECT_NAME}_core
   pluginlib
   rclcpp
   nav_msgs
+  geometry_msgs
   std_msgs
   std_srvs
   sensor_msgs
