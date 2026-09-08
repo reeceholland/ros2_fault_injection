@@ -170,6 +170,44 @@ Example:
     yaw_bias_deg: 10.0
 ```
 
+## Twist Faults
+
+Injector type: `twist`
+
+Message type: `geometry_msgs/msg/Twist`
+
+Twist faults are useful for command paths such as `/cmd_vel`. Remap the command producer to an input topic such as `/cmd_vel_raw`, then let the injector publish the normal controller-facing `/cmd_vel` topic.
+
+| Config Key | Description |
+| --- | --- |
+| `drop_probability` | Probability from `0.0` to `1.0` that a command message is dropped. |
+| `delay_ms` | Delays forwarding by this many milliseconds. |
+| `stale_replay_enabled` | Replays the previously received command instead of forwarding the newest command. |
+| `stale_replay_duration_ms` | Maximum age of the stored command that may be replayed, in milliseconds. |
+| `linear_x_scale` | Multiplies the `linear.x` command by this value. |
+| `angular_z_scale` | Multiplies the `angular.z` command by this value. |
+| `max_linear_x` | Clamps `linear.x` symmetrically to `[-max_linear_x, max_linear_x]`. |
+| `max_angular_z` | Clamps `angular.z` symmetrically to `[-max_angular_z, max_angular_z]`. |
+| `force_stop` | Publishes a zero `Twist` command while active. |
+
+Example:
+
+```yaml
+- id: cmd_vel_stale_replay
+  injector_id: cmd_vel
+  active_on_startup: false
+  config:
+    stale_replay_enabled: true
+    stale_replay_duration_ms: 1000
+
+- id: cmd_vel_clamp
+  injector_id: cmd_vel
+  active_on_startup: false
+  config:
+    max_linear_x: 0.25
+    max_angular_z: 0.5
+```
+
 ## Trigger Service Faults
 
 Injector type: `trigger_service`
