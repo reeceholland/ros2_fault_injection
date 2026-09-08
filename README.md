@@ -42,6 +42,7 @@ It demonstrates how to add a custom injector type in a separate ROS 2 package us
 | `joint_state` | `sensor_msgs/msg/JointState` | `/platform/motors/feedback_raw` | `/platform/motors/feedback` |
 | `imu` | `sensor_msgs/msg/Imu` | `/sensors/imu_raw` | `/sensors/imu` |
 | `tf` | `tf2_msgs/msg/TFMessage` | `/tf_raw` | `/tf` |
+| `twist` | `geometry_msgs/msg/Twist` | `/cmd_vel_raw` | `/cmd_vel` |
 | `trigger_service` | `std_srvs/srv/Trigger` | `/enable_motors_raw` | `/enable_motors` |
 
 ## Fault Types
@@ -120,6 +121,22 @@ TF faults target individual transforms inside a `tf2_msgs/msg/TFMessage`. Each T
 
 When using TF injection, remap the original TF publisher to `/tf_raw` and let the injector publish the consumer-facing `/tf`. Avoid leaving multiple publishers producing the same `parent_frame -> child_frame` transform on `/tf`, because TF consumers may receive conflicting transforms.
 
+### Twist
+
+Twist faults are intended for velocity command paths such as `/cmd_vel`. A typical setup remaps the command producer to `/cmd_vel_raw`, then lets the injector publish the consumer-facing `/cmd_vel`.
+
+| Key | Meaning |
+| --- | --- |
+| `drop_probability` | Randomly drop command messages. Range: `0.0` to `1.0`. |
+| `delay_ms` | Delay command messages by this many milliseconds. |
+| `stale_replay_enabled` | Replay the previously received command instead of forwarding the newest command. |
+| `stale_replay_duration_ms` | Maximum age of the stored command that may be replayed. |
+| `linear_x_scale` | Multiply `linear.x` by this value. |
+| `angular_z_scale` | Multiply `angular.z` by this value. |
+| `max_linear_x` | Clamp `linear.x` symmetrically to `[-max_linear_x, max_linear_x]`. |
+| `max_angular_z` | Clamp `angular.z` symmetrically to `[-max_angular_z, max_angular_z]`. |
+| `force_stop` | Publish a zero `Twist` command while active. |
+
 ### Trigger Service
 
 | Key | Meaning |
@@ -160,6 +177,13 @@ injectors:
       input_topic: /tf_raw
       output_topic: /tf
       qos_depth: 50
+
+  - id: cmd_vel
+    type: twist
+    topic:
+      input_topic: /cmd_vel_raw
+      output_topic: /cmd_vel
+      qos_depth: 10
 
 faults:
   - id: odom_bias
@@ -208,6 +232,19 @@ faults:
       parent_frame: odom
       child_frame: base_link
       yaw_bias_deg: 10.0
+
+  - id: cmd_vel_stale_replay
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      stale_replay_enabled: true
+      stale_replay_duration_ms: 1000
+
+  - id: cmd_vel_force_stop
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      force_stop: true
 
 assertions:
   - id: odom_bias_activates
@@ -527,8 +564,9 @@ For the rover stack, use fault injection as a boundary between raw producer topi
 ```text
 diff_drive_controller -> /odom_raw -> odom injector -> /odom -> Nav2
 lidar or simulator    -> /scan_raw -> scan injector -> /scan -> Nav2/SLAM
-Unity motor feedback  -> /platform/motors/feedback_raw -> joint_state injector -> /platform/motors/feedback -> ros2_control
-Unity or IMU driver  -> /sensors/imu_raw -> imu injector -> /sensors/imu -> consumers
+Nav2 or operator     -> /cmd_vel_raw -> twist injector -> /cmd_vel -> robot controller
+motor feedback source -> /platform/motors/feedback_raw -> joint_state injector -> /platform/motors/feedback -> ros2_control
+IMU driver           -> /sensors/imu_raw -> imu injector -> /sensors/imu -> consumers
 TF publisher         -> /tf_raw -> tf injector -> /tf -> TF consumers
 client               -> /enable_motors -> trigger_service injector -> /enable_motors_raw -> real server
 ```

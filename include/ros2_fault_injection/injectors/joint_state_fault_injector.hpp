@@ -66,5 +66,5 @@ private:
 namespace ros2_fault_injection
 {
 using injectors::JointStateFaultInjector;
-}  // namespace ros2_fault_injection
+} // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__JOINT_STATE_FAULT_INJECTOR_HPP_
