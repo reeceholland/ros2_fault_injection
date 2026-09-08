@@ -61,6 +61,7 @@ add_library(${PROJECT_NAME}_core
   src/injectors/joint_state_fault_injector.cpp
   src/injectors/imu_fault_injector.cpp
   src/injectors/twist_fault_injector.cpp
+  src/injectors/point_cloud_fault_injector.cpp
   src/config/scenario_config.cpp
   src/core/fault_scheduler.cpp
   src/core/fault_event_publisher.cpp
@@ -267,6 +268,13 @@ if(BUILD_TESTING)
     test/injectors/test_twist_fault_injector.cpp
   )
   target_link_libraries(test_twist_fault_injector
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_point_cloud_fault_injector
+    test/injectors/test_point_cloud_fault_injector.cpp
+  )
+  target_link_libraries(test_point_cloud_fault_injector
     ${PROJECT_NAME}_core
   )
 
