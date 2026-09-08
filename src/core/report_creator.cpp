@@ -6,8 +6,10 @@
 
 #include "ros2_fault_injection/core/report_creator.hpp"
 
+#include <iomanip>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -15,6 +17,7 @@
 #include "ros2_fault_injection/core/fault_injector.hpp"
 #include "ros2_fault_injection/core/scenario_report.hpp"
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
+#include "ros2_fault_injection/utils/fault_descriptions.hpp"
 
 namespace ros2_fault_injection::core
 {
@@ -52,9 +55,26 @@ ScenarioReport ReportCreator::create_report(
 
   for (const auto &[injector_id, injector] : injectors) {
     report.injector_ids.push_back(injector_id);
+    report.injectors.push_back(InjectorReportEntry{injector_id, injector->type()});
+
     const auto fault_ids = injector->fault_ids();
+    const auto active_fault_ids = injector->active_fault_ids();
+    const std::unordered_set<std::string> active_faults(active_fault_ids.begin(),
+      active_fault_ids.end());
+
     for (const auto & fault_id : fault_ids) {
       report.fault_ids.push_back(fault_id);
+
+      FaultReportEntry fault;
+      fault.id = fault_id;
+      fault.injector_id = injector_id;
+      fault.state = active_faults.count(fault_id) > 0 ? "active" : "inactive";
+
+      const auto fault_config = injector->get_fault_config(fault_id);
+      fault.details = fault_config.has_value() ? describe_fault(fault_config.value()) :
+        "config unavailable";
+
+      report.faults.push_back(fault);
     }
   }
 
@@ -92,30 +112,41 @@ std::string ReportCreator::to_markdown(const ScenarioReport & report) const
   out << "- Faults: " << report.fault_ids.size() << "\n";
   out << "- Assertions: " << report.assertion_results.size() << "\n\n";
 
-  out << "## Listed Injectors\n\n";
+  out << "## Injectors\n\n";
 
-  if (report.injector_ids.empty()) {
+  if (report.injectors.empty()) {
     out << "_No injectors registered._\n\n";
   } else {
-    for (const auto & injector_id : report.injector_ids) {
-      out << "- `" << injector_id << "`\n";
+    out << "| Injector ID | Type |\n";
+    out << "| --- | --- |\n";
+
+    for (const auto & injector : report.injectors) {
+      out << "| `" << injector.id << "` "
+          << "| `" << injector.type << "` |\n";
     }
 
     out << "\n";
   }
 
-  out << "## Listed Faults\n\n";
+  out << "## Faults\n\n";
 
-  if (report.fault_ids.empty()) {
+  if (report.faults.empty()) {
     out << "_No faults registered._\n\n";
   } else {
-    for (const auto & fault_id : report.fault_ids) {
-      out << "- `" << fault_id << "`\n";
+    out << "| Fault ID | Injector | State | Details |\n";
+    out << "| --- | --- | --- | --- |\n";
+
+    for (const auto & fault : report.faults) {
+      out << "| `" << fault.id << "` "
+          << "| `" << fault.injector_id << "` "
+          << "| `" << fault.state << "` "
+          << "| " << fault.details << " |\n";
     }
 
     out << "\n";
   }
-  out << "## Configured Fault Timeline\n\n";
+
+  out << "## Fault Event Timeline\n\n";
 
   if (report.fault_events.empty()) {
     out << "_No fault events recorded._\n\n";
