@@ -263,6 +263,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_core
   )
 
+  ament_add_gtest(test_twist_fault_injector
+    test/injectors/test_twist_fault_injector.cpp
+  )
+  target_link_libraries(test_twist_fault_injector
+    ${PROJECT_NAME}_core
+  )
+
   ament_add_gtest(test_fault_controller
     test/core/test_fault_controller.cpp
   )

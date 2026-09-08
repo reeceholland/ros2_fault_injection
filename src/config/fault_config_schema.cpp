@@ -109,6 +109,8 @@ const std::unordered_set<std::string> kJointStateKeys = {
 const std::unordered_set<std::string> kTwistKeys = {
   "drop_probability",
   "delay_ms",
+  "stale_replay_enabled",
+  "stale_replay_duration_ms",
 };
 
 const std::unordered_set<std::string> kImuKeys = {
@@ -209,7 +211,7 @@ std::optional<std::string> validate_config_value(
     return std::nullopt;
   }
 
-  if (key == "delay_ms") {
+  if (key == "delay_ms" || key == "stale_replay_duration_ms") {
     int parsed_value = 0;
     if (!parse_int(value, parsed_value)) {
       return "config '" + key + "' must be an integer";
@@ -217,6 +219,14 @@ std::optional<std::string> validate_config_value(
 
     if (parsed_value < 0) {
       return "config '" + key + "' must be >= 0";
+    }
+
+    return std::nullopt;
+  }
+
+  if (key == "stale_replay_enabled") {
+    if (value != "true" && value != "false") {
+      return "config '" + key + "' must be 'true' or 'false'";
     }
 
     return std::nullopt;

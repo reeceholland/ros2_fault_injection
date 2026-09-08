@@ -7,7 +7,9 @@
 #ifndef ROS2_FAULT_INJECTION__TWIST_FAULT_INJECTOR_HPP_
 #define ROS2_FAULT_INJECTION__TWIST_FAULT_INJECTOR_HPP_
 
+#include <chrono>
 #include <deque>
+#include <optional>
 
 #include <geometry_msgs/msg/twist.hpp>
 #include <rclcpp/node.hpp>
@@ -50,11 +52,15 @@ private:
 
   void on_twist(const geometry_msgs::msg::Twist::SharedPtr msg);
   void flush_delayed();
+  bool stale_replay_enabled() const;
+  std::chrono::milliseconds stale_replay_duration() const;
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::deque<DelayedTwist> delayed_;
+  std::optional<geometry_msgs::msg::Twist> last_command_;
+  rclcpp::Time last_command_time_;
 };
 
 } // namespace ros2_fault_injection::injectors

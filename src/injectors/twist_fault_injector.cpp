@@ -23,7 +23,7 @@ TwistFaultInjector::TwistFaultInjector(rclcpp::Node & node, const InjectorConfig
   pub_ = node_.create_publisher<geometry_msgs::msg::Twist>(config_.topic->output_topic, qos);
 
   sub_ = node_.create_subscription<geometry_msgs::msg::Twist>(
-    config_.topic->input_topic, qos,
+        config_.topic->input_topic, qos,
     [this](const geometry_msgs::msg::Twist::SharedPtr msg)
     {on_twist(msg);});
 
@@ -31,7 +31,17 @@ TwistFaultInjector::TwistFaultInjector(rclcpp::Node & node, const InjectorConfig
       {flush_delayed();});
 
   RCLCPP_INFO(node_.get_logger(), "Twist fault injector running: %s -> %s",
-      config_.topic->input_topic.c_str(), config_.topic->output_topic.c_str());
+                config_.topic->input_topic.c_str(), config_.topic->output_topic.c_str());
+}
+
+bool TwistFaultInjector::stale_replay_enabled() const
+{
+  return active_bool("stale_replay_enabled", false);
+}
+
+std::chrono::milliseconds TwistFaultInjector::stale_replay_duration() const
+{
+  return std::chrono::milliseconds{active_max_int("stale_replay_duration_ms", 500)};
 }
 
 void TwistFaultInjector::on_twist(const geometry_msgs::msg::Twist::SharedPtr msg)
@@ -42,11 +52,27 @@ void TwistFaultInjector::on_twist(const geometry_msgs::msg::Twist::SharedPtr msg
     return;
   }
 
+  const auto now = node_.now();
   auto out = *msg;
+
+  if (stale_replay_enabled() && last_command_.has_value()) {
+    const auto max_age = rclcpp::Duration(stale_replay_duration());
+    const auto age = now - last_command_time_;
+
+    if (age <= max_age) {
+      out = last_command_.value();
+    } else {
+      last_command_ = *msg;
+      last_command_time_ = now;
+    }
+  } else {
+    last_command_ = *msg;
+    last_command_time_ = now;
+  }
 
   const auto delay = active_delay();
   if (delay.count() > 0) {
-    delayed_.push_back(DelayedTwist{out, node_.now() + rclcpp::Duration(delay)});
+    delayed_.push_back(DelayedTwist{out, now + rclcpp::Duration(delay)});
     return;
   }
 
@@ -75,7 +101,8 @@ std::vector<FaultConfigField> TwistFaultInjector::static_config_schema()
     const std::string & description,
     std::optional<double> min_value = std::nullopt,
     std::optional<double> max_value = std::nullopt,
-    std::optional<std::string> default_value = std::nullopt) {
+    std::optional<std::string> default_value = std::nullopt)
+    {
       FaultConfigField field;
       field.key = key;
       field.type = type;
@@ -87,9 +114,24 @@ std::vector<FaultConfigField> TwistFaultInjector::static_config_schema()
     };
 
   add_field("drop_probability", "double", "Probability that an incoming command is dropped.",
-      0.0, 1.0, "0.0");
+              0.0, 1.0, "0.0");
   add_field("delay_ms", "int", "Delay applied before publishing the command, in milliseconds.",
-      0.0, std::nullopt, "0");
+              0.0, std::nullopt, "0");
+  add_field(
+        "stale_replay_enabled",
+        "bool",
+        "When true, replay the last command instead of publishing the newest command.",
+        std::nullopt,
+        std::nullopt,
+        "false");
+
+  add_field(
+        "stale_replay_duration_ms",
+        "int",
+        "Maximum age of a stored command that may be replayed, in milliseconds.",
+        0.0,
+        std::nullopt,
+        "500");
 
   return schema;
 }

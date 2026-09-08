@@ -33,6 +33,13 @@ faults:
     config:
       drop_probability: 0.5
 
+  - id: cmd_vel_stale_replay
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      stale_replay_enabled: true
+      stale_replay_duration_ms: 1000
+
 assertions:
   - id: odom_stays_above_5hz
     type: topic_hz
