@@ -17,6 +17,20 @@
 
 namespace ros2_fault_injection::core
 {
+struct InjectorReportEntry
+{
+  std::string id;
+  std::string type;
+};
+
+struct FaultReportEntry
+{
+  std::string id;
+  std::string injector_id;
+  std::string state;
+  std::string details;
+};
+
 struct ScenarioReport
 {
   std::string scenario_file;
@@ -25,6 +39,8 @@ struct ScenarioReport
 
   std::vector<std::string> injector_ids;
   std::vector<std::string> fault_ids;
+  std::vector<InjectorReportEntry> injectors;
+  std::vector<FaultReportEntry> faults;
   std::vector<assertions::AssertionResult> assertion_results;
 
   std::string final_result;
