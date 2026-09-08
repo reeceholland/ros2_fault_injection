@@ -52,6 +52,8 @@ const std::unordered_set<std::string> kNumberKeys = {
   "sector_min_deg",
   "sector_max_deg",
   "velocity_bias",
+  "linear_x_scale",
+  "angular_z_scale",
   "angular_velocity_z_bias",
   "linear_acceleration_x_bias",
   "linear_acceleration_y_bias",
@@ -66,6 +68,8 @@ const std::unordered_set<std::string> kNonNegativeNumberKeys = {
   "twist_covariance_scale",
   "pose_covariance_floor",
   "twist_covariance_floor",
+  "max_linear_x",
+  "max_angular_z",
   "range_noise_stddev",
   "velocity_noise_stddev",
   "angular_velocity_z_noise_stddev",
@@ -104,6 +108,18 @@ const std::unordered_set<std::string> kJointStateKeys = {
   "delay_ms",
   "velocity_bias",
   "velocity_noise_stddev",
+};
+
+const std::unordered_set<std::string> kTwistKeys = {
+  "drop_probability",
+  "delay_ms",
+  "linear_x_scale",
+  "angular_z_scale",
+  "max_linear_x",
+  "max_angular_z",
+  "force_stop",
+  "stale_replay_enabled",
+  "stale_replay_duration_ms",
 };
 
 const std::unordered_set<std::string> kImuKeys = {
@@ -161,6 +177,10 @@ const std::unordered_set<std::string> & allowed_config_keys_for_injector_type(
     return kImuKeys;
   }
 
+  if (injector_type == "twist") {
+    return kTwistKeys;
+  }
+
   if (injector_type == "trigger_service") {
     return kTriggerServiceKeys;
   }
@@ -200,7 +220,7 @@ std::optional<std::string> validate_config_value(
     return std::nullopt;
   }
 
-  if (key == "delay_ms") {
+  if (key == "delay_ms" || key == "stale_replay_duration_ms") {
     int parsed_value = 0;
     if (!parse_int(value, parsed_value)) {
       return "config '" + key + "' must be an integer";
@@ -213,7 +233,15 @@ std::optional<std::string> validate_config_value(
     return std::nullopt;
   }
 
-  if (key == "force_failure") {
+  if (key == "stale_replay_enabled") {
+    if (value != "true" && value != "false") {
+      return "config '" + key + "' must be 'true' or 'false'";
+    }
+
+    return std::nullopt;
+  }
+
+  if (key == "force_failure" || key == "force_stop") {
     if (value != "true" && value != "false") {
       return "config '" + key + "' must be 'true' or 'false'";
     }

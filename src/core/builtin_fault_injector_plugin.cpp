@@ -17,6 +17,7 @@
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
+#include "ros2_fault_injection/injectors/twist_fault_injector.hpp"
 
 namespace ros2_fault_injection::core
 {
@@ -76,6 +77,17 @@ std::shared_ptr<FaultInjector> TfFaultInjectorPlugin::create(
   return std::make_shared<injectors::TfFaultInjector>(node, config);
 }
 
+std::string TwistFaultInjectorPlugin::type() const
+{
+  return "twist";
+}
+
+std::shared_ptr<FaultInjector> TwistFaultInjectorPlugin::create(
+  rclcpp::Node & node, const InjectorConfig & config)
+{
+  return std::make_shared<injectors::TwistFaultInjector>(node, config);
+}
+
 std::string TriggerServiceFaultInjectorPlugin::type() const
 {
   return "trigger_service";
@@ -103,6 +115,9 @@ PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::TfFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
+PLUGINLIB_EXPORT_CLASS(
+  ros2_fault_injection::core::TwistFaultInjectorPlugin,
   ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::TriggerServiceFaultInjectorPlugin,

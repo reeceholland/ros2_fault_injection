@@ -19,6 +19,7 @@
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
+#include "ros2_fault_injection/injectors/twist_fault_injector.hpp"
 
 namespace ros2_fault_injection::config
 {
@@ -39,7 +40,7 @@ bool fault_exists(const ScenarioConfig & scenario, const std::string & fault_id)
 bool is_known_injector_type(const std::string & type)
 {
   return type == "odom" || type == "scan" || type == "joint_state" || type == "imu" ||
-         type == "trigger_service" || type == "tf";
+         type == "twist" || type == "trigger_service" || type == "tf";
 }
 
 std::vector<FaultConfigField> schema_for_builtin_injector_type(const std::string & type)
@@ -58,6 +59,10 @@ std::vector<FaultConfigField> schema_for_builtin_injector_type(const std::string
 
   if (type == "imu") {
     return ImuFaultInjector::static_config_schema();
+  }
+
+  if (type == "twist") {
+    return TwistFaultInjector::static_config_schema();
   }
 
   if (type == "trigger_service") {

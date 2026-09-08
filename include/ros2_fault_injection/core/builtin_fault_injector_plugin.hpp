@@ -58,6 +58,14 @@ public:
     rclcpp::Node & node, const InjectorConfig & config) override;
 };
 
+class TwistFaultInjectorPlugin : public FaultInjectorPlugin
+{
+public:
+  std::string type() const override;
+  std::shared_ptr<FaultInjector> create(
+    rclcpp::Node & node, const InjectorConfig & config) override;
+};
+
 class TriggerServiceFaultInjectorPlugin : public FaultInjectorPlugin
 {
 public:
@@ -76,5 +84,6 @@ using core::OdomFaultInjectorPlugin;
 using core::ScanFaultInjectorPlugin;
 using core::TfFaultInjectorPlugin;
 using core::TriggerServiceFaultInjectorPlugin;
+using core::TwistFaultInjectorPlugin;
 }  // namespace ros2_fault_injection
 #endif  // ROS2_FAULT_INJECTION__BUILTIN_FAULT_INJECTOR_PLUGIN_HPP_

@@ -1,0 +1,70 @@
+injectors:
+  - id: odom
+    type: odom
+    topic:
+      input_topic: /odom_raw
+      output_topic: /odom
+      qos_depth: 10
+
+  - id: cmd_vel
+    type: twist
+    topic:
+      input_topic: /cmd_vel_raw
+      output_topic: /cmd_vel
+      qos_depth: 10
+
+faults:
+  - id: odom_position_bias
+    injector_id: odom
+    active_on_startup: false
+    config:
+      x_bias: 1.0
+      y_bias: 0.0
+
+  - id: cmd_vel_delay
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      delay_ms: 500
+
+  - id: cmd_vel_dropout
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      drop_probability: 0.5
+
+  - id: cmd_vel_stale_replay
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      stale_replay_enabled: true
+      stale_replay_duration_ms: 1000
+
+  - id: cmd_vel_scale
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      linear_x_scale: 0.5
+      angular_z_scale: 1.5
+
+  - id: cmd_vel_clamp
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      max_linear_x: 0.25
+      max_angular_z: 0.5
+
+  - id: cmd_vel_force_stop
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      force_stop: true
+
+assertions:
+  - id: odom_stays_above_5hz
+    type: topic_hz
+    topic: /odom
+    message_type: nav_msgs/msg/Odometry
+    min_hz: 5.0
+    window: 3.0
+    within: 8.0

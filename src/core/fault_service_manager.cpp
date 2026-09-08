@@ -465,7 +465,6 @@ void FaultServiceManager::handle_request_report(
   const auto result = request_report_callback_();
   response->success = result.success;
   response->message = result.message;
-  response->final_result = result.final_result;
   response->scenario_file = result.scenario_file;
   response->final_result = result.final_result;
   response->report_markdown = result.report_markdown;
