@@ -54,6 +54,10 @@ private:
   void flush_delayed();
   bool stale_replay_enabled() const;
   std::chrono::milliseconds stale_replay_duration() const;
+  double active_product_double(const std::string & key, double fallback) const;
+  void apply_scale(geometry_msgs::msg::Twist & msg) const;
+  void apply_clamp(geometry_msgs::msg::Twist & msg) const;
+  void apply_force_stop(geometry_msgs::msg::Twist & msg) const;
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;

@@ -98,6 +98,35 @@ FaultConfig make_stale_replay_fault()
   return fault;
 }
 
+FaultConfig make_scale_fault()
+{
+  FaultConfig fault;
+  fault.id = "cmd_vel_scale";
+  fault.injector_id = "cmd_vel";
+  fault.config["linear_x_scale"] = "0.5";
+  fault.config["angular_z_scale"] = "2.0";
+  return fault;
+}
+
+FaultConfig make_clamp_fault()
+{
+  FaultConfig fault;
+  fault.id = "cmd_vel_clamp";
+  fault.injector_id = "cmd_vel";
+  fault.config["max_linear_x"] = "0.3";
+  fault.config["max_angular_z"] = "0.4";
+  return fault;
+}
+
+FaultConfig make_force_stop_fault()
+{
+  FaultConfig fault;
+  fault.id = "cmd_vel_force_stop";
+  fault.injector_id = "cmd_vel";
+  fault.config["force_stop"] = "true";
+  return fault;
+}
+
 }  // namespace
 
 TEST(TwistFaultInjector, PassesThroughCommandsWithoutActiveFault)
@@ -198,6 +227,113 @@ TEST(TwistFaultInjector, ReplaysPreviousCommandWhenStaleReplayIsActive)
   ASSERT_TRUE(stale_output.has_value());
   EXPECT_DOUBLE_EQ(stale_output->linear.x, 0.5);
   EXPECT_DOUBLE_EQ(stale_output->angular.z, 0.0);
+
+  (void)sub;
+  rclcpp::shutdown();
+}
+
+TEST(TwistFaultInjector, ScalesCommandValues)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_twist_fault_injector_scale");
+
+  TwistFaultInjector injector(*node, make_injector_config());
+
+  auto fault = make_scale_fault();
+  injector.add_fault(fault);
+  injector.activate_fault(fault.id);
+
+  auto raw_pub = node->create_publisher<geometry_msgs::msg::Twist>("/test/cmd_vel_raw", 10);
+
+  auto latest_msg = std::make_shared<std::optional<geometry_msgs::msg::Twist>>();
+  auto sub = node->create_subscription<geometry_msgs::msg::Twist>(
+    "/test/cmd_vel", 10,
+    [latest_msg](const geometry_msgs::msg::Twist & msg) {*latest_msg = msg;});
+
+  spin_for(node, 100ms);
+
+  const auto output = publish_and_wait_for_twist(node, raw_pub, latest_msg, make_twist(0.8, 0.3));
+
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->linear.x, 0.4);
+  EXPECT_DOUBLE_EQ(output->angular.z, 0.6);
+
+  (void)sub;
+  rclcpp::shutdown();
+}
+
+TEST(TwistFaultInjector, ClampsCommandValuesSymmetrically)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_twist_fault_injector_clamp");
+
+  TwistFaultInjector injector(*node, make_injector_config());
+
+  auto fault = make_clamp_fault();
+  injector.add_fault(fault);
+  injector.activate_fault(fault.id);
+
+  auto raw_pub = node->create_publisher<geometry_msgs::msg::Twist>("/test/cmd_vel_raw", 10);
+
+  auto latest_msg = std::make_shared<std::optional<geometry_msgs::msg::Twist>>();
+  auto sub = node->create_subscription<geometry_msgs::msg::Twist>(
+    "/test/cmd_vel", 10,
+    [latest_msg](const geometry_msgs::msg::Twist & msg) {*latest_msg = msg;});
+
+  spin_for(node, 100ms);
+
+  const auto positive_output =
+    publish_and_wait_for_twist(node, raw_pub, latest_msg, make_twist(0.8, 0.9));
+
+  ASSERT_TRUE(positive_output.has_value());
+  EXPECT_DOUBLE_EQ(positive_output->linear.x, 0.3);
+  EXPECT_DOUBLE_EQ(positive_output->angular.z, 0.4);
+
+  spin_for(node, 100ms);
+
+  const auto negative_output =
+    publish_and_wait_for_twist(node, raw_pub, latest_msg, make_twist(-0.8, -0.9));
+
+  ASSERT_TRUE(negative_output.has_value());
+  EXPECT_DOUBLE_EQ(negative_output->linear.x, -0.3);
+  EXPECT_DOUBLE_EQ(negative_output->angular.z, -0.4);
+
+  (void)sub;
+  rclcpp::shutdown();
+}
+
+TEST(TwistFaultInjector, ForceStopPublishesZeroCommand)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_twist_fault_injector_force_stop");
+
+  TwistFaultInjector injector(*node, make_injector_config());
+
+  auto fault = make_force_stop_fault();
+  injector.add_fault(fault);
+  injector.activate_fault(fault.id);
+
+  auto raw_pub = node->create_publisher<geometry_msgs::msg::Twist>("/test/cmd_vel_raw", 10);
+
+  auto latest_msg = std::make_shared<std::optional<geometry_msgs::msg::Twist>>();
+  auto sub = node->create_subscription<geometry_msgs::msg::Twist>(
+    "/test/cmd_vel", 10,
+    [latest_msg](const geometry_msgs::msg::Twist & msg) {*latest_msg = msg;});
+
+  spin_for(node, 100ms);
+
+  const auto output = publish_and_wait_for_twist(node, raw_pub, latest_msg, make_twist(0.8, 0.9));
+
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->linear.x, 0.0);
+  EXPECT_DOUBLE_EQ(output->linear.y, 0.0);
+  EXPECT_DOUBLE_EQ(output->linear.z, 0.0);
+  EXPECT_DOUBLE_EQ(output->angular.x, 0.0);
+  EXPECT_DOUBLE_EQ(output->angular.y, 0.0);
+  EXPECT_DOUBLE_EQ(output->angular.z, 0.0);
 
   (void)sub;
   rclcpp::shutdown();

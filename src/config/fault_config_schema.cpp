@@ -52,6 +52,8 @@ const std::unordered_set<std::string> kNumberKeys = {
   "sector_min_deg",
   "sector_max_deg",
   "velocity_bias",
+  "linear_x_scale",
+  "angular_z_scale",
   "angular_velocity_z_bias",
   "linear_acceleration_x_bias",
   "linear_acceleration_y_bias",
@@ -66,6 +68,8 @@ const std::unordered_set<std::string> kNonNegativeNumberKeys = {
   "twist_covariance_scale",
   "pose_covariance_floor",
   "twist_covariance_floor",
+  "max_linear_x",
+  "max_angular_z",
   "range_noise_stddev",
   "velocity_noise_stddev",
   "angular_velocity_z_noise_stddev",
@@ -109,6 +113,11 @@ const std::unordered_set<std::string> kJointStateKeys = {
 const std::unordered_set<std::string> kTwistKeys = {
   "drop_probability",
   "delay_ms",
+  "linear_x_scale",
+  "angular_z_scale",
+  "max_linear_x",
+  "max_angular_z",
+  "force_stop",
   "stale_replay_enabled",
   "stale_replay_duration_ms",
 };
@@ -232,7 +241,7 @@ std::optional<std::string> validate_config_value(
     return std::nullopt;
   }
 
-  if (key == "force_failure") {
+  if (key == "force_failure" || key == "force_stop") {
     if (value != "true" && value != "false") {
       return "config '" + key + "' must be 'true' or 'false'";
     }

@@ -40,6 +40,26 @@ faults:
       stale_replay_enabled: true
       stale_replay_duration_ms: 1000
 
+  - id: cmd_vel_scale
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      linear_x_scale: 0.5
+      angular_z_scale: 1.5
+
+  - id: cmd_vel_clamp
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      max_linear_x: 0.25
+      max_angular_z: 0.5
+
+  - id: cmd_vel_force_stop
+    injector_id: cmd_vel
+    active_on_startup: false
+    config:
+      force_stop: true
+
 assertions:
   - id: odom_stays_above_5hz
     type: topic_hz
