@@ -17,25 +17,52 @@ faults:
   - id: odom_position_bias
     injector_id: odom
     active_on_startup: false
+    start: 5.0
+    duration: 8.0
     config:
       x_bias: 1.0
       y_bias: 0.0
 
+  - id: odom_yaw_bias
+    injector_id: odom
+    active_on_startup: false
+    start: 7.0
+    duration: 6.0
+    config:
+      yaw_bias_deg: 15.0
+
+  - id: odom_covariance_inflation
+    injector_id: odom
+    active_on_startup: false
+    start: 5.0
+    duration: 8.0
+    config:
+      pose_covariance_scale: 10.0
+      twist_covariance_scale: 5.0
+      pose_covariance_floor: 0.05
+      twist_covariance_floor: 0.02
+
   - id: cmd_vel_delay
     injector_id: cmd_vel
     active_on_startup: false
+    start: 20.0
+    duration: 6.0
     config:
       delay_ms: 500
 
   - id: cmd_vel_dropout
     injector_id: cmd_vel
     active_on_startup: false
+    start: 28.0
+    duration: 6.0
     config:
-      drop_probability: 0.5
+      drop_probability: 0.4
 
   - id: cmd_vel_stale_replay
     injector_id: cmd_vel
     active_on_startup: false
+    start: 36.0
+    duration: 5.0
     config:
       stale_replay_enabled: true
       stale_replay_duration_ms: 1000
@@ -43,6 +70,8 @@ faults:
   - id: cmd_vel_scale
     injector_id: cmd_vel
     active_on_startup: false
+    start: 42.0
+    duration: 5.0
     config:
       linear_x_scale: 0.5
       angular_z_scale: 1.5
@@ -50,21 +79,137 @@ faults:
   - id: cmd_vel_clamp
     injector_id: cmd_vel
     active_on_startup: false
+    start: 44.0
+    duration: 6.0
     config:
-      max_linear_x: 0.25
-      max_angular_z: 0.5
+      max_linear_x: 0.15
+      max_angular_z: 0.3
 
   - id: cmd_vel_force_stop
     injector_id: cmd_vel
     active_on_startup: false
+    start: 52.0
+    duration: 3.0
     config:
       force_stop: true
 
 assertions:
-  - id: odom_stays_above_5hz
+  - id: odom_output_starts
     type: topic_hz
     topic: /odom
     message_type: nav_msgs/msg/Odometry
     min_hz: 5.0
     window: 3.0
     within: 8.0
+
+  - id: cmd_vel_raw_input_starts
+    type: topic_hz
+    topic: /cmd_vel_raw
+    message_type: geometry_msgs/msg/Twist
+    min_hz: 5.0
+    window: 3.0
+    within: 8.0
+
+  - id: cmd_vel_output_starts
+    type: topic_hz
+    topic: /cmd_vel
+    message_type: geometry_msgs/msg/Twist
+    min_hz: 5.0
+    window: 3.0
+    within: 8.0
+
+  - id: odom_position_bias_activates
+    type: fault_event
+    fault_id: odom_position_bias
+    state: active
+    within: 6.0
+
+  - id: odom_position_bias_deactivates
+    type: fault_event
+    fault_id: odom_position_bias
+    state: inactive
+    within: 14.0
+
+  - id: odom_yaw_bias_activates
+    type: fault_event
+    fault_id: odom_yaw_bias
+    state: active
+    within: 8.0
+
+  - id: odom_yaw_bias_deactivates
+    type: fault_event
+    fault_id: odom_yaw_bias
+    state: inactive
+    within: 14.0
+
+  - id: odom_covariance_inflation_activates
+    type: fault_event
+    fault_id: odom_covariance_inflation
+    state: active
+    within: 6.0
+
+  - id: odom_covariance_inflation_deactivates
+    type: fault_event
+    fault_id: odom_covariance_inflation
+    state: inactive
+    within: 14.0
+
+  - id: cmd_vel_delay_activates
+    type: fault_event
+    fault_id: cmd_vel_delay
+    state: active
+    within: 21.0
+
+  - id: cmd_vel_delay_deactivates
+    type: fault_event
+    fault_id: cmd_vel_delay
+    state: inactive
+    within: 27.0
+
+  - id: cmd_vel_dropout_activates
+    type: fault_event
+    fault_id: cmd_vel_dropout
+    state: active
+    within: 29.0
+
+  - id: cmd_vel_dropout_deactivates
+    type: fault_event
+    fault_id: cmd_vel_dropout
+    state: inactive
+    within: 35.0
+
+  - id: cmd_vel_stale_replay_activates
+    type: fault_event
+    fault_id: cmd_vel_stale_replay
+    state: active
+    within: 37.0
+
+  - id: cmd_vel_stale_replay_deactivates
+    type: fault_event
+    fault_id: cmd_vel_stale_replay
+    state: inactive
+    within: 42.0
+
+  - id: cmd_vel_scale_activates
+    type: fault_event
+    fault_id: cmd_vel_scale
+    state: active
+    within: 43.0
+
+  - id: cmd_vel_clamp_activates
+    type: fault_event
+    fault_id: cmd_vel_clamp
+    state: active
+    within: 45.0
+
+  - id: cmd_vel_force_stop_activates
+    type: fault_event
+    fault_id: cmd_vel_force_stop
+    state: active
+    within: 53.0
+
+  - id: cmd_vel_force_stop_deactivates
+    type: fault_event
+    fault_id: cmd_vel_force_stop
+    state: inactive
+    within: 56.0

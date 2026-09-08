@@ -151,6 +151,7 @@ install(DIRECTORY include/
 install(DIRECTORY
   config
   launch
+  scripts
   DESTINATION share/${PROJECT_NAME}
 )
 
