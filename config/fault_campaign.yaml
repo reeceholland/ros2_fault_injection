@@ -1,0 +1,10 @@
+campaign:
+  name: cmd_vel_delay_sweep
+  base_scenario: config/omnisim_faults.yaml
+  timeout: 100.0
+  repeats: 3
+
+  variants:
+    - fault_id: cmd_vel_delay
+      key: delay_ms
+      values: ["0", "100", "250", "500", "1000"]

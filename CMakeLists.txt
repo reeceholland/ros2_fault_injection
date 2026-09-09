@@ -63,6 +63,7 @@ add_library(${PROJECT_NAME}_core
   src/injectors/twist_fault_injector.cpp
   src/injectors/point_cloud_fault_injector.cpp
   src/config/scenario_config.cpp
+  src/config/campaign_config_parser.cpp
   src/core/fault_scheduler.cpp
   src/core/fault_event_publisher.cpp
   src/config/scenario_validator.cpp
@@ -222,6 +223,14 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_config_schema
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_campaign_config_parser
+    test/config/test_campaign_config_parser.cpp
+  )
+  target_link_libraries(test_campaign_config_parser
+    ${PROJECT_NAME}_core
+  )
+
   ament_add_gtest(test_fault_scheduler
     test/core/test_fault_scheduler.cpp
   )
