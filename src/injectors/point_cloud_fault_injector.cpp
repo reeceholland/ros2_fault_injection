@@ -60,7 +60,8 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
       schema.push_back(field);
     };
 
-  add_field("drop_probability", "double", "Probability that an incoming point cloud message is dropped.",
+  add_field("drop_probability", "double",
+      "Probability that an incoming point cloud message is dropped.",
     0.0, 1.0, "0.0");
   add_field("delay_ms", "int", "Delay applied before publishing the point cloud, in milliseconds.",
     0.0, std::nullopt, "0");
@@ -133,7 +134,9 @@ void PointCloudFaultInjector::apply_point_dropout(sensor_msgs::msg::PointCloud2 
     return;
   }
 
-  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg, "z")) {
+  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg,
+      "z"))
+  {
     RCLCPP_WARN_THROTTLE(
       node_.get_logger(), *node_.get_clock(), 5000,
       "PointCloud2 message does not have float32 x, y, z fields; skipping point dropout");
@@ -165,7 +168,9 @@ void PointCloudFaultInjector::apply_range_noise(sensor_msgs::msg::PointCloud2 & 
     return;
   }
 
-  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg, "z")) {
+  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg,
+      "z"))
+  {
     RCLCPP_WARN_THROTTLE(
       node_.get_logger(), *node_.get_clock(), 5000,
       "PointCloud2 message does not have float32 x, y, z fields; skipping range noise");
@@ -204,7 +209,9 @@ void PointCloudFaultInjector::apply_dust_returns(sensor_msgs::msg::PointCloud2 &
     return;
   }
 
-  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg, "z")) {
+  if (!has_float32_field(msg, "x") || !has_float32_field(msg, "y") || !has_float32_field(msg,
+      "z"))
+  {
     RCLCPP_WARN_THROTTLE(
       node_.get_logger(), *node_.get_clock(), 5000,
       "PointCloud2 message does not have float32 x, y, z fields; skipping dust returns");
