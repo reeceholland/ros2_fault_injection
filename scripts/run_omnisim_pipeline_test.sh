@@ -21,10 +21,11 @@ FAULT_INJECTION_WS="${FAULT_INJECTION_WS:-$HOME/fault_injection_ws}"
 SCENARIO_FILE="${SCENARIO_FILE:-$FAULT_INJECTION_WS/src/ros2_fault_injection/config/omnisim_faults.yaml}"
 REPORT_FILE="${REPORT_FILE:-$HOME/tmp/omnisim_fault_report.md}"
 WORLD_FILE="${WORLD_FILE:-$OMNISIM_HOME/projects/samples/demos/worlds/chat/omnilink_husky.omniworld}"
-TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-65.0}"
+TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-100.0}"
 TEST_LINEAR_X="${TEST_LINEAR_X:--0.3}"
 TEST_ANGULAR_Z="${TEST_ANGULAR_Z:-0.0}"
 CLEAN_START="${CLEAN_START:-true}"
+USE_SIM_TIME="${USE_SIM_TIME:-true}"
 
 HARNESS_URL="${HARNESS_URL:-http://127.0.0.1:6789}"
 BRIDGE_URL="${BRIDGE_URL:-http://127.0.0.1:8765}"
@@ -154,14 +155,24 @@ start_ros_bridge()
   echo "Starting OmniSim ROS command and odom nodes..."
   source_ros_setup "$OMNISIM_HOME/packages/omnisim-ros2/install/setup.bash"
 
+  ros2 run omnisim_ros2 clock_node \
+    --ros-args \
+    -p harness_url:="$HARNESS_URL" &
+  BRIDGE_PIDS+=("$!")
+
+  wait_for_topic "/clock" "simulation clock"
+  wait_for_topic_message "/clock" "simulation clock"
+
   ros2 run omnisim_ros2 command_node \
     --ros-args \
-    -p use_sim_time:=false &
+    -p bridge_url:="$BRIDGE_URL" \
+    -p use_sim_time:="$USE_SIM_TIME" &
   BRIDGE_PIDS+=("$!")
 
   ros2 run omnisim_ros2 odom_node \
     --ros-args \
-    -p use_sim_time:=false \
+    -p bridge_url:="$BRIDGE_URL" \
+    -p use_sim_time:="$USE_SIM_TIME" \
     -r /odom:=/odom_raw &
   BRIDGE_PIDS+=("$!")
 
@@ -184,6 +195,25 @@ wait_for_topic()
   done
 
   echo "Timed out waiting for $description topic $topic" >&2
+  return 1
+}
+
+wait_for_topic_message()
+{
+  local topic="$1"
+  local description="$2"
+  local attempts="${3:-30}"
+
+  for _ in $(seq 1 "$attempts"); do
+    if timeout 2s ros2 topic echo --once "$topic" >/dev/null 2>&1; then
+      echo "Ready: $description messages on $topic"
+      return 0
+    fi
+
+    sleep 1
+  done
+
+  echo "Timed out waiting for $description messages on $topic" >&2
   return 1
 }
 
@@ -212,12 +242,13 @@ append_motion_summary()
     return
   fi
 
-  python3 - "$REPORT_FILE" "$START_STATE_FILE" "$END_STATE_FILE" "$scenario_exit_code" <<'PY'
+  python3 - "$REPORT_FILE" "$START_STATE_FILE" "$END_STATE_FILE" "$scenario_exit_code" \
+    "$USE_SIM_TIME" <<'PY'
 import json
 import math
 import sys
 
-report_file, start_file, end_file, scenario_exit_code = sys.argv[1:5]
+report_file, start_file, end_file, scenario_exit_code, use_sim_time = sys.argv[1:6]
 
 with open(start_file, "r", encoding="utf-8") as f:
     start = json.load(f)
@@ -240,6 +271,7 @@ with open(report_file, "a", encoding="utf-8") as f:
     f.write("| Field | Value |\n")
     f.write("| --- | --- |\n")
     f.write(f"| Scenario runner exit code | `{scenario_exit_code}` |\n")
+    f.write(f"| ROS use_sim_time | `{use_sim_time}` |\n")
     f.write(f"| Start pose | x={start_x:.6f}, y={start_y:.6f}, yaw={float(start.get('yaw', 0.0)):.6f} |\n")
     f.write(f"| End pose | x={end_x:.6f}, y={end_y:.6f}, yaw={float(end.get('yaw', 0.0)):.6f} |\n")
     f.write(f"| Delta pose | dx={dx:.6f}, dy={dy:.6f} |\n")
@@ -262,6 +294,7 @@ run_scenario()
     --ros-args \
     -p scenario_file:="$SCENARIO_FILE" \
     -p timeout:="$TIMEOUT_SECONDS" \
+    -p use_sim_time:="$USE_SIM_TIME" \
     -p report_file:="$REPORT_FILE"
 }
 
@@ -284,6 +317,7 @@ main()
 
   start_harness_if_needed
   load_world
+  echo "Using ROS simulated time: $USE_SIM_TIME"
   start_ros_bridge
   start_command_publisher
 

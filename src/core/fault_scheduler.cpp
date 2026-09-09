@@ -36,7 +36,8 @@ void FaultScheduler::schedule(
       event.details = describe_config(fault.config);
       publish_event(event);
 
-      RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately", fault.id.c_str());
+      RCLCPP_INFO(node_.get_logger(), "Activated fault '%s' immediately at ros_time=%.3fs",
+                  fault.id.c_str(), node_.now().seconds());
 
       if (fault.duration) {
         schedule_stop_after(injector, fault, *fault.duration);
@@ -73,7 +74,7 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
 
   auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-  *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
+  *timer_holder = node_.create_timer(start_delay, [this, &injector, fault, timer_holder]()
       {
         (*timer_holder)->cancel();
 
@@ -87,7 +88,8 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
         event.details = describe_config(fault.config);
         publish_event(event);
 
-        RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str());
+        RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s' at ros_time=%.3fs",
+                    fault.id.c_str(), node_.now().seconds());
                                                                                              });
 
   timers_.push_back(*timer_holder);
@@ -106,7 +108,7 @@ void FaultScheduler::schedule_stop_after(
 
   auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
 
-  *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
+  *timer_holder = node_.create_timer(stop_delay, [this, &injector, fault, timer_holder]()
       {
         (*timer_holder)->cancel();
 
@@ -120,7 +122,8 @@ void FaultScheduler::schedule_stop_after(
         event.details = describe_config(fault.config);
         publish_event(event);
 
-        RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str());
+        RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s' at ros_time=%.3fs",
+                    fault.id.c_str(), node_.now().seconds());
                                                                                                });
 
   timers_.push_back(*timer_holder);
