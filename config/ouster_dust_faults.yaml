@@ -24,7 +24,7 @@ faults:
       dust_return_probability: 0.35
       dust_min_range: 0.2
       dust_max_range: 1.5
-      intensity_scale: 0.4
+      dust_intensity_scale: 0.2
 
 assertions:
   - id: ouster_dust_fault_activates

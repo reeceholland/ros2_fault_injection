@@ -81,6 +81,7 @@ const std::unordered_set<std::string> kNonNegativeNumberKeys = {
   "dust_return_probability",
   "dust_min_range",
   "dust_max_range",
+  "dust_intensity_scale",
   "intensity_scale",
 };
 
@@ -136,6 +137,7 @@ const std::unordered_set<std::string> kPointCloudKeys = {
   "dust_return_probability",
   "dust_min_range",
   "dust_max_range",
+  "dust_intensity_scale",
   "intensity_scale",
 };
 

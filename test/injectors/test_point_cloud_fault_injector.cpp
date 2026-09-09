@@ -243,7 +243,44 @@ TEST(PointCloudFaultInjector, ConvertsPointsToNearDustReturns)
   EXPECT_FLOAT_EQ(points.front().x, 1.0F);
   EXPECT_FLOAT_EQ(points.front().y, 0.0F);
   EXPECT_FLOAT_EQ(points.front().z, 0.0F);
-  EXPECT_FLOAT_EQ(points.front().intensity, 7.0F);
+  EXPECT_FLOAT_EQ(points.front().intensity, 1.4F);
+
+  (void)sub;
+  rclcpp::shutdown();
+}
+
+TEST(PointCloudFaultInjector, ScalesDustReturnIntensity)
+{
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("test_point_cloud_fault_injector_dust_intensity");
+  PointCloudFaultInjector injector(*node, make_injector_config());
+
+  auto fault = make_fault("dust_returns");
+  fault.config["dust_return_probability"] = "1.0";
+  fault.config["dust_min_range"] = "1.0";
+  fault.config["dust_max_range"] = "1.0";
+  fault.config["dust_intensity_scale"] = "0.25";
+  injector.add_fault(fault);
+  injector.activate_fault(fault.id);
+
+  auto raw_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>("/test/points_raw", 10);
+
+  auto latest_msg = std::make_shared<std::optional<sensor_msgs::msg::PointCloud2>>();
+  auto sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+    "/test/points", 10,
+    [latest_msg](const sensor_msgs::msg::PointCloud2 & msg) {*latest_msg = msg;});
+
+  spin_for(node, 100ms);
+
+  const auto input = make_cloud({Point{10.0F, 0.0F, 0.0F, 8.0F}});
+  const auto output = publish_and_wait_for_cloud(node, raw_pub, latest_msg, input);
+
+  ASSERT_TRUE(output.has_value());
+  const auto points = read_points(output.value());
+  ASSERT_EQ(points.size(), 1U);
+  EXPECT_FLOAT_EQ(points.front().x, 1.0F);
+  EXPECT_FLOAT_EQ(points.front().intensity, 2.0F);
 
   (void)sub;
   rclcpp::shutdown();

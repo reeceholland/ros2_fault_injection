@@ -58,6 +58,9 @@ private:
   void apply_intensity_scale(sensor_msgs::msg::PointCloud2 & msg);
   double active_min_double(const std::string & key, double fallback) const;
   double active_product_double(const std::string & key, double fallback) const;
+  double active_product_double_or_default(
+    const std::string & key,
+    double default_when_unconfigured) const;
 
   bool has_field(const sensor_msgs::msg::PointCloud2 & msg, const std::string & field_name) const;
   bool has_float32_field(

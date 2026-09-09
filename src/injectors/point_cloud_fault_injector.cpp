@@ -76,6 +76,8 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
     std::nullopt, "0.2");
   add_field("dust_max_range", "double", "Maximum range for generated dust returns.", 0.0,
     std::nullopt, "2.0");
+  add_field("dust_intensity_scale", "double",
+    "Multiplier applied only to points converted into dust returns.", 0.0, std::nullopt, "0.2");
   add_field("intensity_scale", "double",
     "Multiplier applied to float32 intensity values when an intensity field exists.", 0.0,
     std::nullopt, "1.0");
@@ -221,10 +223,38 @@ void PointCloudFaultInjector::apply_dust_returns(sensor_msgs::msg::PointCloud2 &
   std::bernoulli_distribution should_add_dust_return(dust_return_probability);
   std::uniform_real_distribution<float> dust_range_dist(
     static_cast<float>(dust_min_range), static_cast<float>(dust_max_range));
+  const auto dust_intensity_scale =
+    static_cast<float>(active_product_double_or_default("dust_intensity_scale", 0.2));
 
   sensor_msgs::PointCloud2Iterator<float> x(msg, "x");
   sensor_msgs::PointCloud2Iterator<float> y(msg, "y");
   sensor_msgs::PointCloud2Iterator<float> z(msg, "z");
+
+  if (has_float32_field(msg, "intensity")) {
+    sensor_msgs::PointCloud2Iterator<float> intensity(msg, "intensity");
+    for (; x != x.end(); ++x, ++y, ++z, ++intensity) {
+      if (!should_add_dust_return(rng_)) {
+        continue;
+      }
+
+      if (!std::isfinite(*x) || !std::isfinite(*y) || !std::isfinite(*z)) {
+        continue;
+      }
+
+      const float range = std::sqrt((*x * *x) + (*y * *y) + (*z * *z));
+      if (range <= std::numeric_limits<float>::epsilon()) {
+        continue;
+      }
+
+      const float dust_range = dust_range_dist(rng_);
+      const float scale = dust_range / range;
+      *x *= scale;
+      *y *= scale;
+      *z *= scale;
+      *intensity *= dust_intensity_scale;
+    }
+    return;
+  }
 
   for (; x != x.end(); ++x, ++y, ++z) {
     if (!should_add_dust_return(rng_)) {
@@ -305,6 +335,33 @@ double PointCloudFaultInjector::active_product_double(
     if (it != fault.config.end()) {
       value *= std::stod(it->second);
     }
+  }
+
+  return value;
+}
+
+double PointCloudFaultInjector::active_product_double_or_default(
+  const std::string & key,
+  double default_when_unconfigured) const
+{
+  double value = 1.0;
+  bool has_configured_value = false;
+
+  for (const auto &[fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto & fault = faults_.at(fault_id);
+    const auto it = fault.config.find(key);
+    if (it != fault.config.end()) {
+      value *= std::stod(it->second);
+      has_configured_value = true;
+    }
+  }
+
+  if (!has_configured_value) {
+    return default_when_unconfigured;
   }
 
   return value;
