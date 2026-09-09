@@ -42,6 +42,13 @@
   </class>
 
   <class
+    name="ros2_fault_injection/PointCloudFaultInjectorPlugin"
+    type="ros2_fault_injection::core::PointCloudFaultInjectorPlugin"
+    base_class_type="ros2_fault_injection::core::FaultInjectorPlugin">
+    <description>Creates PointCloud2 fault injectors.</description>
+  </class>
+
+  <class
     name="ros2_fault_injection/TriggerServiceFaultInjectorPlugin"
     type="ros2_fault_injection::core::TriggerServiceFaultInjectorPlugin"
     base_class_type="ros2_fault_injection::core::FaultInjectorPlugin">

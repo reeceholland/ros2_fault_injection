@@ -16,6 +16,7 @@
 #include "ros2_fault_injection/injectors/imu_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/joint_state_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/odom_fault_injector.hpp"
+#include "ros2_fault_injection/injectors/point_cloud_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
@@ -40,7 +41,7 @@ bool fault_exists(const ScenarioConfig & scenario, const std::string & fault_id)
 bool is_known_injector_type(const std::string & type)
 {
   return type == "odom" || type == "scan" || type == "joint_state" || type == "imu" ||
-         type == "twist" || type == "trigger_service" || type == "tf";
+         type == "twist" || type == "point_cloud" || type == "trigger_service" || type == "tf";
 }
 
 std::vector<FaultConfigField> schema_for_builtin_injector_type(const std::string & type)
@@ -63,6 +64,10 @@ std::vector<FaultConfigField> schema_for_builtin_injector_type(const std::string
 
   if (type == "twist") {
     return TwistFaultInjector::static_config_schema();
+  }
+
+  if (type == "point_cloud") {
+    return PointCloudFaultInjector::static_config_schema();
   }
 
   if (type == "trigger_service") {

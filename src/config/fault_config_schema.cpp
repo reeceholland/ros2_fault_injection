@@ -76,6 +76,13 @@ const std::unordered_set<std::string> kNonNegativeNumberKeys = {
   "linear_acceleration_x_noise_stddev",
   "linear_acceleration_y_noise_stddev",
   "linear_acceleration_z_noise_stddev",
+  "point_dropout_probability",
+  "range_noise_stddev",
+  "dust_return_probability",
+  "dust_min_range",
+  "dust_max_range",
+  "dust_intensity_scale",
+  "intensity_scale",
 };
 
 const std::unordered_set<std::string> kOdomKeys = {
@@ -120,6 +127,18 @@ const std::unordered_set<std::string> kTwistKeys = {
   "force_stop",
   "stale_replay_enabled",
   "stale_replay_duration_ms",
+};
+
+const std::unordered_set<std::string> kPointCloudKeys = {
+  "drop_probability",
+  "delay_ms",
+  "point_dropout_probability",
+  "range_noise_stddev",
+  "dust_return_probability",
+  "dust_min_range",
+  "dust_max_range",
+  "dust_intensity_scale",
+  "intensity_scale",
 };
 
 const std::unordered_set<std::string> kImuKeys = {
@@ -179,6 +198,10 @@ const std::unordered_set<std::string> & allowed_config_keys_for_injector_type(
 
   if (injector_type == "twist") {
     return kTwistKeys;
+  }
+
+  if (injector_type == "point_cloud") {
+    return kPointCloudKeys;
   }
 
   if (injector_type == "trigger_service") {

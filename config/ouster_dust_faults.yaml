@@ -1,0 +1,48 @@
+# Example scenario for Ouster PointCloud2 dust fault injection.
+#
+# The point cloud injector proxies sensor_msgs/msg/PointCloud2 from
+# /ouster/points_raw to /ouster/points. Point downstream consumers at
+# /ouster/points to observe the dust-mutated cloud.
+injectors:
+  - id: ouster_points
+    type: point_cloud
+    topic:
+      input_topic: /ouster/points_raw
+      output_topic: /ouster/points
+      qos_depth: 10
+
+faults:
+  # Replaces a portion of point returns with short-range points along the same
+  # ray, which approximates lidar returns from dust close to the sensor.
+  - id: ouster_dust_returns
+    injector_id: ouster_points
+    active_on_startup: false
+    start: 5.0
+    duration: 10.0
+    description: Replace some Ouster point returns with short-range dust-like returns.
+    config:
+      dust_return_probability: 0.35
+      dust_min_range: 0.2
+      dust_max_range: 1.5
+      dust_intensity_scale: 0.2
+
+assertions:
+  - id: ouster_dust_fault_activates
+    type: fault_event
+    fault_id: ouster_dust_returns
+    state: active
+    within: 6.0
+
+  - id: ouster_dust_fault_deactivates
+    type: fault_event
+    fault_id: ouster_dust_returns
+    state: inactive
+    within: 17.0
+
+  - id: ouster_points_output_stays_alive
+    type: topic_hz
+    topic: /ouster/points
+    message_type: sensor_msgs/msg/PointCloud2
+    min_hz: 2.0
+    window: 3.0
+    within: 8.0

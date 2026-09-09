@@ -231,6 +231,57 @@ Example:
     failure_message: injected enable motors failure
 ```
 
+## Point Cloud Faults
+
+Injector type: `point_cloud`
+
+Message type: `sensor_msgs/msg/PointCloud2`
+
+Point cloud faults are useful for 3D lidar streams. For an Ouster-style setup,
+publish the sensor output on `/ouster/points_raw`, then consume the injected
+output from `/ouster/points`.
+
+| Config Key | Description |
+| --- | --- |
+| `drop_probability` | Probability from `0.0` to `1.0` that a complete point cloud message is dropped. |
+| `delay_ms` | Delays forwarding by this many milliseconds. |
+| `point_dropout_probability` | Probability from `0.0` to `1.0` that each individual point is invalidated with `NaN` coordinates. |
+| `range_noise_stddev` | Standard deviation of Gaussian range noise applied along each point ray. |
+| `dust_return_probability` | Probability from `0.0` to `1.0` that each point is converted into a short-range dust return. |
+| `dust_min_range` | Minimum range, in metres, for generated dust returns. |
+| `dust_max_range` | Maximum range, in metres, for generated dust returns. |
+| `dust_intensity_scale` | Intensity multiplier applied only to points converted into dust returns. |
+| `intensity_scale` | Intensity multiplier applied to every point in the cloud. Use it for broad signal attenuation. |
+
+Dust returns and broad attenuation are separate effects. Use
+`dust_intensity_scale` when only the generated near dust returns should have
+lower intensity. Leave `intensity_scale` unset, or set it to `1.0`, when
+background points should retain their original intensity.
+
+Example:
+
+```yaml
+injectors:
+  - id: ouster_points
+    type: point_cloud
+    topic:
+      input_topic: /ouster/points_raw
+      output_topic: /ouster/points
+      qos_depth: 10
+
+faults:
+  - id: ouster_dust_returns
+    injector_id: ouster_points
+    active_on_startup: false
+    start: 5.0
+    duration: 10.0
+    config:
+      dust_return_probability: 0.35
+      dust_min_range: 0.2
+      dust_max_range: 1.5
+      dust_intensity_scale: 0.2
+```
+
 ## Runtime Updates
 
 Fault config values can be inspected and changed while the node is running:

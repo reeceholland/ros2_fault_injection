@@ -66,6 +66,14 @@ public:
     rclcpp::Node & node, const InjectorConfig & config) override;
 };
 
+class PointCloudFaultInjectorPlugin : public FaultInjectorPlugin
+{
+public:
+  std::string type() const override;
+  std::shared_ptr<FaultInjector> create(
+    rclcpp::Node & node, const InjectorConfig & config) override;
+};
+
 class TriggerServiceFaultInjectorPlugin : public FaultInjectorPlugin
 {
 public:
@@ -81,6 +89,7 @@ namespace ros2_fault_injection
 using core::ImuFaultInjectorPlugin;
 using core::JointStateFaultInjectorPlugin;
 using core::OdomFaultInjectorPlugin;
+using core::PointCloudFaultInjectorPlugin;
 using core::ScanFaultInjectorPlugin;
 using core::TfFaultInjectorPlugin;
 using core::TriggerServiceFaultInjectorPlugin;

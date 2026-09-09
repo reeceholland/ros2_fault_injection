@@ -43,6 +43,7 @@ It demonstrates how to add a custom injector type in a separate ROS 2 package us
 | `imu` | `sensor_msgs/msg/Imu` | `/sensors/imu_raw` | `/sensors/imu` |
 | `tf` | `tf2_msgs/msg/TFMessage` | `/tf_raw` | `/tf` |
 | `twist` | `geometry_msgs/msg/Twist` | `/cmd_vel_raw` | `/cmd_vel` |
+| `point_cloud` | `sensor_msgs/msg/PointCloud2` | `/ouster/points_raw` | `/ouster/points` |
 | `trigger_service` | `std_srvs/srv/Trigger` | `/enable_motors_raw` | `/enable_motors` |
 
 ## Fault Types
@@ -136,6 +137,29 @@ Twist faults are intended for velocity command paths such as `/cmd_vel`. A typic
 | `max_linear_x` | Clamp `linear.x` symmetrically to `[-max_linear_x, max_linear_x]`. |
 | `max_angular_z` | Clamp `angular.z` symmetrically to `[-max_angular_z, max_angular_z]`. |
 | `force_stop` | Publish a zero `Twist` command while active. |
+
+### Point Cloud
+
+Point cloud faults are intended for 3D lidar streams such as Ouster
+`sensor_msgs/msg/PointCloud2` output. A typical setup remaps the raw lidar
+publisher to `/ouster/points_raw`, then lets the injector publish the
+consumer-facing `/ouster/points` topic.
+
+| Key | Meaning |
+| --- | --- |
+| `point_dropout_probability` | Randomly replace individual point coordinates with `NaN`. Range: `0.0` to `1.0`. |
+| `range_noise_stddev` | Add Gaussian range noise along each point ray. |
+| `dust_return_probability` | Randomly convert points into short-range dust-like returns. Range: `0.0` to `1.0`. |
+| `dust_min_range` | Minimum range, in metres, for generated dust returns. |
+| `dust_max_range` | Maximum range, in metres, for generated dust returns. |
+| `dust_intensity_scale` | Intensity multiplier applied only to points converted into dust returns. |
+| `intensity_scale` | Intensity multiplier applied to every point in the cloud. Use this for broad signal attenuation, not dust-only dimming. |
+| `drop_probability` | Randomly drop complete point cloud messages. Range: `0.0` to `1.0`. |
+| `delay_ms` | Delay point cloud messages by this many milliseconds. |
+
+For dust testing, prefer `dust_intensity_scale` when only false/near dust
+returns should be dimmed. Leave `intensity_scale` unset, or set it to `1.0`, if
+the unaffected background points should keep their original intensity.
 
 ### Trigger Service
 
@@ -245,6 +269,17 @@ faults:
     active_on_startup: false
     config:
       force_stop: true
+
+  - id: ouster_dust_returns
+    injector_id: ouster_points
+    active_on_startup: false
+    start: 5.0
+    duration: 10.0
+    config:
+      dust_return_probability: 0.35
+      dust_min_range: 0.2
+      dust_max_range: 1.5
+      dust_intensity_scale: 0.2
 
 assertions:
   - id: odom_bias_activates

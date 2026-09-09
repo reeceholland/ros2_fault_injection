@@ -14,6 +14,7 @@
 #include "ros2_fault_injection/injectors/imu_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/joint_state_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/odom_fault_injector.hpp"
+#include "ros2_fault_injection/injectors/point_cloud_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/tf_fault_injector.hpp"
 #include "ros2_fault_injection/injectors/trigger_service_fault_injector.hpp"
@@ -88,6 +89,17 @@ std::shared_ptr<FaultInjector> TwistFaultInjectorPlugin::create(
   return std::make_shared<injectors::TwistFaultInjector>(node, config);
 }
 
+std::string PointCloudFaultInjectorPlugin::type() const
+{
+  return "point_cloud";
+}
+
+std::shared_ptr<FaultInjector> PointCloudFaultInjectorPlugin::create(
+  rclcpp::Node & node, const InjectorConfig & config)
+{
+  return std::make_shared<injectors::PointCloudFaultInjector>(node, config);
+}
+
 std::string TriggerServiceFaultInjectorPlugin::type() const
 {
   return "trigger_service";
@@ -118,6 +130,9 @@ PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::TwistFaultInjectorPlugin,
+  ros2_fault_injection::core::FaultInjectorPlugin)
+PLUGINLIB_EXPORT_CLASS(
+  ros2_fault_injection::core::PointCloudFaultInjectorPlugin,
   ros2_fault_injection::core::FaultInjectorPlugin)
 PLUGINLIB_EXPORT_CLASS(
   ros2_fault_injection::core::TriggerServiceFaultInjectorPlugin,

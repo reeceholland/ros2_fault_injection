@@ -14,6 +14,8 @@ scan
 joint_state
 imu
 tf
+twist
+point_cloud
 trigger_service
 ```
 
