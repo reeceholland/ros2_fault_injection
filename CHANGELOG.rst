@@ -2,6 +2,16 @@
 Changelog for package ros2_fault_injection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2026-09-10)
+------------------
+* Added pluginlib-based injector discovery.
+* Added Twist, PointCloud2, and service fault support.
+* Added PointCloud2 dust, dropout, range noise, and intensity fault configuration.
+* Added scenario assertions, scenario status publishing, and markdown report generation.
+* Added dynamic scenario reload and scenario inspection services.
+* Added RViz integration support for fault status, configuration, assertions, and reports.
+* Added Read the Docs documentation.
+
 0.1.0 (2026-05-24)
 ------------------
 * Added C++ fault injection framework.

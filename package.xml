@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>ros2_fault_injection</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>C++ ROS 2 framework for injecting controlled faults into topics, services, and transforms.</description>
   <maintainer email="reece.j.holland@gmail.com">Reece Holland</maintainer>
   <license>MIT</license>
