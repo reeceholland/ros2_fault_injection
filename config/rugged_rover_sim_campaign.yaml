@@ -1,0 +1,10 @@
+campaign:
+  name: rugged_rover_sim_bridge_session
+  base_scenario: rugged_rover_sim_faults.yaml
+  timeout: 3600.0
+  repeats: 1
+
+  variants:
+    - fault_id: cmd_vel_delay
+      key: delay_ms
+      values: ["250"]

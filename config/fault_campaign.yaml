@@ -1,6 +1,6 @@
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: omnisim_faults.yaml
   timeout: 100.0
   repeats: 3
 

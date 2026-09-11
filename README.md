@@ -666,3 +666,33 @@ Current tests cover scenario validation, scenario parsing, config schema, schedu
 - Keep shared state management in `FaultInjectorBase`.
 - Keep ROS service handling thin; put behavior in normal C++ helpers where possible.
 - Prefer adding new injector types behind the existing `FaultInjector` interface.
+
+
+## Campaign runner
+
+Run independent parameter sweeps with `fault_campaign_runner_node`:
+
+```bash
+ros2 run ros2_fault_injection fault_campaign_runner_node --ros-args \
+  -p campaign_file:=/absolute/path/to/fault_campaign.yaml \
+  -p report_file:=/tmp/campaign-report.md
+```
+
+Relative `base_scenario` paths resolve beside the campaign YAML. Each repeat
+runs every value of every variant separately, reloading the base scenario each
+time; this is not a Cartesian product. Other base faults retain their configured
+startup states. Each run ends when its assertions finish or its wall-clock timeout
+expires. `timeout_override` (seconds) overrides that per-run timeout; zero uses
+the YAML timeout. Failures are recorded and subsequent runs continue. Shutdown
+interrupts the campaign. Exit code 0 means all runs passed; failures or report
+write errors return 1. Reports summarize each value and its outcome.
+
+The runner creates its own injectors. Do not run a second injector on the same
+output topics. It does not reset the simulator between runs. Topic-rate assertions
+require external publishers, and simulation-clock scheduling requires `/clock`.
+
+`rugged_rover_sim_campaign.yaml` is a manual bridge-session example: its keepalive
+assertion intentionally waits for an external topic, so without that publisher
+it will run until timeout and report failure. It is not a passing smoke test.
+The rover must route raw odometry and scans into the listed inputs, and consume
+`/cmd_vel_faulted` downstream of the velocity injector.

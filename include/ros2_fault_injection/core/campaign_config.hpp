@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "ros2_fault_injection/config/scenario_config.hpp"
+
 namespace ros2_fault_injection::core
 {
 
@@ -42,10 +44,26 @@ struct CampaignConfig
   std::vector<CampaignVariant> variants;
 };
 
+/**
+ * @brief Apply one campaign value to a scenario fault config.
+ *
+ * @param scenario Scenario to update in memory.
+ * @param variant Campaign variant describing the fault and config key.
+ * @param value Config value to apply.
+ * @param error Human-readable error when the update fails.
+ * @return true when the matching fault was found and updated.
+ */
+bool apply_campaign_value(
+  config::ScenarioConfig & scenario,
+  const CampaignVariant & variant,
+  const std::string & value,
+  std::string & error);
+
 }  // namespace ros2_fault_injection::core
 
 namespace ros2_fault_injection
 {
+using core::apply_campaign_value;
 using core::CampaignConfig;
 using core::CampaignVariant;
 }  // namespace ros2_fault_injection
