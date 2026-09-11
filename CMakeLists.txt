@@ -54,6 +54,8 @@ rosidl_get_typesupport_target(cpp_typesupport_target
 )
 
 add_library(${PROJECT_NAME}_core
+  src/core/campaign_config.cpp
+  src/core/campaign_runner.cpp
   src/core/fault_injector_base.cpp
   src/core/report_creator.cpp
   src/injectors/odom_fault_injector.cpp
@@ -63,6 +65,7 @@ add_library(${PROJECT_NAME}_core
   src/injectors/twist_fault_injector.cpp
   src/injectors/point_cloud_fault_injector.cpp
   src/config/scenario_config.cpp
+  src/config/campaign_config_parser.cpp
   src/core/fault_scheduler.cpp
   src/core/fault_event_publisher.cpp
   src/config/scenario_validator.cpp
@@ -115,6 +118,10 @@ add_executable(fault_scenario_runner_node
   src/fault_scenario_runner_node.cpp
 )
 
+add_executable(fault_campaign_runner_node
+  src/fault_campaign_runner_node.cpp
+)
+
 target_link_libraries(fault_injector_node
   ${PROJECT_NAME}_core
 )
@@ -123,11 +130,19 @@ target_link_libraries(fault_scenario_runner_node
   ${PROJECT_NAME}_core
 )
 
+target_link_libraries(fault_campaign_runner_node
+  ${PROJECT_NAME}_core
+)
+
 ament_target_dependencies(fault_injector_node
   rclcpp
 )
 
 ament_target_dependencies(fault_scenario_runner_node
+  rclcpp
+)
+
+ament_target_dependencies(fault_campaign_runner_node
   rclcpp
 )
 
@@ -142,6 +157,7 @@ install(TARGETS
 install(TARGETS
   fault_injector_node
   fault_scenario_runner_node
+  fault_campaign_runner_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -222,6 +238,24 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_config_schema
     ${PROJECT_NAME}_core
   )
+
+  ament_add_gtest(test_campaign_runner test/core/test_campaign_runner.cpp)
+  target_link_libraries(test_campaign_runner ${PROJECT_NAME}_core)
+
+  ament_add_gtest(test_campaign_config
+    test/core/test_campaign_config.cpp
+  )
+  target_link_libraries(test_campaign_config
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_campaign_config_parser
+    test/config/test_campaign_config_parser.cpp
+  )
+  target_link_libraries(test_campaign_config_parser
+    ${PROJECT_NAME}_core
+  )
+
   ament_add_gtest(test_fault_scheduler
     test/core/test_fault_scheduler.cpp
   )
