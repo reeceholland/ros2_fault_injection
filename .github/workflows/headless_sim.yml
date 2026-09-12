@@ -1,0 +1,391 @@
+name: Headless Unity fault-injection test
+
+on:
+  workflow_dispatch:
+
+  # Enable this after the manual workflow is passing reliably.
+  #
+  # pull_request:
+  #   branches:
+  #     - main
+
+permissions:
+  contents: read
+
+env:
+  ROS_DISTRO: jazzy
+
+  # Current fault-injection checkout.
+  # This is deliberately NOT pinned.
+  FAULT_INJECTION_WS: ${{ github.workspace }}
+
+  # ------------------------------------------------------------
+  # PINNED EXTERNAL DEPENDENCIES
+  # ------------------------------------------------------------
+
+  # Replace OWNER if you have not already done so.
+  UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
+  UNITY_TEST_COMMIT: fe2a5bf2fb2f3910f94695750340051726605150
+
+  ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
+  ROVER_UNITY_SIMULATION_COMMIT: 05e2b543fa76d8b6f7cbabf928351bc50bc7ca99
+
+  # Replace this with the real simulator release URL.
+  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/TAG/CiRover-linux-x86_64.zip
+
+  # SHA-256 of the simulator archive.
+  SIMULATOR_SHA256: 0560cf9c80f167f9de180a6a8a2d3cc740c232d0ab65ac673087a2adfba1bcdc
+
+
+jobs:
+  headless-sim:
+    name: Headless simulator dropout test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+
+      # ============================================================
+      # 1. CHECK OUT THE CURRENT FAULT-INJECTION FRAMEWORK
+      # ============================================================
+
+      - name: Checkout fault-injection framework
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # runner.temp is not available in workflow-level env,
+      # so create the runner-specific paths once the job is running.
+      - name: Set CI paths
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "UNITY_TESTS_DIR=$RUNNER_TEMP/unity-tests" >> "$GITHUB_ENV"
+          echo "ROVER_WS=$RUNNER_TEMP/rover_ws" >> "$GITHUB_ENV"
+          echo "SIMULATOR_DIR=$RUNNER_TEMP/ci-player" >> "$GITHUB_ENV"
+          echo "CI_LOG_DIR=$RUNNER_TEMP/test-logs" >> "$GITHUB_ENV"
+          echo "CI_PLAYER=$RUNNER_TEMP/ci-player/CiRover.x86_64" >> "$GITHUB_ENV"
+
+      - name: Show framework revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Framework workspace: $FAULT_INJECTION_WS"
+          echo "Framework commit:"
+          git -C "$FAULT_INJECTION_WS" rev-parse HEAD
+
+          echo
+          echo "GitHub ref: $GITHUB_REF"
+          echo "GitHub SHA: $GITHUB_SHA"
+
+
+      # ============================================================
+      # 2. INSTALL ROS 2 JAZZY AND CI DEPENDENCIES
+      # ============================================================
+
+      - name: Set up ROS 2 Jazzy
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - name: Install CI dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            libarchive-tools \
+            python3-colcon-common-extensions \
+            python3-rosdep \
+            python3-vcstool
+
+          mkdir -p \
+            "$UNITY_TESTS_DIR" \
+            "$ROVER_WS/src" \
+            "$SIMULATOR_DIR" \
+            "$CI_LOG_DIR"
+
+
+      # ============================================================
+      # 3. CHECK OUT PINNED UNITY TEST SCRIPTS
+      # ============================================================
+
+      - name: Checkout pinned Unity test scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf "$UNITY_TESTS_DIR"
+
+          git clone \
+            --no-checkout \
+            "$UNITY_TEST_REPO" \
+            "$UNITY_TESTS_DIR"
+
+          git -C "$UNITY_TESTS_DIR" \
+            checkout --detach "$UNITY_TEST_COMMIT"
+
+          ACTUAL_COMMIT="$(
+            git -C "$UNITY_TESTS_DIR" rev-parse HEAD
+          )"
+
+          echo "Unity test repository:"
+          echo "  $UNITY_TEST_REPO"
+
+          echo "Pinned commit:"
+          echo "  $ACTUAL_COMMIT"
+
+          if [ "$ACTUAL_COMMIT" != "$UNITY_TEST_COMMIT" ]; then
+            echo "ERROR: Unity checkout does not match pinned commit"
+            exit 1
+          fi
+
+
+      # ============================================================
+      # 4. CHECK OUT AND BUILD PINNED ROVER ROS PACKAGES
+      # ============================================================
+
+      - name: Checkout pinned rover packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf "$ROVER_WS/src/rover"
+
+          git clone \
+            --no-checkout \
+            "$ROVER_REPO" \
+            "$ROVER_WS/src/rover"
+
+          git -C "$ROVER_WS/src/rover" \
+            checkout --detach "$ROVER_UNITY_SIMULATION_COMMIT"
+
+          ACTUAL_COMMIT="$(
+            git -C "$ROVER_WS/src/rover" rev-parse HEAD
+          )"
+
+          echo "Rover repository:"
+          echo "  $ROVER_REPO"
+
+          echo "Pinned unity-simulation commit:"
+          echo "  $ACTUAL_COMMIT"
+
+          if [ "$ACTUAL_COMMIT" != "$ROVER_UNITY_SIMULATION_COMMIT" ]; then
+            echo "ERROR: Rover checkout does not match pinned commit"
+            exit 1
+          fi
+
+
+      - name: Install rover dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/ros/jazzy/setup.bash
+
+          rosdep install \
+            --from-paths "$ROVER_WS/src" \
+            --ignore-src \
+            --rosdistro jazzy \
+            --as-root apt:false \
+            -r \
+            -y
+
+
+      - name: Build rover workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/ros/jazzy/setup.bash
+
+          cd "$ROVER_WS"
+
+          colcon build \
+            --symlink-install \
+            --event-handlers console_direct+
+
+
+      # ============================================================
+      # 5. BUILD CURRENT FAULT-INJECTION CHECKOUT
+      # ============================================================
+
+      - name: Install fault-injection dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/ros/jazzy/setup.bash
+          source "$ROVER_WS/install/setup.bash"
+
+          cd "$FAULT_INJECTION_WS"
+
+          rosdep install \
+            --from-paths . \
+            --ignore-src \
+            --rosdistro jazzy \
+            --as-root apt:false \
+            -r \
+            -y
+
+
+      - name: Build fault-injection workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/ros/jazzy/setup.bash
+          source "$ROVER_WS/install/setup.bash"
+
+          cd "$FAULT_INJECTION_WS"
+
+          colcon build \
+            --symlink-install \
+            --event-handlers console_direct+
+
+
+      # ============================================================
+      # 6. DOWNLOAD AND VERIFY PINNED SIMULATOR
+      # ============================================================
+
+      - name: Download simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
+
+          echo "Downloading simulator:"
+          echo "  $SIMULATOR_URL"
+
+          curl \
+            --fail \
+            --location \
+            --retry 3 \
+            --retry-delay 2 \
+            --output "$ARCHIVE" \
+            "$SIMULATOR_URL"
+
+          echo
+          echo "Simulator archive downloaded:"
+          ls -lh "$ARCHIVE"
+
+
+      - name: Verify simulator checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
+
+          echo "$SIMULATOR_SHA256  $ARCHIVE" \
+            | sha256sum --check -
+
+
+      - name: Extract simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
+
+          rm -rf "$SIMULATOR_DIR"
+          mkdir -p "$SIMULATOR_DIR"
+
+          bsdtar \
+            -xf "$ARCHIVE" \
+            -C "$SIMULATOR_DIR"
+
+          if [ ! -f "$CI_PLAYER" ]; then
+            echo "ERROR: Simulator executable was not found at:"
+            echo "  $CI_PLAYER"
+
+            echo
+            echo "Extracted simulator contents:"
+
+            find "$SIMULATOR_DIR" \
+              -maxdepth 4 \
+              -type f \
+              -print
+
+            exit 1
+          fi
+
+          chmod +x "$CI_PLAYER"
+
+          echo "Simulator executable:"
+          ls -lh "$CI_PLAYER"
+
+
+      # ============================================================
+      # 7. RUN HEADLESS DROPOUT TEST
+      # ============================================================
+
+      - name: Run headless dropout test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/ros/jazzy/setup.bash
+          source "$ROVER_WS/install/setup.bash"
+          source "$FAULT_INJECTION_WS/install/setup.bash"
+
+          mkdir -p "$CI_LOG_DIR"
+
+          echo
+          echo "CI configuration"
+          echo "================"
+          echo "CI_PLAYER=$CI_PLAYER"
+          echo "ROVER_WS=$ROVER_WS"
+          echo "FAULT_INJECTION_WS=$FAULT_INJECTION_WS"
+          echo "CI_LOG_DIR=$CI_LOG_DIR"
+          echo
+
+          TEST_SCRIPT="$UNITY_TESTS_DIR/tools/ci/run_headless_dropout.sh"
+
+          if [ ! -f "$TEST_SCRIPT" ]; then
+            echo "ERROR: Test script not found:"
+            echo "  $TEST_SCRIPT"
+
+            echo
+            echo "Available CI files:"
+
+            find "$UNITY_TESTS_DIR/tools/ci" \
+              -maxdepth 2 \
+              -type f \
+              -print || true
+
+            exit 1
+          fi
+
+          chmod +x "$TEST_SCRIPT"
+
+          "$TEST_SCRIPT"
+
+
+      # ============================================================
+      # 8. ALWAYS UPLOAD LOGS
+      # ============================================================
+
+      - name: Upload CI logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: headless-sim-logs-${{ github.run_id }}-${{ github.run_attempt }}
+
+          if-no-files-found: warn
+          retention-days: 14
+
+          path: |
+            ${{ runner.temp }}/test-logs
+            ${{ runner.temp }}/rover_ws/log
+            ${{ github.workspace }}/log

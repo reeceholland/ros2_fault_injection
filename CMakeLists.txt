@@ -23,9 +23,9 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(Doxygen)
-find_package(launch_testing_ament_cmake REQUIRED)
 
 if(BUILD_TESTING)
+  find_package(launch_testing_ament_cmake REQUIRED)
   find_package(ament_cmake_copyright REQUIRED)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_cmake_uncrustify REQUIRED)
@@ -212,6 +212,9 @@ add_custom_target(generate_doxygen_api
 )
 
 if(BUILD_TESTING)
+  ament_add_gtest(test_sensor_forwarding test/injectors/test_sensor_forwarding.cpp)
+  target_link_libraries(test_sensor_forwarding ${PROJECT_NAME}_core)
+
   ament_add_gtest(test_scenario_validator
     test/config/test_scenario_validator.cpp
     test/config/test_scenario_config.cpp
