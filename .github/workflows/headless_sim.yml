@@ -441,6 +441,7 @@ jobs:
               -ex 'set confirm off' \
               -ex 'set debuginfod enabled off' \
               -ex 'handle SIGPIPE nostop noprint pass' \
+              -ex 'handle SIGXCPU SIG33 SIG35 SIG36 SIG37 SIG38 SIGPWR nostop noprint pass' \
               -ex 'handle SIGSEGV stop print nopass' \
               -ex 'run' \
               -ex 'thread apply all bt full' \
