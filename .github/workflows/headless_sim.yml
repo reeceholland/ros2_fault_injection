@@ -108,6 +108,7 @@ jobs:
             ca-certificates \
             curl \
             git \
+            gdb \
             libarchive-tools \
             iproute2 \
             util-linux
@@ -372,6 +373,7 @@ jobs:
       # ============================================================
 
       - name: Run headless dropout test
+        id: dropout
         timeout-minutes: 5
         shell: bash
         run: |
@@ -417,6 +419,41 @@ jobs:
       # ============================================================
       # 8. ALWAYS UPLOAD LOGS
       # ============================================================
+
+      # Reproduce startup under GDB only after the normal test fails.
+      # Keep the original test failure and logs intact.
+      - name: Capture Unity native backtrace
+        if: ${{ failure() && steps.dropout.outcome == 'failure' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -eo pipefail
+          mkdir -p "$CI_LOG_DIR"
+          source /opt/ros/jazzy/setup.bash
+          source "$ROVER_WS/install/setup.bash"
+          source "$FAULT_INJECTION_WS/install/setup.bash"
+
+          # A healthy player keeps running; bound this diagnostic retry.
+          status=0
+          timeout --signal=TERM --kill-after=10s 60s \
+            gdb --batch --quiet \
+              -ex 'set pagination off' \
+              -ex 'set confirm off' \
+              -ex 'set debuginfod enabled off' \
+              -ex 'handle SIGPIPE nostop noprint pass' \
+              -ex 'handle SIGSEGV stop print nopass' \
+              -ex 'run' \
+              -ex 'thread apply all bt full' \
+              -ex 'info sharedlibrary' \
+              -ex 'info registers' \
+              -ex 'x/16i $pc-16' \
+              -ex 'info proc mappings' \
+              --args "$CI_PLAYER" -batchmode -nographics \
+                -logFile "$CI_LOG_DIR/unity-gdb.log" \
+            > "$CI_LOG_DIR/unity-backtrace.log" 2>&1 || status=$?
+          printf '\nDiagnostic exit status: %s (124 means timeout)\n' "$status" \
+            >> "$CI_LOG_DIR/unity-backtrace.log"
+          cat "$CI_LOG_DIR/unity-backtrace.log"
 
       - name: Upload CI logs
         if: always()
