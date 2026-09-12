@@ -24,7 +24,7 @@ env:
   # ------------------------------------------------------------
 
   # Replace OWNER if you have not already done so.
-  UNITY_TEST_REPO: https://github.com/OWNER/unity-ros2-rover-sim.git
+  UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
   UNITY_TEST_COMMIT: fe2a5bf2fb2f3910f94695750340051726605150
 
   ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
