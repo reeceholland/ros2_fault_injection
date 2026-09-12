@@ -3,7 +3,7 @@ name: Headless Unity fault-injection test
 on:
   workflow_dispatch:
 
-  # Enable this after the manual workflow is passing reliably.
+  # Enable after the manual workflow is passing reliably.
   #
   # pull_request:
   #   branches:
@@ -16,24 +16,21 @@ env:
   ROS_DISTRO: jazzy
 
   # Current fault-injection checkout.
-  # This is deliberately NOT pinned.
+  # Deliberately NOT pinned.
   FAULT_INJECTION_WS: ${{ github.workspace }}
 
   # ------------------------------------------------------------
   # PINNED EXTERNAL DEPENDENCIES
   # ------------------------------------------------------------
 
-  # Replace OWNER if you have not already done so.
   UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
   UNITY_TEST_COMMIT: fe2a5bf2fb2f3910f94695750340051726605150
 
   ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
   ROVER_UNITY_SIMULATION_COMMIT: 05e2b543fa76d8b6f7cbabf928351bc50bc7ca99
 
-  # Replace this with the real simulator release URL.
-  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/TAG/CiRover-linux-x86_64.zip
+  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/CiRover-linux-x86_64.zip
 
-  # SHA-256 of the simulator archive.
   SIMULATOR_SHA256: 0560cf9c80f167f9de180a6a8a2d3cc740c232d0ab65ac673087a2adfba1bcdc
 
 
@@ -46,7 +43,7 @@ jobs:
     steps:
 
       # ============================================================
-      # 1. CHECK OUT THE CURRENT FAULT-INJECTION FRAMEWORK
+      # 1. CHECK OUT CURRENT FAULT-INJECTION FRAMEWORK
       # ============================================================
 
       - name: Checkout fault-injection framework
@@ -55,12 +52,15 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # runner.temp is not available in workflow-level env,
-      # so create the runner-specific paths once the job is running.
+
+      # ============================================================
+      # SET RUNNER-SPECIFIC PATHS
+      # ============================================================
+
       - name: Set CI paths
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           echo "UNITY_TESTS_DIR=$RUNNER_TEMP/unity-tests" >> "$GITHUB_ENV"
           echo "ROVER_WS=$RUNNER_TEMP/rover_ws" >> "$GITHUB_ENV"
@@ -68,10 +68,11 @@ jobs:
           echo "CI_LOG_DIR=$RUNNER_TEMP/test-logs" >> "$GITHUB_ENV"
           echo "CI_PLAYER=$RUNNER_TEMP/ci-player/CiRover.x86_64" >> "$GITHUB_ENV"
 
+
       - name: Show framework revision
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           echo "Framework workspace: $FAULT_INJECTION_WS"
           echo "Framework commit:"
@@ -83,30 +84,33 @@ jobs:
 
 
       # ============================================================
-      # 2. INSTALL ROS 2 JAZZY AND CI DEPENDENCIES
+      # 2. SET UP ROS TOOLING
       # ============================================================
 
-      - name: Set up ROS 2 Jazzy
+      # This configures the ROS repositories and installs CI tooling
+      # such as rosdep, colcon and vcs without installing ROS Desktop.
+      - name: Set up ROS tooling
         uses: ros-tooling/setup-ros@v0.7
-        with:
-          required-ros-distributions: jazzy
 
-      - name: Install CI dependencies
+
+      # ============================================================
+      # INSTALL MINIMAL ROS 2 JAZZY
+      # ============================================================
+
+      - name: Install minimal ROS 2 Jazzy
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           sudo apt-get update
 
           sudo apt-get install -y \
+            ros-jazzy-ros-base \
             build-essential \
             ca-certificates \
             curl \
             git \
-            libarchive-tools \
-            python3-colcon-common-extensions \
-            python3-rosdep \
-            python3-vcstool
+            libarchive-tools
 
           mkdir -p \
             "$UNITY_TESTS_DIR" \
@@ -122,7 +126,7 @@ jobs:
       - name: Checkout pinned Unity test scripts
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           rm -rf "$UNITY_TESTS_DIR"
 
@@ -151,13 +155,13 @@ jobs:
 
 
       # ============================================================
-      # 4. CHECK OUT AND BUILD PINNED ROVER ROS PACKAGES
+      # 4. CHECK OUT PINNED ROVER PACKAGES
       # ============================================================
 
       - name: Checkout pinned rover packages
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           rm -rf "$ROVER_WS/src/rover"
 
@@ -185,10 +189,14 @@ jobs:
           fi
 
 
+      # ============================================================
+      # INSTALL ONLY THE ROVER'S DECLARED DEPENDENCIES
+      # ============================================================
+
       - name: Install rover dependencies
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           source /opt/ros/jazzy/setup.bash
 
@@ -196,15 +204,18 @@ jobs:
             --from-paths "$ROVER_WS/src" \
             --ignore-src \
             --rosdistro jazzy \
-            --as-root apt:false \
             -r \
             -y
 
 
+      # ============================================================
+      # BUILD ROVER WORKSPACE
+      # ============================================================
+
       - name: Build rover workspace
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           source /opt/ros/jazzy/setup.bash
 
@@ -216,13 +227,13 @@ jobs:
 
 
       # ============================================================
-      # 5. BUILD CURRENT FAULT-INJECTION CHECKOUT
+      # 5. INSTALL FAULT-INJECTION DEPENDENCIES
       # ============================================================
 
       - name: Install fault-injection dependencies
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           source /opt/ros/jazzy/setup.bash
           source "$ROVER_WS/install/setup.bash"
@@ -233,15 +244,18 @@ jobs:
             --from-paths . \
             --ignore-src \
             --rosdistro jazzy \
-            --as-root apt:false \
             -r \
             -y
 
 
+      # ============================================================
+      # BUILD CURRENT FAULT-INJECTION WORKSPACE
+      # ============================================================
+
       - name: Build fault-injection workspace
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           source /opt/ros/jazzy/setup.bash
           source "$ROVER_WS/install/setup.bash"
@@ -254,13 +268,13 @@ jobs:
 
 
       # ============================================================
-      # 6. DOWNLOAD AND VERIFY PINNED SIMULATOR
+      # 6. DOWNLOAD PINNED SIMULATOR ARCHIVE
       # ============================================================
 
       - name: Download simulator
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
 
@@ -280,10 +294,14 @@ jobs:
           ls -lh "$ARCHIVE"
 
 
+      # ============================================================
+      # VERIFY SIMULATOR ARCHIVE
+      # ============================================================
+
       - name: Verify simulator checksum
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
 
@@ -291,10 +309,14 @@ jobs:
             | sha256sum --check -
 
 
+      # ============================================================
+      # EXTRACT SIMULATOR
+      # ============================================================
+
       - name: Extract simulator
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
 
@@ -322,6 +344,7 @@ jobs:
 
           chmod +x "$CI_PLAYER"
 
+          echo
           echo "Simulator executable:"
           ls -lh "$CI_PLAYER"
 
@@ -333,7 +356,7 @@ jobs:
       - name: Run headless dropout test
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           source /opt/ros/jazzy/setup.bash
           source "$ROVER_WS/install/setup.bash"
@@ -381,7 +404,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: headless-sim-logs-${{ github.run_id }}-${{ github.run_attempt }}
-
           if-no-files-found: warn
           retention-days: 14
 
