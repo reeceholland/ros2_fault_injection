@@ -109,6 +109,8 @@ jobs:
             curl \
             git \
             gdb \
+            xvfb \
+            xauth \
             libarchive-tools \
             iproute2 \
             util-linux
@@ -413,7 +415,8 @@ jobs:
 
           chmod +x "$TEST_SCRIPT"
 
-          timeout --signal=TERM --kill-after=15s 180s "$TEST_SCRIPT"
+          # Unity still queries the window backend with -nographics.
+          xvfb-run -a timeout --signal=TERM --kill-after=15s 180s "$TEST_SCRIPT"
 
 
       # ============================================================
@@ -435,7 +438,7 @@ jobs:
 
           # A healthy player keeps running; bound this diagnostic retry.
           status=0
-          timeout --signal=TERM --kill-after=10s 60s \
+          xvfb-run -a timeout --signal=TERM --kill-after=10s 60s \
             gdb --batch --quiet \
               -ex 'set pagination off' \
               -ex 'set confirm off' \
