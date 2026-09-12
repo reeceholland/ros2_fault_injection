@@ -3,11 +3,6 @@ name: Headless Unity fault-injection test
 on:
   workflow_dispatch:
 
-  # Enable after the manual workflow is passing reliably.
-  #
-  # pull_request:
-  #   branches:
-  #     - main
 
 permissions:
   contents: read
@@ -29,9 +24,12 @@ env:
   ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
   ROVER_UNITY_SIMULATION_COMMIT: 05e2b543fa76d8b6f7cbabf928351bc50bc7ca99
 
-  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/CiRover-linux-x86_64.zip
+  ROS_TCP_ENDPOINT_REPO: https://github.com/Unity-Technologies/ROS-TCP-Endpoint.git
+  ROS_TCP_ENDPOINT_COMMIT: 54c1a64b6d5ef6ffa0a0431570bb74329b79b15b
 
-  SIMULATOR_SHA256: 0560cf9c80f167f9de180a6a8a2d3cc740c232d0ab65ac673087a2adfba1bcdc
+  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/ci-rover-linux-v0.1.0.tar.gz
+
+  SIMULATOR_SHA256: 587ef502d1b419b6bfc80c832b74f4f99daee99fdf8526b8959e9cd702549630
 
 
 jobs:
@@ -110,7 +108,9 @@ jobs:
             ca-certificates \
             curl \
             git \
-            libarchive-tools
+            libarchive-tools \
+            iproute2 \
+            util-linux
 
           mkdir -p \
             "$UNITY_TESTS_DIR" \
@@ -192,6 +192,24 @@ jobs:
       # ============================================================
       # INSTALL ONLY THE ROVER'S DECLARED DEPENDENCIES
       # ============================================================
+
+      # unity_sim.launch.py requires this separate source package.
+      - name: Checkout pinned ROS TCP endpoint
+        shell: bash
+        run: |
+          set -eo pipefail
+          git clone --no-checkout "$ROS_TCP_ENDPOINT_REPO" "$ROVER_WS/src/ROS-TCP-Endpoint"
+          git -C "$ROVER_WS/src/ROS-TCP-Endpoint" checkout --detach "$ROS_TCP_ENDPOINT_COMMIT"
+          test "$(git -C "$ROVER_WS/src/ROS-TCP-Endpoint" rev-parse HEAD)" = "$ROS_TCP_ENDPOINT_COMMIT"
+
+      - name: Initialize rosdep database
+        shell: bash
+        run: |
+          set -eo pipefail
+          if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+            sudo rosdep init
+          fi
+          rosdep update --rosdistro "$ROS_DISTRO"
 
       - name: Install rover dependencies
         shell: bash
@@ -354,6 +372,7 @@ jobs:
       # ============================================================
 
       - name: Run headless dropout test
+        timeout-minutes: 5
         shell: bash
         run: |
           set -eo pipefail
@@ -392,7 +411,7 @@ jobs:
 
           chmod +x "$TEST_SCRIPT"
 
-          "$TEST_SCRIPT"
+          timeout --signal=TERM --kill-after=15s 180s "$TEST_SCRIPT"
 
 
       # ============================================================
