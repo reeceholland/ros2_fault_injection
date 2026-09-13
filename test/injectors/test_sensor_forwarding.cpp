@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <thread>
+#include <vector>
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 #include "ros2_fault_injection/injectors/scan_fault_injector.hpp"
@@ -43,7 +44,7 @@ public:
     injector = std::make_unique<Injector>(*node, config);
     pub = node->create_publisher<Message>(topic.input_topic, 10);
     sub = node->create_subscription<Message>(topic.output_topic, 10,
-        [this](typename Message::SharedPtr msg) {received = *msg;});
+        [this](typename Message::SharedPtr msg) {received = *msg; history.push_back(*msg);});
     const auto deadline = std::chrono::steady_clock::now() + 3s;
     while ((pub->get_subscription_count() == 0 || sub->get_publisher_count() == 0) &&
       std::chrono::steady_clock::now() < deadline)
@@ -79,6 +80,7 @@ public:
   typename rclcpp::Publisher<Message>::SharedPtr pub;
   typename rclcpp::Subscription<Message>::SharedPtr sub;
   std::optional<Message> received;
+  std::vector<Message> history;
 };
 
 sensor_msgs::msg::LaserScan scan()
@@ -255,4 +257,67 @@ TEST_F(SensorForwarding, JointBiasPreservesNamesPositionsEffortsAndHandlesEmptyV
   output = stream.send(input);
   ASSERT_TRUE(output.has_value());
   EXPECT_EQ(*output, input);
+}
+
+// Distinct stamps distinguish recovered messages from stale queued messages.
+// Keep spinning after recovery to catch delayed replay as well as the first output.
+template<class Message, class Injector>
+void check_repeated_dropout_recovery(Message input)
+{
+  Stream<Message, Injector> stream;
+  ASSERT_GT(stream.pub->get_subscription_count(), 0u);
+  ASSERT_GT(stream.sub->get_publisher_count(), 0u);
+  stream.fault("drop", "drop_probability", "1.0");
+
+  for (int cycle = 0; cycle < 3; ++cycle) {
+    SCOPED_TRACE(cycle);
+    input.header.stamp.sec = cycle * 10 + 1;
+    const auto baseline = stream.send(input);
+    ASSERT_TRUE(baseline.has_value());
+    EXPECT_EQ(*baseline, input);
+
+    stream.injector->activate_fault("drop");
+    const auto before_drop = stream.history.size();
+    for (int message = 0; message < 3; ++message) {
+      input.header.stamp.sec = cycle * 10 + 2 + message;
+      EXPECT_FALSE(stream.send(input, 100ms).has_value());
+    }
+    EXPECT_EQ(stream.history.size(), before_drop);
+
+    stream.injector->deactivate_fault("drop");
+    const auto quiet_deadline = std::chrono::steady_clock::now() + 150ms;
+    while (std::chrono::steady_clock::now() < quiet_deadline) {
+      rclcpp::spin_some(stream.node);
+      std::this_thread::sleep_for(5ms);
+    }
+    // Deactivation itself must not flush the dropped messages.
+    EXPECT_EQ(stream.history.size(), before_drop);
+
+    input.header.stamp.sec = cycle * 10 + 5;
+    const auto recovered = stream.send(input);
+    ASSERT_TRUE(recovered.has_value());
+    EXPECT_EQ(*recovered, input);
+    const auto recovery_deadline = std::chrono::steady_clock::now() + 150ms;
+    while (std::chrono::steady_clock::now() < recovery_deadline) {
+      rclcpp::spin_some(stream.node);
+      std::this_thread::sleep_for(5ms);
+    }
+    ASSERT_EQ(stream.history.size(), before_drop + 1);
+    EXPECT_EQ(stream.history.back(), input);
+  }
+}
+
+TEST_F(SensorForwarding, ScanRepeatedRecoveryDoesNotReplayDroppedMessages)
+{
+  check_repeated_dropout_recovery<sensor_msgs::msg::LaserScan, ScanFaultInjector>(scan());
+}
+
+TEST_F(SensorForwarding, ImuRepeatedRecoveryDoesNotReplayDroppedMessages)
+{
+  check_repeated_dropout_recovery<sensor_msgs::msg::Imu, ImuFaultInjector>(imu());
+}
+
+TEST_F(SensorForwarding, JointStateRepeatedRecoveryDoesNotReplayDroppedMessages)
+{
+  check_repeated_dropout_recovery<sensor_msgs::msg::JointState, JointStateFaultInjector>(joints());
 }
