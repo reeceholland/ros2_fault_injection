@@ -1,3 +1,8 @@
+# Plugin-only example scenario for battery fault injection.
+#
+# The battery_state injector type is provided by the external
+# ros2_fault_injection_example_plugins package, not by this core package:
+# https://github.com/reeceholland/ros2_fault_injection_example_plugins
 injectors:
   - id: battery
     type: battery_state

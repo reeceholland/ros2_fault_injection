@@ -1,6 +1,6 @@
 campaign:
   name: rugged_rover_sim_bridge_session
-  base_scenario: rugged_rover_sim_faults.yaml
+  base_scenario: ../integrations/rugged_rover_sim_faults.yaml
   timeout: 3600.0
   repeats: 1
 

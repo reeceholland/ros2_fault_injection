@@ -674,7 +674,7 @@ Run independent parameter sweeps with `fault_campaign_runner_node`:
 
 ```bash
 ros2 run ros2_fault_injection fault_campaign_runner_node --ros-args \
-  -p campaign_file:=/absolute/path/to/fault_campaign.yaml \
+  -p campaign_file:=/absolute/path/to/config/campaigns/fault_campaign.yaml \
   -p report_file:=/tmp/campaign-report.md
 ```
 
@@ -691,7 +691,11 @@ The runner creates its own injectors. Do not run a second injector on the same
 output topics. It does not reset the simulator between runs. Topic-rate assertions
 require external publishers, and simulation-clock scheduling requires `/clock`.
 
-`rugged_rover_sim_campaign.yaml` is a manual bridge-session example: its keepalive
+Campaign examples live under `config/campaigns/` because they are inputs to
+`fault_campaign_runner_node`, not directly launchable scenario files. Integration
+scenarios for simulator- or robot-specific setups live under `config/integrations/`.
+
+`config/campaigns/rugged_rover_sim_campaign.yaml` is a manual bridge-session example: its keepalive
 assertion intentionally waits for an external topic, so without that publisher
 it will run until timeout and report failure. It is not a passing smoke test.
 The rover must route raw odometry and scans into the listed inputs, and consume

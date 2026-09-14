@@ -9,6 +9,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -32,7 +33,7 @@ std::string valid_campaign_yaml()
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   timeout: 100.0
   repeats: 3
 
@@ -41,6 +42,11 @@ campaign:
       key: delay_ms
       values: ["0", "100", "250", "500", "1000"]
 )";
+}
+
+std::string campaign_config_path(const std::string & filename)
+{
+  return std::string(ROS2_FAULT_INJECTION_SOURCE_DIR) + "/config/campaigns/" + filename;
 }
 
 }  // namespace
@@ -52,7 +58,7 @@ TEST(CampaignConfigParser, ParsesValidCampaign)
   const auto campaign = ros2_fault_injection::config::load_campaign_config(path);
 
   EXPECT_EQ(campaign.name, "cmd_vel_delay_sweep");
-  EXPECT_EQ(campaign.base_scenario, "config/omnisim_faults.yaml");
+  EXPECT_EQ(campaign.base_scenario, "config/integrations/omnisim_faults.yaml");
   EXPECT_DOUBLE_EQ(campaign.timeout, 100.0);
   EXPECT_EQ(campaign.repeats, 3);
 
@@ -102,7 +108,7 @@ TEST(CampaignConfigParser, RejectsNonPositiveRepeats)
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   repeats: 0
   variants:
     - fault_id: cmd_vel_delay
@@ -122,7 +128,7 @@ TEST(CampaignConfigParser, RejectsEmptyVariants)
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   variants: []
 )");
 
@@ -138,7 +144,7 @@ TEST(CampaignConfigParser, RejectsVariantWithoutFaultId)
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   variants:
     - key: delay_ms
       values: ["100"]
@@ -156,7 +162,7 @@ TEST(CampaignConfigParser, RejectsVariantWithoutKey)
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   variants:
     - fault_id: cmd_vel_delay
       values: ["100"]
@@ -174,7 +180,7 @@ TEST(CampaignConfigParser, RejectsVariantWithoutValues)
     R"(
 campaign:
   name: cmd_vel_delay_sweep
-  base_scenario: config/omnisim_faults.yaml
+  base_scenario: config/integrations/omnisim_faults.yaml
   variants:
     - fault_id: cmd_vel_delay
       key: delay_ms
@@ -183,4 +189,25 @@ campaign:
   EXPECT_THROW(
     ros2_fault_injection::config::load_campaign_config(path),
     std::runtime_error);
+}
+
+TEST(CampaignConfigParser, ShippedCampaignConfigsParse)
+{
+  const std::vector<std::string> files = {
+    "fault_campaign.yaml",
+    "rugged_rover_sim_campaign.yaml",
+  };
+
+  for (const auto & file : files) {
+    SCOPED_TRACE(file);
+
+    const auto campaign =
+      ros2_fault_injection::config::load_campaign_config(campaign_config_path(file));
+
+    EXPECT_FALSE(campaign.name.empty());
+    EXPECT_FALSE(campaign.base_scenario.empty());
+    EXPECT_GT(campaign.timeout, 0.0);
+    EXPECT_GT(campaign.repeats, 0);
+    EXPECT_FALSE(campaign.variants.empty());
+  }
 }
