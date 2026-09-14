@@ -7,6 +7,7 @@
 #include "ros2_fault_injection/core/fault_controller.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <string>
 #include <utility>
@@ -34,6 +35,43 @@ FaultController::FaultController(
   create_injectors();
   register_faults();
   schedule_faults();
+  output_conflict_timer_ = node_.create_wall_timer(
+    std::chrono::seconds(1), [this]() {check_output_conflicts();});
+}
+
+void FaultController::check_output_conflicts()
+{
+  std::set<std::string> current;
+  for (const auto & config : scenario_.injectors) {
+    if (!config.topic || config.topic->output_topic.empty()) {
+      continue;
+    }
+    const auto topic = node_.get_node_topics_interface()->resolve_topic_name(
+      config.topic->output_topic);
+    const auto publishers = node_.get_publishers_info_by_topic(topic);
+    if (publishers.size() <= 1) {
+      continue;
+    }
+    current.insert(topic);
+    if (conflicting_outputs_.count(topic)) {
+      continue;
+    }
+    std::ostringstream names;
+    for (const auto & publisher : publishers) {
+      const auto ns = publisher.node_namespace();
+      names << (ns == "/" ? "/" : ns + "/") << publisher.node_name() << " ";
+    }
+    RCLCPP_WARN(node_.get_logger(),
+      "Output topic conflict on %s: %zu publishers [%s]. "
+      "Another publisher may bypass injected faults; check for duplicate instances.",
+      topic.c_str(), publishers.size(), names.str().c_str());
+  }
+  for (const auto & topic : conflicting_outputs_) {
+    if (!current.count(topic)) {
+      RCLCPP_INFO(node_.get_logger(), "Output topic conflict cleared on %s", topic.c_str());
+    }
+  }
+  conflicting_outputs_ = std::move(current);
 }
 
 const InjectorMap & FaultController::injectors() const

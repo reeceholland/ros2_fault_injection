@@ -381,6 +381,8 @@ if(BUILD_TESTING)
     ENV ROS2_FAULT_INJECTION_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+  add_launch_test(test/launch/test_output_conflicts_launch.py TIMEOUT 60)
+
   ament_uncrustify(
     include
     src
