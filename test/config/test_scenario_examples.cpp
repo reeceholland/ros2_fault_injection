@@ -30,9 +30,31 @@ TEST(ScenarioExamples, ShippedExampleConfigsParseAndValidate) {
     "scan_faults.yaml",
     "imu_faults.yaml",
     "motor_feedback_faults.yaml",
+    "twist_faults.yaml",
+    "ouster_dust_faults.yaml",
     "trigger_service_faults.yaml",
     "tf_faults.yaml",
     "multi_injector_faults.yaml",
+  };
+
+  for (const auto & file : files) {
+    SCOPED_TRACE(file);
+
+    const auto scenario = load_scenario_config(config_path(file));
+    const auto result = validate_scenario(scenario);
+
+    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.errors.empty());
+    EXPECT_TRUE(result.warnings.empty());
+  }
+}
+
+
+TEST(ScenarioExamples, IntegrationConfigsParseAndValidate)
+{
+  const std::vector<std::string> files = {
+    "integrations/omnisim_faults.yaml",
+    "integrations/rugged_rover_sim_faults.yaml",
   };
 
   for (const auto & file : files) {

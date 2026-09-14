@@ -255,6 +255,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_campaign_config_parser
     test/config/test_campaign_config_parser.cpp
   )
+  target_compile_definitions(test_campaign_config_parser
+    PRIVATE
+      ROS2_FAULT_INJECTION_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+  )
   target_link_libraries(test_campaign_config_parser
     ${PROJECT_NAME}_core
   )
