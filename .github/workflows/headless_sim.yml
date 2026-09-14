@@ -27,7 +27,6 @@ env:
   ROS_TCP_ENDPOINT_COMMIT: 54c1a64b6d5ef6ffa0a0431570bb74329b79b15b
 
   SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/ci-rover-linux-v0.1.0.tar.gz
-
   SIMULATOR_SHA256: 587ef502d1b419b6bfc80c832b74f4f99daee99fdf8526b8959e9cd702549630
 
 
@@ -35,7 +34,6 @@ jobs:
   headless-sim:
     name: Headless simulator dropout test
 
-    # This job now runs on the Proxmox Ubuntu build server.
     runs-on: [self-hosted, linux, x64, ros2-jazzy]
 
     timeout-minutes: 45
@@ -87,8 +85,6 @@ jobs:
       # 3. VERIFY SELF-HOSTED RUNNER ENVIRONMENT
       # ============================================================
 
-      # ROS 2 Jazzy and the build/headless packages are installed
-      # permanently on the Proxmox build-server VM.
       - name: Verify build server environment
         shell: bash
         run: |
@@ -96,7 +92,9 @@ jobs:
 
           source /opt/ros/jazzy/setup.bash
 
-          echo "Runner:"
+          echo "Runner"
+          echo "======"
+          echo "Name: $RUNNER_NAME"
           uname -a
 
           echo
@@ -106,6 +104,10 @@ jobs:
           echo
           echo "ROS 2:"
           ros2 --help >/dev/null
+
+          echo
+          echo "ROS bag:"
+          ros2 bag --help >/dev/null
 
           echo
           echo "colcon:"
@@ -224,7 +226,6 @@ jobs:
       # 7. CHECK OUT PINNED ROS TCP ENDPOINT
       # ============================================================
 
-      # unity_sim.launch.py requires this separate source package.
       - name: Checkout pinned ROS TCP endpoint
         shell: bash
         run: |
@@ -261,7 +262,6 @@ jobs:
       # 8. UPDATE ROSDEP DATABASE
       # ============================================================
 
-      # rosdep has already been initialized on the persistent runner.
       - name: Update rosdep database
         shell: bash
         run: |
@@ -433,7 +433,7 @@ jobs:
 
 
       # ============================================================
-      # 16. RUN HEADLESS DROPOUT TEST
+      # 16. RUN HEADLESS TEST + RECORD ROS BAG
       # ============================================================
 
       - name: Run headless dropout test
@@ -441,7 +441,7 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: |
-          set -eo pipefail
+          set -uo pipefail
 
           source /opt/ros/jazzy/setup.bash
           source "$ROVER_WS/install/setup.bash"
@@ -449,49 +449,170 @@ jobs:
 
           mkdir -p "$CI_LOG_DIR"
 
-          echo
-          echo "CI configuration"
-          echo "================"
-          echo "CI_PLAYER=$CI_PLAYER"
-          echo "ROVER_WS=$ROVER_WS"
-          echo "FAULT_INJECTION_WS=$FAULT_INJECTION_WS"
-          echo "CI_LOG_DIR=$CI_LOG_DIR"
-          echo
-
           TEST_SCRIPT="$UNITY_TESTS_DIR/tools/ci/run_headless_dropout.sh"
+          ROSBAG_DIR="$CI_LOG_DIR/rosbag"
 
           if [ ! -f "$TEST_SCRIPT" ]; then
             echo "ERROR: Test script not found:"
             echo "  $TEST_SCRIPT"
-
-            echo
-            echo "Available CI files:"
-
-            find "$UNITY_TESTS_DIR/tools/ci" \
-              -maxdepth 2 \
-              -type f \
-              -print || true
-
             exit 1
           fi
 
           chmod +x "$TEST_SCRIPT"
 
-          # Unity still queries the window backend with -nographics.
+          echo
+          echo "CI configuration"
+          echo "================"
+          echo "Runner=$RUNNER_NAME"
+          echo "CI_PLAYER=$CI_PLAYER"
+          echo "ROVER_WS=$ROVER_WS"
+          echo "FAULT_INJECTION_WS=$FAULT_INJECTION_WS"
+          echo "CI_LOG_DIR=$CI_LOG_DIR"
+          echo "ROSBAG_DIR=$ROSBAG_DIR"
+          echo
+
+          START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          START_EPOCH="$(date +%s)"
+
+          # --------------------------------------------------------
+          # Start ROS bag recorder before the simulator.
+          #
+          # It is OK if these topics do not exist immediately.
+          # rosbag2 will subscribe as they become available.
+          # --------------------------------------------------------
+
+          ros2 bag record \
+            -o "$ROSBAG_DIR" \
+            /cmd_vel \
+            /odom \
+            /joint_states \
+            /tf \
+            /tf_static \
+            > "$CI_LOG_DIR/rosbag.log" 2>&1 &
+
+          BAG_PID=$!
+
+          echo "ROS bag recorder PID: $BAG_PID"
+
+          sleep 2
+
+          # --------------------------------------------------------
+          # Run Unity test while preserving stdout/stderr in a log.
+          # --------------------------------------------------------
+
+          set +e
+
           xvfb-run -a \
             timeout \
               --signal=TERM \
               --kill-after=15s \
               180s \
-              "$TEST_SCRIPT"
+              "$TEST_SCRIPT" \
+            2>&1 | tee "$CI_LOG_DIR/dropout-test.log"
+
+          TEST_STATUS=${PIPESTATUS[0]}
+
+          set -e
+
+          # --------------------------------------------------------
+          # Stop ROS bag cleanly.
+          # --------------------------------------------------------
+
+          if kill -0 "$BAG_PID" 2>/dev/null; then
+            echo
+            echo "Stopping ROS bag recorder..."
+
+            kill -INT "$BAG_PID" 2>/dev/null || true
+
+            for i in $(seq 1 20); do
+              if ! kill -0 "$BAG_PID" 2>/dev/null; then
+                break
+              fi
+              sleep 0.5
+            done
+
+            if kill -0 "$BAG_PID" 2>/dev/null; then
+              echo "ROS bag did not exit cleanly; terminating it."
+              kill -TERM "$BAG_PID" 2>/dev/null || true
+            fi
+
+            wait "$BAG_PID" 2>/dev/null || true
+          fi
+
+          END_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          END_EPOCH="$(date +%s)"
+          DURATION="$((END_EPOCH - START_EPOCH))"
+
+          if [ "$TEST_STATUS" -eq 0 ]; then
+            RESULT="pass"
+          else
+            RESULT="fail"
+          fi
+
+          # --------------------------------------------------------
+          # Generate machine-readable test result.
+          # --------------------------------------------------------
+
+          export RESULT
+          export TEST_STATUS
+          export START_TIME
+          export END_TIME
+          export DURATION
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path(os.environ["CI_LOG_DIR"]) / "result.json"
+
+          result = {
+              "test": "headless_unity_dropout",
+              "result": os.environ["RESULT"],
+              "exit_code": int(os.environ["TEST_STATUS"]),
+              "start_time_utc": os.environ["START_TIME"],
+              "end_time_utc": os.environ["END_TIME"],
+              "duration_s": int(os.environ["DURATION"]),
+              "runner": os.environ.get("RUNNER_NAME"),
+              "github": {
+                  "repository": os.environ.get("GITHUB_REPOSITORY"),
+                  "ref": os.environ.get("GITHUB_REF"),
+                  "sha": os.environ.get("GITHUB_SHA"),
+                  "run_id": os.environ.get("GITHUB_RUN_ID"),
+                  "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+              },
+              "revisions": {
+                  "unity_test": os.environ.get("UNITY_TEST_COMMIT"),
+                  "rover": os.environ.get("ROVER_UNITY_SIMULATION_COMMIT"),
+                  "ros_tcp_endpoint": os.environ.get("ROS_TCP_ENDPOINT_COMMIT"),
+              },
+              "artifacts": {
+                  "dropout_log": "dropout-test.log",
+                  "rosbag": "rosbag",
+                  "rosbag_log": "rosbag.log",
+              },
+          }
+
+          output.write_text(
+              json.dumps(result, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          print(output.read_text())
+          PY
+
+          echo
+          echo "Test exit status: $TEST_STATUS"
+          echo "Duration: ${DURATION}s"
+          echo "Result: $RESULT"
+
+          exit "$TEST_STATUS"
 
 
       # ============================================================
       # 17. CAPTURE NATIVE CRASH DIAGNOSTICS ON FAILURE
       # ============================================================
 
-      # Reproduce startup under GDB only after the normal test fails.
-      # Keep the original test failure and logs intact.
       - name: Capture Unity native backtrace
         if: ${{ failure() && steps.dropout.outcome == 'failure' }}
         timeout-minutes: 2
@@ -505,7 +626,6 @@ jobs:
           source "$ROVER_WS/install/setup.bash"
           source "$FAULT_INJECTION_WS/install/setup.bash"
 
-          # A healthy player keeps running; bound this diagnostic retry.
           status=0
 
           xvfb-run -a \
@@ -540,7 +660,98 @@ jobs:
 
 
       # ============================================================
-      # 18. ALWAYS UPLOAD LOGS
+      # 18. WRITE GITHUB ACTIONS SUMMARY
+      # ============================================================
+
+      - name: Write test summary
+        if: always()
+        shell: bash
+        env:
+          DROPOUT_OUTCOME: ${{ steps.dropout.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          result_path = Path(os.environ["CI_LOG_DIR"]) / "result.json"
+
+          lines = [
+              "# Headless Unity Fault-Injection Test",
+              "",
+          ]
+
+          if result_path.exists():
+              data = json.loads(result_path.read_text())
+
+              passed = data.get("result") == "pass"
+              icon = "✅" if passed else "❌"
+
+              lines.extend([
+                  f"## {icon} Result: {data.get('result', 'unknown').upper()}",
+                  "",
+                  "| Property | Value |",
+                  "|---|---|",
+                  f"| Runner | `{data.get('runner')}` |",
+                  f"| Duration | {data.get('duration_s')} s |",
+                  f"| Exit code | `{data.get('exit_code')}` |",
+                  f"| Commit | `{data.get('github', {}).get('sha')}` |",
+                  f"| Rover revision | `{data.get('revisions', {}).get('rover')}` |",
+                  f"| Unity test revision | `{data.get('revisions', {}).get('unity_test')}` |",
+                  "",
+                  "## Captured diagnostics",
+                  "",
+                  "- ROS 2 bag",
+                  "- Dropout test console log",
+                  "- rosbag recorder log",
+                  "- Structured `result.json`",
+              ])
+
+              if not passed:
+                  lines.extend([
+                      "- Unity native GDB backtrace, when available",
+                  ])
+
+          else:
+              lines.extend([
+                  "## ❌ Test did not reach the simulation stage",
+                  "",
+                  f"- Job status: `{os.environ.get('JOB_STATUS')}`",
+                  f"- Dropout step: `{os.environ.get('DROPOUT_OUTCOME')}`",
+                  "",
+                  "Inspect the workflow logs for the setup/build failure.",
+              ])
+
+          summary.write_text("\n".join(lines) + "\n")
+          PY
+
+
+      # ============================================================
+      # 19. SHOW CAPTURED ARTIFACTS
+      # ============================================================
+
+      - name: Show test artifacts
+        if: always()
+        shell: bash
+        run: |
+          echo "Captured test files:"
+          echo
+
+          if [ -d "$CI_LOG_DIR" ]; then
+            find "$CI_LOG_DIR" \
+              -maxdepth 3 \
+              -type f \
+              -printf '%p  %k KB\n' \
+              | sort
+          else
+            echo "No CI log directory was created."
+          fi
+
+
+      # ============================================================
+      # 20. ALWAYS UPLOAD LOGS AND ROS BAG
       # ============================================================
 
       - name: Upload CI logs
