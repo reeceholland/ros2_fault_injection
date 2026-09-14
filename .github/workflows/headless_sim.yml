@@ -3,7 +3,6 @@ name: Headless Unity fault-injection test
 on:
   workflow_dispatch:
 
-
 permissions:
   contents: read
 
@@ -35,7 +34,10 @@ env:
 jobs:
   headless-sim:
     name: Headless simulator dropout test
-    runs-on: ubuntu-24.04
+
+    # This job now runs on the Proxmox Ubuntu build server.
+    runs-on: [self-hosted, linux, x64, ros2-jazzy]
+
     timeout-minutes: 45
 
     steps:
@@ -52,7 +54,7 @@ jobs:
 
 
       # ============================================================
-      # SET RUNNER-SPECIFIC PATHS
+      # 2. SET RUNNER-SPECIFIC PATHS
       # ============================================================
 
       - name: Set CI paths
@@ -82,38 +84,62 @@ jobs:
 
 
       # ============================================================
-      # 2. SET UP ROS TOOLING
+      # 3. VERIFY SELF-HOSTED RUNNER ENVIRONMENT
       # ============================================================
 
-      # This configures the ROS repositories and installs CI tooling
-      # such as rosdep, colcon and vcs without installing ROS Desktop.
-      - name: Set up ROS tooling
-        uses: ros-tooling/setup-ros@v0.7
-
-
-      # ============================================================
-      # INSTALL MINIMAL ROS 2 JAZZY
-      # ============================================================
-
-      - name: Install minimal ROS 2 Jazzy
+      # ROS 2 Jazzy and the build/headless packages are installed
+      # permanently on the Proxmox build-server VM.
+      - name: Verify build server environment
         shell: bash
         run: |
           set -eo pipefail
 
-          sudo apt-get update
+          source /opt/ros/jazzy/setup.bash
 
-          sudo apt-get install -y \
-            ros-jazzy-ros-base \
-            build-essential \
-            ca-certificates \
-            curl \
-            git \
-            gdb \
-            xvfb \
-            xauth \
-            libarchive-tools \
-            iproute2 \
-            util-linux
+          echo "Runner:"
+          uname -a
+
+          echo
+          echo "ROS distribution:"
+          echo "$ROS_DISTRO"
+
+          echo
+          echo "ROS 2:"
+          ros2 --help >/dev/null
+
+          echo
+          echo "colcon:"
+          colcon --help >/dev/null
+
+          echo
+          echo "Build tools:"
+          gcc --version | head -1
+          cmake --version | head -1
+
+          echo
+          echo "Headless display:"
+          command -v xvfb-run
+          command -v Xvfb
+
+          echo
+          echo "Debugger:"
+          gdb --version | head -1
+
+
+      # ============================================================
+      # 4. PREPARE CLEAN CI DIRECTORIES
+      # ============================================================
+
+      - name: Prepare CI directories
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          rm -rf \
+            "$UNITY_TESTS_DIR" \
+            "$ROVER_WS" \
+            "$SIMULATOR_DIR" \
+            "$CI_LOG_DIR"
 
           mkdir -p \
             "$UNITY_TESTS_DIR" \
@@ -123,7 +149,7 @@ jobs:
 
 
       # ============================================================
-      # 3. CHECK OUT PINNED UNITY TEST SCRIPTS
+      # 5. CHECK OUT PINNED UNITY TEST SCRIPTS
       # ============================================================
 
       - name: Checkout pinned Unity test scripts
@@ -148,6 +174,7 @@ jobs:
           echo "Unity test repository:"
           echo "  $UNITY_TEST_REPO"
 
+          echo
           echo "Pinned commit:"
           echo "  $ACTUAL_COMMIT"
 
@@ -158,7 +185,7 @@ jobs:
 
 
       # ============================================================
-      # 4. CHECK OUT PINNED ROVER PACKAGES
+      # 6. CHECK OUT PINNED ROVER PACKAGES
       # ============================================================
 
       - name: Checkout pinned rover packages
@@ -183,6 +210,7 @@ jobs:
           echo "Rover repository:"
           echo "  $ROVER_REPO"
 
+          echo
           echo "Pinned unity-simulation commit:"
           echo "  $ACTUAL_COMMIT"
 
@@ -193,7 +221,7 @@ jobs:
 
 
       # ============================================================
-      # INSTALL ONLY THE ROVER'S DECLARED DEPENDENCIES
+      # 7. CHECK OUT PINNED ROS TCP ENDPOINT
       # ============================================================
 
       # unity_sim.launch.py requires this separate source package.
@@ -201,18 +229,50 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          git clone --no-checkout "$ROS_TCP_ENDPOINT_REPO" "$ROVER_WS/src/ROS-TCP-Endpoint"
-          git -C "$ROVER_WS/src/ROS-TCP-Endpoint" checkout --detach "$ROS_TCP_ENDPOINT_COMMIT"
-          test "$(git -C "$ROVER_WS/src/ROS-TCP-Endpoint" rev-parse HEAD)" = "$ROS_TCP_ENDPOINT_COMMIT"
 
-      - name: Initialize rosdep database
+          rm -rf "$ROVER_WS/src/ROS-TCP-Endpoint"
+
+          git clone \
+            --no-checkout \
+            "$ROS_TCP_ENDPOINT_REPO" \
+            "$ROVER_WS/src/ROS-TCP-Endpoint"
+
+          git -C "$ROVER_WS/src/ROS-TCP-Endpoint" \
+            checkout --detach "$ROS_TCP_ENDPOINT_COMMIT"
+
+          ACTUAL_COMMIT="$(
+            git -C "$ROVER_WS/src/ROS-TCP-Endpoint" rev-parse HEAD
+          )"
+
+          echo "ROS TCP Endpoint repository:"
+          echo "  $ROS_TCP_ENDPOINT_REPO"
+
+          echo
+          echo "Pinned commit:"
+          echo "  $ACTUAL_COMMIT"
+
+          if [ "$ACTUAL_COMMIT" != "$ROS_TCP_ENDPOINT_COMMIT" ]; then
+            echo "ERROR: ROS TCP Endpoint checkout does not match pinned commit"
+            exit 1
+          fi
+
+
+      # ============================================================
+      # 8. UPDATE ROSDEP DATABASE
+      # ============================================================
+
+      # rosdep has already been initialized on the persistent runner.
+      - name: Update rosdep database
         shell: bash
         run: |
           set -eo pipefail
-          if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
-            sudo rosdep init
-          fi
+
           rosdep update --rosdistro "$ROS_DISTRO"
+
+
+      # ============================================================
+      # 9. INSTALL ROVER DEPENDENCIES
+      # ============================================================
 
       - name: Install rover dependencies
         shell: bash
@@ -230,7 +290,7 @@ jobs:
 
 
       # ============================================================
-      # BUILD ROVER WORKSPACE
+      # 10. BUILD ROVER WORKSPACE
       # ============================================================
 
       - name: Build rover workspace
@@ -248,7 +308,7 @@ jobs:
 
 
       # ============================================================
-      # 5. INSTALL FAULT-INJECTION DEPENDENCIES
+      # 11. INSTALL FAULT-INJECTION DEPENDENCIES
       # ============================================================
 
       - name: Install fault-injection dependencies
@@ -270,7 +330,7 @@ jobs:
 
 
       # ============================================================
-      # BUILD CURRENT FAULT-INJECTION WORKSPACE
+      # 12. BUILD CURRENT FAULT-INJECTION WORKSPACE
       # ============================================================
 
       - name: Build fault-injection workspace
@@ -289,7 +349,7 @@ jobs:
 
 
       # ============================================================
-      # 6. DOWNLOAD PINNED SIMULATOR ARCHIVE
+      # 13. DOWNLOAD PINNED SIMULATOR ARCHIVE
       # ============================================================
 
       - name: Download simulator
@@ -298,6 +358,8 @@ jobs:
           set -eo pipefail
 
           ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
+
+          rm -f "$ARCHIVE"
 
           echo "Downloading simulator:"
           echo "  $SIMULATOR_URL"
@@ -316,7 +378,7 @@ jobs:
 
 
       # ============================================================
-      # VERIFY SIMULATOR ARCHIVE
+      # 14. VERIFY SIMULATOR ARCHIVE
       # ============================================================
 
       - name: Verify simulator checksum
@@ -331,7 +393,7 @@ jobs:
 
 
       # ============================================================
-      # EXTRACT SIMULATOR
+      # 15. EXTRACT SIMULATOR
       # ============================================================
 
       - name: Extract simulator
@@ -371,7 +433,7 @@ jobs:
 
 
       # ============================================================
-      # 7. RUN HEADLESS DROPOUT TEST
+      # 16. RUN HEADLESS DROPOUT TEST
       # ============================================================
 
       - name: Run headless dropout test
@@ -416,11 +478,16 @@ jobs:
           chmod +x "$TEST_SCRIPT"
 
           # Unity still queries the window backend with -nographics.
-          xvfb-run -a timeout --signal=TERM --kill-after=15s 180s "$TEST_SCRIPT"
+          xvfb-run -a \
+            timeout \
+              --signal=TERM \
+              --kill-after=15s \
+              180s \
+              "$TEST_SCRIPT"
 
 
       # ============================================================
-      # 8. ALWAYS UPLOAD LOGS
+      # 17. CAPTURE NATIVE CRASH DIAGNOSTICS ON FAILURE
       # ============================================================
 
       # Reproduce startup under GDB only after the normal test fails.
@@ -431,33 +498,50 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+
           mkdir -p "$CI_LOG_DIR"
+
           source /opt/ros/jazzy/setup.bash
           source "$ROVER_WS/install/setup.bash"
           source "$FAULT_INJECTION_WS/install/setup.bash"
 
           # A healthy player keeps running; bound this diagnostic retry.
           status=0
-          xvfb-run -a timeout --signal=TERM --kill-after=10s 60s \
-            gdb --batch --quiet \
-              -ex 'set pagination off' \
-              -ex 'set confirm off' \
-              -ex 'set debuginfod enabled off' \
-              -ex 'handle SIGPIPE nostop noprint pass' \
-              -ex 'handle SIGXCPU SIG33 SIG35 SIG36 SIG37 SIG38 SIGPWR nostop noprint pass' \
-              -ex 'handle SIGSEGV stop print nopass' \
-              -ex 'run' \
-              -ex 'thread apply all bt full' \
-              -ex 'info sharedlibrary' \
-              -ex 'info registers' \
-              -ex 'x/16i $pc-16' \
-              -ex 'info proc mappings' \
-              --args "$CI_PLAYER" -batchmode -nographics \
-                -logFile "$CI_LOG_DIR/unity-gdb.log" \
-            > "$CI_LOG_DIR/unity-backtrace.log" 2>&1 || status=$?
+
+          xvfb-run -a \
+            timeout \
+              --signal=TERM \
+              --kill-after=10s \
+              60s \
+              gdb --batch --quiet \
+                -ex 'set pagination off' \
+                -ex 'set confirm off' \
+                -ex 'set debuginfod enabled off' \
+                -ex 'handle SIGPIPE nostop noprint pass' \
+                -ex 'handle SIGXCPU SIG33 SIG35 SIG36 SIG37 SIG38 SIGPWR nostop noprint pass' \
+                -ex 'handle SIGSEGV stop print nopass' \
+                -ex 'run' \
+                -ex 'thread apply all bt full' \
+                -ex 'info sharedlibrary' \
+                -ex 'info registers' \
+                -ex 'x/16i $pc-16' \
+                -ex 'info proc mappings' \
+                --args "$CI_PLAYER" \
+                  -batchmode \
+                  -nographics \
+                  -logFile "$CI_LOG_DIR/unity-gdb.log" \
+              > "$CI_LOG_DIR/unity-backtrace.log" 2>&1 \
+            || status=$?
+
           printf '\nDiagnostic exit status: %s (124 means timeout)\n' "$status" \
             >> "$CI_LOG_DIR/unity-backtrace.log"
+
           cat "$CI_LOG_DIR/unity-backtrace.log"
+
+
+      # ============================================================
+      # 18. ALWAYS UPLOAD LOGS
+      # ============================================================
 
       - name: Upload CI logs
         if: always()
