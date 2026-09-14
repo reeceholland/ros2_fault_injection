@@ -1,0 +1,21 @@
+name: Test Build Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64, ros2-jazzy]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check environment
+        shell: bash
+        run: |
+          uname -a
+          gcc --version
+          cmake --version
+          source /opt/ros/jazzy/setup.bash
+          echo "ROS_DISTRO=$ROS_DISTRO"
+          ros2 --help >/dev/null
