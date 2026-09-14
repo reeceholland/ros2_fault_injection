@@ -375,6 +375,12 @@ if(BUILD_TESTING)
     ROS2_FAULT_INJECTION_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+  add_launch_test(
+    test/launch/test_forwarding_launch.py
+    TIMEOUT 60
+    ENV ROS2_FAULT_INJECTION_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
   ament_uncrustify(
     include
     src
