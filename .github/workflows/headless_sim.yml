@@ -6,16 +6,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: headless-unity-fault-injection
+  cancel-in-progress: false
+
 env:
   ROS_DISTRO: jazzy
+  ROS_DOMAIN_ID: "190"
 
-  # Current fault-injection checkout.
-  # Deliberately NOT pinned.
   FAULT_INJECTION_WS: ${{ github.workspace }}
-
-  # ------------------------------------------------------------
-  # PINNED EXTERNAL DEPENDENCIES
-  # ------------------------------------------------------------
 
   UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
   UNITY_TEST_COMMIT: fe2a5bf2fb2f3910f94695750340051726605150
@@ -29,31 +28,18 @@ env:
   SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/ci-rover-linux-v0.1.0.tar.gz
   SIMULATOR_SHA256: 587ef502d1b419b6bfc80c832b74f4f99daee99fdf8526b8959e9cd702549630
 
-
 jobs:
   headless-sim:
     name: Headless simulator dropout test
-
     runs-on: [self-hosted, linux, x64, ros2-jazzy]
-
     timeout-minutes: 45
 
     steps:
-
-      # ============================================================
-      # 1. CHECK OUT CURRENT FAULT-INJECTION FRAMEWORK
-      # ============================================================
-
       - name: Checkout fault-injection framework
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
-
-
-      # ============================================================
-      # 2. SET RUNNER-SPECIFIC PATHS
-      # ============================================================
 
       - name: Set CI paths
         shell: bash
@@ -66,257 +52,107 @@ jobs:
           echo "CI_LOG_DIR=$RUNNER_TEMP/test-logs" >> "$GITHUB_ENV"
           echo "CI_PLAYER=$RUNNER_TEMP/ci-player/CiRover.x86_64" >> "$GITHUB_ENV"
 
-
-      - name: Show framework revision
-        shell: bash
-        run: |
-          set -eo pipefail
-
-          echo "Framework workspace: $FAULT_INJECTION_WS"
-          echo "Framework commit:"
-          git -C "$FAULT_INJECTION_WS" rev-parse HEAD
-
-          echo
-          echo "GitHub ref: $GITHUB_REF"
-          echo "GitHub SHA: $GITHUB_SHA"
-
-
-      # ============================================================
-      # 3. VERIFY SELF-HOSTED RUNNER ENVIRONMENT
-      # ============================================================
-
       - name: Verify build server environment
         shell: bash
         run: |
           set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
 
-          echo "Runner"
-          echo "======"
-          echo "Name: $RUNNER_NAME"
+          echo "Runner: $RUNNER_NAME"
+          echo "ROS_DISTRO=$ROS_DISTRO"
+          echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
           uname -a
 
-          echo
-          echo "ROS distribution:"
-          echo "$ROS_DISTRO"
-
-          echo
-          echo "ROS 2:"
           ros2 --help >/dev/null
-
-          echo
-          echo "ROS bag:"
           ros2 bag --help >/dev/null
-
-          echo
-          echo "colcon:"
           colcon --help >/dev/null
-
-          echo
-          echo "Build tools:"
           gcc --version | head -1
           cmake --version | head -1
-
-          echo
-          echo "Headless display:"
           command -v xvfb-run
           command -v Xvfb
-
-          echo
-          echo "Debugger:"
-          gdb --version | head -1
-
-
-      # ============================================================
-      # 4. PREPARE CLEAN CI DIRECTORIES
-      # ============================================================
+          command -v gdb
+          command -v bsdtar
 
       - name: Prepare CI directories
         shell: bash
         run: |
           set -eo pipefail
 
-          rm -rf \
-            "$UNITY_TESTS_DIR" \
-            "$ROVER_WS" \
-            "$SIMULATOR_DIR" \
-            "$CI_LOG_DIR"
-
-          mkdir -p \
-            "$UNITY_TESTS_DIR" \
-            "$ROVER_WS/src" \
-            "$SIMULATOR_DIR" \
-            "$CI_LOG_DIR"
-
-
-      # ============================================================
-      # 5. CHECK OUT PINNED UNITY TEST SCRIPTS
-      # ============================================================
+          rm -rf "$UNITY_TESTS_DIR" "$ROVER_WS" "$SIMULATOR_DIR" "$CI_LOG_DIR"
+          mkdir -p "$UNITY_TESTS_DIR" "$ROVER_WS/src" "$SIMULATOR_DIR" "$CI_LOG_DIR"
 
       - name: Checkout pinned Unity test scripts
         shell: bash
         run: |
           set -eo pipefail
 
-          rm -rf "$UNITY_TESTS_DIR"
+          git clone --no-checkout "$UNITY_TEST_REPO" "$UNITY_TESTS_DIR"
+          git -C "$UNITY_TESTS_DIR" checkout --detach "$UNITY_TEST_COMMIT"
 
-          git clone \
-            --no-checkout \
-            "$UNITY_TEST_REPO" \
-            "$UNITY_TESTS_DIR"
-
-          git -C "$UNITY_TESTS_DIR" \
-            checkout --detach "$UNITY_TEST_COMMIT"
-
-          ACTUAL_COMMIT="$(
-            git -C "$UNITY_TESTS_DIR" rev-parse HEAD
-          )"
-
-          echo "Unity test repository:"
-          echo "  $UNITY_TEST_REPO"
-
-          echo
-          echo "Pinned commit:"
-          echo "  $ACTUAL_COMMIT"
-
-          if [ "$ACTUAL_COMMIT" != "$UNITY_TEST_COMMIT" ]; then
-            echo "ERROR: Unity checkout does not match pinned commit"
-            exit 1
-          fi
-
-
-      # ============================================================
-      # 6. CHECK OUT PINNED ROVER PACKAGES
-      # ============================================================
+          ACTUAL_COMMIT="$(git -C "$UNITY_TESTS_DIR" rev-parse HEAD)"
+          test "$ACTUAL_COMMIT" = "$UNITY_TEST_COMMIT"
 
       - name: Checkout pinned rover packages
         shell: bash
         run: |
           set -eo pipefail
 
-          rm -rf "$ROVER_WS/src/rover"
+          git clone --no-checkout "$ROVER_REPO" "$ROVER_WS/src/rover"
+          git -C "$ROVER_WS/src/rover" checkout --detach "$ROVER_UNITY_SIMULATION_COMMIT"
 
-          git clone \
-            --no-checkout \
-            "$ROVER_REPO" \
-            "$ROVER_WS/src/rover"
-
-          git -C "$ROVER_WS/src/rover" \
-            checkout --detach "$ROVER_UNITY_SIMULATION_COMMIT"
-
-          ACTUAL_COMMIT="$(
-            git -C "$ROVER_WS/src/rover" rev-parse HEAD
-          )"
-
-          echo "Rover repository:"
-          echo "  $ROVER_REPO"
-
-          echo
-          echo "Pinned unity-simulation commit:"
-          echo "  $ACTUAL_COMMIT"
-
-          if [ "$ACTUAL_COMMIT" != "$ROVER_UNITY_SIMULATION_COMMIT" ]; then
-            echo "ERROR: Rover checkout does not match pinned commit"
-            exit 1
-          fi
-
-
-      # ============================================================
-      # 7. CHECK OUT PINNED ROS TCP ENDPOINT
-      # ============================================================
+          ACTUAL_COMMIT="$(git -C "$ROVER_WS/src/rover" rev-parse HEAD)"
+          test "$ACTUAL_COMMIT" = "$ROVER_UNITY_SIMULATION_COMMIT"
 
       - name: Checkout pinned ROS TCP endpoint
         shell: bash
         run: |
           set -eo pipefail
 
-          rm -rf "$ROVER_WS/src/ROS-TCP-Endpoint"
+          git clone --no-checkout "$ROS_TCP_ENDPOINT_REPO" "$ROVER_WS/src/ROS-TCP-Endpoint"
+          git -C "$ROVER_WS/src/ROS-TCP-Endpoint" checkout --detach "$ROS_TCP_ENDPOINT_COMMIT"
 
-          git clone \
-            --no-checkout \
-            "$ROS_TCP_ENDPOINT_REPO" \
-            "$ROVER_WS/src/ROS-TCP-Endpoint"
-
-          git -C "$ROVER_WS/src/ROS-TCP-Endpoint" \
-            checkout --detach "$ROS_TCP_ENDPOINT_COMMIT"
-
-          ACTUAL_COMMIT="$(
-            git -C "$ROVER_WS/src/ROS-TCP-Endpoint" rev-parse HEAD
-          )"
-
-          echo "ROS TCP Endpoint repository:"
-          echo "  $ROS_TCP_ENDPOINT_REPO"
-
-          echo
-          echo "Pinned commit:"
-          echo "  $ACTUAL_COMMIT"
-
-          if [ "$ACTUAL_COMMIT" != "$ROS_TCP_ENDPOINT_COMMIT" ]; then
-            echo "ERROR: ROS TCP Endpoint checkout does not match pinned commit"
-            exit 1
-          fi
-
-
-      # ============================================================
-      # 8. UPDATE ROSDEP DATABASE
-      # ============================================================
+          ACTUAL_COMMIT="$(git -C "$ROVER_WS/src/ROS-TCP-Endpoint" rev-parse HEAD)"
+          test "$ACTUAL_COMMIT" = "$ROS_TCP_ENDPOINT_COMMIT"
 
       - name: Update rosdep database
         shell: bash
         run: |
           set -eo pipefail
 
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
           rosdep update --rosdistro "$ROS_DISTRO"
-
-
-      # ============================================================
-      # 9. INSTALL ROVER DEPENDENCIES
-      # ============================================================
 
       - name: Install rover dependencies
         shell: bash
         run: |
           set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
 
           rosdep install \
             --from-paths "$ROVER_WS/src" \
             --ignore-src \
-            --rosdistro jazzy \
+            --rosdistro "$ROS_DISTRO" \
             -r \
             -y
-
-
-      # ============================================================
-      # 10. BUILD ROVER WORKSPACE
-      # ============================================================
 
       - name: Build rover workspace
         shell: bash
         run: |
           set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
 
           cd "$ROVER_WS"
-
-          colcon build \
-            --symlink-install \
-            --event-handlers console_direct+
-
-
-      # ============================================================
-      # 11. INSTALL FAULT-INJECTION DEPENDENCIES
-      # ============================================================
+          colcon build --symlink-install --event-handlers console_direct+
 
       - name: Install fault-injection dependencies
         shell: bash
         run: |
           set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
           source "$ROVER_WS/install/setup.bash"
 
           cd "$FAULT_INJECTION_WS"
@@ -324,45 +160,27 @@ jobs:
           rosdep install \
             --from-paths . \
             --ignore-src \
-            --rosdistro jazzy \
+            --rosdistro "$ROS_DISTRO" \
             -r \
             -y
-
-
-      # ============================================================
-      # 12. BUILD CURRENT FAULT-INJECTION WORKSPACE
-      # ============================================================
 
       - name: Build fault-injection workspace
         shell: bash
         run: |
           set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
           source "$ROVER_WS/install/setup.bash"
 
           cd "$FAULT_INJECTION_WS"
-
-          colcon build \
-            --symlink-install \
-            --event-handlers console_direct+
-
-
-      # ============================================================
-      # 13. DOWNLOAD PINNED SIMULATOR ARCHIVE
-      # ============================================================
+          colcon build --symlink-install --event-handlers console_direct+
 
       - name: Download simulator
         shell: bash
         run: |
           set -eo pipefail
 
-          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
-
-          rm -f "$ARCHIVE"
-
-          echo "Downloading simulator:"
-          echo "  $SIMULATOR_URL"
+          ARCHIVE="$RUNNER_TEMP/CiRover-simulator.tar.gz"
 
           curl \
             --fail \
@@ -372,78 +190,36 @@ jobs:
             --output "$ARCHIVE" \
             "$SIMULATOR_URL"
 
-          echo
-          echo "Simulator archive downloaded:"
-          ls -lh "$ARCHIVE"
-
-
-      # ============================================================
-      # 14. VERIFY SIMULATOR ARCHIVE
-      # ============================================================
-
-      - name: Verify simulator checksum
-        shell: bash
-        run: |
-          set -eo pipefail
-
-          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
-
-          echo "$SIMULATOR_SHA256  $ARCHIVE" \
-            | sha256sum --check -
-
-
-      # ============================================================
-      # 15. EXTRACT SIMULATOR
-      # ============================================================
+          echo "$SIMULATOR_SHA256  $ARCHIVE" | sha256sum --check -
 
       - name: Extract simulator
         shell: bash
         run: |
           set -eo pipefail
 
-          ARCHIVE="$RUNNER_TEMP/CiRover-simulator"
+          ARCHIVE="$RUNNER_TEMP/CiRover-simulator.tar.gz"
 
           rm -rf "$SIMULATOR_DIR"
           mkdir -p "$SIMULATOR_DIR"
 
-          bsdtar \
-            -xf "$ARCHIVE" \
-            -C "$SIMULATOR_DIR"
+          bsdtar -xf "$ARCHIVE" -C "$SIMULATOR_DIR"
 
           if [ ! -f "$CI_PLAYER" ]; then
-            echo "ERROR: Simulator executable was not found at:"
-            echo "  $CI_PLAYER"
-
-            echo
-            echo "Extracted simulator contents:"
-
-            find "$SIMULATOR_DIR" \
-              -maxdepth 4 \
-              -type f \
-              -print
-
+            echo "ERROR: Simulator executable was not found at $CI_PLAYER"
+            find "$SIMULATOR_DIR" -maxdepth 4 -type f -print
             exit 1
           fi
 
           chmod +x "$CI_PLAYER"
-
-          echo
-          echo "Simulator executable:"
-          ls -lh "$CI_PLAYER"
-
-
-      # ============================================================
-      # 16. RUN HEADLESS TEST + RECORD ROS BAG
-      # ============================================================
 
       - name: Run headless dropout test
         id: dropout
         timeout-minutes: 5
         shell: bash
         run: |
-          set -uo pipefail
+          set -eo pipefail
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
           source "$ROVER_WS/install/setup.bash"
           source "$FAULT_INJECTION_WS/install/setup.bash"
 
@@ -451,38 +227,58 @@ jobs:
 
           TEST_SCRIPT="$UNITY_TESTS_DIR/tools/ci/run_headless_dropout.sh"
           ROSBAG_DIR="$CI_LOG_DIR/rosbag"
+          BAG_PID=""
+
+          cleanup() {
+            set +e
+
+            if [ -n "${BAG_PID:-}" ] && kill -0 "$BAG_PID" 2>/dev/null; then
+              echo "Stopping ROS bag recorder..."
+              kill -INT "$BAG_PID" 2>/dev/null || true
+
+              for _ in $(seq 1 20); do
+                kill -0 "$BAG_PID" 2>/dev/null || break
+                sleep 0.5
+              done
+
+              kill -0 "$BAG_PID" 2>/dev/null && kill -TERM "$BAG_PID" 2>/dev/null || true
+              wait "$BAG_PID" 2>/dev/null || true
+            fi
+
+            pkill -P $$ 2>/dev/null || true
+          }
+
+          trap cleanup EXIT INT TERM
+
+          {
+            echo "CI configuration"
+            echo "================"
+            echo "Runner=$RUNNER_NAME"
+            echo "ROS_DISTRO=$ROS_DISTRO"
+            echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
+            echo "CI_PLAYER=$CI_PLAYER"
+            echo "ROVER_WS=$ROVER_WS"
+            echo "FAULT_INJECTION_WS=$FAULT_INJECTION_WS"
+            echo "CI_LOG_DIR=$CI_LOG_DIR"
+            echo "ROSBAG_DIR=$ROSBAG_DIR"
+            echo "TEST_SCRIPT=$TEST_SCRIPT"
+          } | tee "$CI_LOG_DIR/preflight.log"
 
           if [ ! -f "$TEST_SCRIPT" ]; then
-            echo "ERROR: Test script not found:"
-            echo "  $TEST_SCRIPT"
+            echo "ERROR: Test script not found: $TEST_SCRIPT" | tee -a "$CI_LOG_DIR/preflight.log"
+            find "$UNITY_TESTS_DIR/tools/ci" -maxdepth 2 -type f -print || true
             exit 1
           fi
 
           chmod +x "$TEST_SCRIPT"
 
-          echo
-          echo "CI configuration"
-          echo "================"
-          echo "Runner=$RUNNER_NAME"
-          echo "CI_PLAYER=$CI_PLAYER"
-          echo "ROVER_WS=$ROVER_WS"
-          echo "FAULT_INJECTION_WS=$FAULT_INJECTION_WS"
-          echo "CI_LOG_DIR=$CI_LOG_DIR"
-          echo "ROSBAG_DIR=$ROSBAG_DIR"
-          echo
-
           START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           START_EPOCH="$(date +%s)"
 
-          # --------------------------------------------------------
-          # Start ROS bag recorder before the simulator.
-          #
-          # It is OK if these topics do not exist immediately.
-          # rosbag2 will subscribe as they become available.
-          # --------------------------------------------------------
-
           ros2 bag record \
             -o "$ROSBAG_DIR" \
+            /scan_raw \
+            /ci/scan \
             /cmd_vel \
             /odom \
             /joint_states \
@@ -491,14 +287,15 @@ jobs:
             > "$CI_LOG_DIR/rosbag.log" 2>&1 &
 
           BAG_PID=$!
-
           echo "ROS bag recorder PID: $BAG_PID"
 
           sleep 2
 
-          # --------------------------------------------------------
-          # Run Unity test while preserving stdout/stderr in a log.
-          # --------------------------------------------------------
+          if ! kill -0 "$BAG_PID" 2>/dev/null; then
+            echo "ERROR: rosbag2 exited before the simulation started."
+            cat "$CI_LOG_DIR/rosbag.log" || true
+            exit 1
+          fi
 
           set +e
 
@@ -508,36 +305,15 @@ jobs:
               --kill-after=15s \
               180s \
               "$TEST_SCRIPT" \
-            2>&1 | tee "$CI_LOG_DIR/dropout-test.log"
+            > >(tee "$CI_LOG_DIR/dropout-test.log") \
+            2> >(tee "$CI_LOG_DIR/dropout-test-stderr.log" >&2)
 
-          TEST_STATUS=${PIPESTATUS[0]}
+          TEST_STATUS=$?
 
           set -e
 
-          # --------------------------------------------------------
-          # Stop ROS bag cleanly.
-          # --------------------------------------------------------
-
-          if kill -0 "$BAG_PID" 2>/dev/null; then
-            echo
-            echo "Stopping ROS bag recorder..."
-
-            kill -INT "$BAG_PID" 2>/dev/null || true
-
-            for i in $(seq 1 20); do
-              if ! kill -0 "$BAG_PID" 2>/dev/null; then
-                break
-              fi
-              sleep 0.5
-            done
-
-            if kill -0 "$BAG_PID" 2>/dev/null; then
-              echo "ROS bag did not exit cleanly; terminating it."
-              kill -TERM "$BAG_PID" 2>/dev/null || true
-            fi
-
-            wait "$BAG_PID" 2>/dev/null || true
-          fi
+          cleanup
+          trap - EXIT INT TERM
 
           END_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           END_EPOCH="$(date +%s)"
@@ -549,22 +325,27 @@ jobs:
             RESULT="fail"
           fi
 
-          # --------------------------------------------------------
-          # Generate machine-readable test result.
-          # --------------------------------------------------------
+          {
+            echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
+            echo
+            echo "Topics visible after test:"
+            ros2 topic list 2>&1 || true
+            echo
+            echo "Nodes visible after test:"
+            ros2 node list 2>&1 || true
+          } > "$CI_LOG_DIR/ros-state-after-test.log"
 
-          export RESULT
-          export TEST_STATUS
-          export START_TIME
-          export END_TIME
-          export DURATION
+          export RESULT TEST_STATUS START_TIME END_TIME DURATION
 
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          output = Path(os.environ["CI_LOG_DIR"]) / "result.json"
+          log_dir = Path(os.environ["CI_LOG_DIR"])
+          bag_dir = log_dir / "rosbag"
+          metadata = bag_dir / "metadata.yaml"
+          output = log_dir / "result.json"
 
           result = {
               "test": "headless_unity_dropout",
@@ -574,6 +355,10 @@ jobs:
               "end_time_utc": os.environ["END_TIME"],
               "duration_s": int(os.environ["DURATION"]),
               "runner": os.environ.get("RUNNER_NAME"),
+              "ros": {
+                  "distribution": os.environ.get("ROS_DISTRO"),
+                  "domain_id": os.environ.get("ROS_DOMAIN_ID"),
+              },
               "github": {
                   "repository": os.environ.get("GITHUB_REPOSITORY"),
                   "ref": os.environ.get("GITHUB_REF"),
@@ -587,31 +372,34 @@ jobs:
                   "ros_tcp_endpoint": os.environ.get("ROS_TCP_ENDPOINT_COMMIT"),
               },
               "artifacts": {
-                  "dropout_log": "dropout-test.log",
-                  "rosbag": "rosbag",
+                  "preflight_log": "preflight.log",
+                  "dropout_stdout": "dropout-test.log",
+                  "dropout_stderr": "dropout-test-stderr.log",
                   "rosbag_log": "rosbag.log",
+                  "rosbag_present": metadata.exists(),
+                  "rosbag_metadata": "rosbag/metadata.yaml" if metadata.exists() else None,
+                  "rosbag": "rosbag",
+                  "ros_state": "ros-state-after-test.log",
               },
           }
 
-          output.write_text(
-              json.dumps(result, indent=2) + "\n",
-              encoding="utf-8",
-          )
-
+          output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
           print(output.read_text())
           PY
 
-          echo
-          echo "Test exit status: $TEST_STATUS"
-          echo "Duration: ${DURATION}s"
+          {
+            echo "Result: $RESULT"
+            echo "Exit code: $TEST_STATUS"
+            echo "Duration: ${DURATION}s"
+            echo "ROS_DOMAIN_ID: $ROS_DOMAIN_ID"
+          } > "$CI_LOG_DIR/test-status.txt"
+
+          echo "Headless dropout test completed"
           echo "Result: $RESULT"
+          echo "Exit status: $TEST_STATUS"
+          echo "Duration: ${DURATION}s"
 
           exit "$TEST_STATUS"
-
-
-      # ============================================================
-      # 17. CAPTURE NATIVE CRASH DIAGNOSTICS ON FAILURE
-      # ============================================================
 
       - name: Capture Unity native backtrace
         if: ${{ failure() && steps.dropout.outcome == 'failure' }}
@@ -622,7 +410,7 @@ jobs:
 
           mkdir -p "$CI_LOG_DIR"
 
-          source /opt/ros/jazzy/setup.bash
+          source /opt/ros/"$ROS_DISTRO"/setup.bash
           source "$ROVER_WS/install/setup.bash"
           source "$FAULT_INJECTION_WS/install/setup.bash"
 
@@ -653,15 +441,18 @@ jobs:
               > "$CI_LOG_DIR/unity-backtrace.log" 2>&1 \
             || status=$?
 
-          printf '\nDiagnostic exit status: %s (124 means timeout)\n' "$status" \
-            >> "$CI_LOG_DIR/unity-backtrace.log"
+          {
+            echo
+            echo "Diagnostic exit status: $status"
+            echo "124 means the healthy Unity process reached the diagnostic timeout."
+            echo
+            echo "NOTE:"
+            echo "This diagnostic launches Unity without the complete ROS endpoint."
+            echo "Connection-refused messages on port 10000 are therefore not"
+            echo "by themselves evidence of the original test failure."
+          } >> "$CI_LOG_DIR/unity-backtrace.log"
 
           cat "$CI_LOG_DIR/unity-backtrace.log"
-
-
-      # ============================================================
-      # 18. WRITE GITHUB ACTIONS SUMMARY
-      # ============================================================
 
       - name: Write test summary
         if: always()
@@ -685,7 +476,6 @@ jobs:
 
           if result_path.exists():
               data = json.loads(result_path.read_text())
-
               passed = data.get("result") == "pass"
               icon = "✅" if passed else "❌"
 
@@ -697,40 +487,39 @@ jobs:
                   f"| Runner | `{data.get('runner')}` |",
                   f"| Duration | {data.get('duration_s')} s |",
                   f"| Exit code | `{data.get('exit_code')}` |",
-                  f"| Commit | `{data.get('github', {}).get('sha')}` |",
+                  f"| ROS distribution | `{data.get('ros', {}).get('distribution')}` |",
+                  f"| ROS domain | `{data.get('ros', {}).get('domain_id')}` |",
+                  f"| Framework commit | `{data.get('github', {}).get('sha')}` |",
                   f"| Rover revision | `{data.get('revisions', {}).get('rover')}` |",
                   f"| Unity test revision | `{data.get('revisions', {}).get('unity_test')}` |",
+                  f"| ROS bag present | `{data.get('artifacts', {}).get('rosbag_present')}` |",
                   "",
                   "## Captured diagnostics",
                   "",
-                  "- ROS 2 bag",
-                  "- Dropout test console log",
-                  "- rosbag recorder log",
-                  "- Structured `result.json`",
+                  "- `result.json`",
+                  "- `test-status.txt`",
+                  "- `preflight.log`",
+                  "- `dropout-test.log`",
+                  "- `dropout-test-stderr.log`",
+                  "- `rosbag.log`",
+                  "- ROS 2 bag directory",
+                  "- `ros-state-after-test.log`",
               ])
 
               if not passed:
-                  lines.extend([
-                      "- Unity native GDB backtrace, when available",
-                  ])
-
+                  lines.append("- Unity native GDB diagnostic")
           else:
               lines.extend([
-                  "## ❌ Test did not reach the simulation stage",
+                  "## ❌ Test did not produce a structured result",
                   "",
                   f"- Job status: `{os.environ.get('JOB_STATUS')}`",
                   f"- Dropout step: `{os.environ.get('DROPOUT_OUTCOME')}`",
                   "",
-                  "Inspect the workflow logs for the setup/build failure.",
+                  "The workflow failed before `result.json` could be created.",
               ])
 
           summary.write_text("\n".join(lines) + "\n")
           PY
-
-
-      # ============================================================
-      # 19. SHOW CAPTURED ARTIFACTS
-      # ============================================================
 
       - name: Show test artifacts
         if: always()
@@ -741,18 +530,13 @@ jobs:
 
           if [ -d "$CI_LOG_DIR" ]; then
             find "$CI_LOG_DIR" \
-              -maxdepth 3 \
+              -maxdepth 4 \
               -type f \
               -printf '%p  %k KB\n' \
               | sort
           else
             echo "No CI log directory was created."
           fi
-
-
-      # ============================================================
-      # 20. ALWAYS UPLOAD LOGS AND ROS BAG
-      # ============================================================
 
       - name: Upload CI logs
         if: always()
@@ -761,7 +545,6 @@ jobs:
           name: headless-sim-logs-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
           retention-days: 14
-
           path: |
             ${{ runner.temp }}/test-logs
             ${{ runner.temp }}/rover_ws/log
