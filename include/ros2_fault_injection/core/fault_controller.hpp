@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <set>
 #include <vector>
 
 #include <rclcpp/node.hpp>
@@ -84,6 +85,7 @@ public:
 
 private:
   void create_injectors();
+  void check_output_conflicts();
   void register_faults();
   void schedule_faults();
   ReloadScenarioResult validate_reload_compatible(const ScenarioConfig & new_scenario) const;
@@ -97,6 +99,8 @@ private:
   FaultScheduler scheduler_;
   InjectorMap injectors_;
   std::unique_ptr<assertions::FaultAssertionRunner> assertion_runner_;
+  std::set<std::string> conflicting_outputs_;
+  rclcpp::TimerBase::SharedPtr output_conflict_timer_;
 };
 
 } // namespace ros2_fault_injection::core

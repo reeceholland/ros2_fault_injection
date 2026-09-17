@@ -1,0 +1,17 @@
+injectors:
+  - id: affected
+    type: joint_state
+    topic:
+      input_topic: /forwarding_integration/affected_raw
+      output_topic: /forwarding_integration/affected
+  - id: unaffected
+    type: joint_state
+    topic:
+      input_topic: /forwarding_integration/unaffected_raw
+      output_topic: /forwarding_integration/unaffected
+faults:
+  - id: command_dropout
+    injector_id: affected
+    active_on_startup: false
+    config:
+      drop_probability: 1.0
