@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -47,6 +48,8 @@ struct InjectorConfig
   std::optional<TopicEndpointConfig> topic;
 
   std::optional<TriggerServiceEndpointConfig> trigger_service;
+
+  std::optional<std::uint32_t> seed;
 };
 
 /**

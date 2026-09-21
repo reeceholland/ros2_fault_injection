@@ -6,6 +6,7 @@
 injector:
   id: scan
   type: scan
+  seed: 1150710464  # Fixed seed for repeatable fault injection.
   input_topic: /scan_raw
   output_topic: /scan
   qos_depth: 10

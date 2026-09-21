@@ -6,6 +6,7 @@
 injectors:
   - id: battery
     type: battery_state
+    seed: 388743099  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /battery_state_raw
       output_topic: /battery_state

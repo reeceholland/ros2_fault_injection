@@ -38,7 +38,8 @@ int get_int(const FaultConfig & fault, const std::string & key, int fallback)
 }   // namespace
 
 FaultInjectorBase::FaultInjectorBase(rclcpp::Node & node, InjectorConfig config)
-: node_(node), config_(std::move(config)), rng_(std::random_device{}()) {}
+: node_(node), config_(std::move(config)),
+  effective_seed_(config_.seed ? *config_.seed : std::random_device{}()), rng_(effective_seed_) {}
 
 std::string FaultInjectorBase::id() const
 {
@@ -257,6 +258,11 @@ std::vector<FaultConfigField> FaultInjectorBase::config_schema() const
     schema.push_back(field);
   }
   return schema;
+}
+
+std::uint32_t FaultInjectorBase::effective_seed() const
+{
+  return effective_seed_;
 }
 
 } // namespace ros2_fault_injection::core

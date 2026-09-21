@@ -55,7 +55,8 @@ ScenarioReport ReportCreator::create_report(
 
   for (const auto &[injector_id, injector] : injectors) {
     report.injector_ids.push_back(injector_id);
-    report.injectors.push_back(InjectorReportEntry{injector_id, injector->type()});
+    report.injectors.push_back(InjectorReportEntry{injector_id, injector->type(),
+        injector->effective_seed()});
 
     const auto fault_ids = injector->fault_ids();
     const auto active_fault_ids = injector->active_fault_ids();
@@ -117,12 +118,13 @@ std::string ReportCreator::to_markdown(const ScenarioReport & report) const
   if (report.injectors.empty()) {
     out << "_No injectors registered._\n\n";
   } else {
-    out << "| Injector ID | Type |\n";
-    out << "| --- | --- |\n";
+    out << "| Injector ID | Type | Effective Seed |\n";
+    out << "| --- | --- | --- |\n";
 
     for (const auto & injector : report.injectors) {
       out << "| `" << injector.id << "` "
-          << "| `" << injector.type << "` |\n";
+          << "| `" << injector.type << "` "
+          << "| `" << injector.seed << "` |\n";
     }
 
     out << "\n";

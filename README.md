@@ -303,6 +303,21 @@ assertions:
     within: 8.0
 ```
 
+### Reproducible Random Faults
+
+Set an optional `seed: 12345` beside each injector's `id` and `type`.
+Values from `0` to `4294967295` are accepted. Omit it to generate a seed
+at construction; reports record the value used in the **Effective Seed** column.
+The example configuration files include fixed seeds.
+
+Restart with the same seed, input sequence, and fault configuration/activation
+history to replay random effects in the same environment. Reload and fault
+activation do not reset the generator, and changing a seed requires a restart.
+Live ROS timing and cross-platform identical outputs are not guaranteed.
+
+See [random seed configuration and replay](docs/fault_configuration.md#random-seeds)
+for a complete example and report command.
+
 ### Fault Activation Rules
 
 | YAML fields | Behavior |
@@ -510,7 +525,7 @@ Reloads the same scenario file that was passed to `fault_injector.launch.py`.
 
 The reload path is intentionally conservative: it can update fault definitions, config values,
 startup state, and schedules, but it cannot change the running injector layout. Injector IDs,
-injector types, topic endpoints, service endpoints, and QoS depth must stay the same. If validation
+injector types, topic endpoints, service endpoints, QoS depth, and configured seeds must stay the same. If validation
 or compatibility checks fail, the currently running scenario is left unchanged.
 
 ## Events
@@ -659,6 +674,12 @@ colcon test --packages-select ros2_fault_injection --event-handlers console_dire
 ```
 
 Current tests cover scenario validation, scenario parsing, config schema, scheduler behavior, shared `FaultInjectorBase` behavior, service/event behavior in `FaultServiceManager`, fault event assertions, topic Hz assertions, scenario status monitoring, odom covariance behavior, trigger service faults, TF transform faults, and a launch/service integration path for runtime config reads and updates.
+
+Seed coverage includes parser boundaries and invalid values, generated-seed replay,
+effective seeds in reports, reload compatibility, and PointCloud2 dust output.
+The dust tests check that equal seeds produce identical output for identical
+inputs, different seeds produce different output, and generated ranges stay
+within the configured bounds.
 
 ## Development Notes
 

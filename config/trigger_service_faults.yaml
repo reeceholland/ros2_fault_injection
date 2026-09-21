@@ -6,6 +6,7 @@
 injector:
   id: enable_motors
   type: trigger_service
+  seed: 2496971839  # Fixed seed for repeatable fault injection.
   proxy_service: /enable_motors
   target_service: /enable_motors_raw
 

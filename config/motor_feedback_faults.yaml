@@ -5,6 +5,7 @@
 injector:
   id: motor_feedback
   type: joint_state
+  seed: 2600277678  # Fixed seed for repeatable fault injection.
   input_topic: /platform/motors/feedback_raw
   output_topic: /platform/motors/feedback
   qos_depth: 10

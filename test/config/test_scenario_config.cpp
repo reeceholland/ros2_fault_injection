@@ -165,3 +165,69 @@ faults:
   EXPECT_EQ(scenario.injectors[0].trigger_service->proxy_service, "/enable_motors");
   EXPECT_EQ(scenario.injectors[0].trigger_service->target_service, "/enable_motors_raw");
 }
+
+TEST(ScenarioConfig, ParsesInjectorSeeds)
+{
+  const auto path =
+    write_temp_yaml(
+    R"(
+injectors:
+  - id: zero
+    type: scan
+    seed: 0
+    input_topic: /raw
+    output_topic: /out
+  - id: maximum
+    type: trigger_service
+    seed: 4294967295
+    trigger_service:
+      proxy_service: /proxy
+      target_service: /target
+  - id: omitted
+    type: scan
+    input_topic: /raw2
+    output_topic: /out2
+)");
+  const auto scenario = ros2_fault_injection::load_scenario_config(path);
+  ASSERT_EQ(scenario.injectors.size(), 3u);
+  EXPECT_EQ(scenario.injectors[0].seed, 0u);
+  EXPECT_EQ(scenario.injectors[1].seed, 4294967295u);
+  EXPECT_FALSE(scenario.injectors[2].seed.has_value());
+}
+
+TEST(ScenarioConfig, ParsesSeedInLegacyInjectorBlock)
+{
+  const auto path =
+    write_temp_yaml(
+    R"(
+injector:
+  id: lidar
+  type: scan
+  seed: 12345
+  topic:
+    input_topic: /raw
+    output_topic: /out
+)");
+  const auto scenario = ros2_fault_injection::load_scenario_config(path);
+  EXPECT_EQ(scenario.injector.seed, 12345u);
+  ASSERT_EQ(scenario.injectors.size(), 1u);
+  EXPECT_EQ(scenario.injectors[0].seed, 12345u);
+}
+
+TEST(ScenarioConfig, RejectsInvalidSeedsWithInjectorContext)
+{
+  for (const auto * value : {"-1", "4294967296", "99999999999999999999999999",
+      "1.5", "1e3", "true", "null", "[]", "{}", "hello", "\"\"", "0x10"})
+  {
+    SCOPED_TRACE(value);
+    const auto path = write_temp_yaml(
+      std::string("injector:\n  id: lidar\n  type: scan\n  input_topic: /raw\n") +
+      "  output_topic: /out\n  seed: " + value + "\n");
+    try {
+      ros2_fault_injection::load_scenario_config(path);
+      FAIL() << "Invalid seed accepted";
+    } catch (const std::runtime_error & error) {
+      EXPECT_NE(std::string(error.what()).find("Injector 'lidar': seed"), std::string::npos);
+    }
+  }
+}

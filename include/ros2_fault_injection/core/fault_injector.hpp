@@ -7,6 +7,7 @@
 #ifndef ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_
 #define ROS2_FAULT_INJECTION__FAULT_INJECTOR_HPP_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -118,6 +119,8 @@ public:
   virtual std::vector<std::string> active_fault_ids() const = 0;
 
   virtual void clear_faults() = 0;
+
+  virtual std::uint32_t effective_seed() const = 0;
 };
 
   /// Map of injector id to injector instance.

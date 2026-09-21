@@ -5,6 +5,7 @@
 injector:
   id: imu
   type: imu
+  seed: 2868243236  # Fixed seed for repeatable fault injection.
   input_topic: /sensors/imu_raw
   output_topic: /sensors/imu
   qos_depth: 10

@@ -20,6 +20,7 @@ namespace
 class FakeFaultInjector : public rfi_core::FaultInjector
 {
 public:
+  std::uint32_t effective_seed() const override {return 12345u;}
   std::string id() const override {return "injector1";}
   std::string type() const override {return "fake";}
 
@@ -198,5 +199,23 @@ TEST(ReportCreatorTest, MarkdownHandlesEmptyAssertions)
   EXPECT_NE(markdown.find("injector1"), std::string::npos);
   EXPECT_NE(markdown.find("No assertions configured."), std::string::npos);
 
+  rclcpp::shutdown();
+}
+
+TEST(ReportCreatorTest, IncludesEffectiveSeedInReportAndMarkdown)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("seed_report_test");
+    rfi_core::ReportCreator creator(*node);
+    rfi_core::InjectorMap injectors;
+    injectors["injector1"] = std::make_shared<FakeFaultInjector>();
+    const auto report = creator.create_report("scenario.yaml", injectors, {}, {});
+    ASSERT_EQ(report.injectors.size(), 1u);
+    EXPECT_EQ(report.injectors.front().seed, 12345u);
+    const auto markdown = creator.to_markdown(report);
+    EXPECT_NE(markdown.find("Effective Seed"), std::string::npos);
+    EXPECT_NE(markdown.find("| `injector1` | `fake` | `12345` |"), std::string::npos);
+  }
   rclcpp::shutdown();
 }

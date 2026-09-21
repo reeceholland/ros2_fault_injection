@@ -6,6 +6,7 @@
 injectors:
   - id: ouster_points
     type: point_cloud
+    seed: 2810157411  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /ouster/points_raw
       output_topic: /ouster/points

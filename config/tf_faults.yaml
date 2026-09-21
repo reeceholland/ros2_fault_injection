@@ -7,6 +7,7 @@
 injector:
   id: tf_odom_base
   type: tf
+  seed: 710815810  # Fixed seed for repeatable fault injection.
   input_topic: /tf_raw
   output_topic: /tf
   qos_depth: 50

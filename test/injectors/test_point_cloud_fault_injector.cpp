@@ -354,4 +354,104 @@ TEST(PointCloudFaultInjector, AppliesRangeNoiseAlongPointRay)
   rclcpp::shutdown();
 }
 
+class SeededDustTest : public ::testing::Test
+{
+protected:
+  void SetUp() override {rclcpp::init(0, nullptr);}
+  void TearDown() override {rclcpp::shutdown();}
+
+  void compare_cloud_sequences(std::uint32_t second_seed, bool expect_equal)
+  {
+    auto node = std::make_shared<rclcpp::Node>("seeded_dust_test");
+    auto first_config = make_injector_config();
+    first_config.seed = 12345u;
+    first_config.topic->input_topic = "/seeded_dust/first_raw";
+    first_config.topic->output_topic = "/seeded_dust/first";
+    auto second_config = first_config;
+    second_config.id = "second";
+    second_config.seed = second_seed;
+    second_config.topic->input_topic = "/seeded_dust/second_raw";
+    second_config.topic->output_topic = "/seeded_dust/second";
+    PointCloudFaultInjector first(*node, first_config);
+    PointCloudFaultInjector second(*node, second_config);
+    auto fault = make_fault("dust");
+    fault.config["dust_return_probability"] = "1.0";
+    fault.config["dust_min_range"] = "0.2";
+    fault.config["dust_max_range"] = "1.5";
+    first.add_fault(fault);
+    fault.injector_id = second_config.id;
+    second.add_fault(fault);
+    first.activate_fault(fault.id);
+    second.activate_fault(fault.id);
+
+    using Cloud = sensor_msgs::msg::PointCloud2;
+    auto first_pub = node->create_publisher<Cloud>(first_config.topic->input_topic, 10);
+    auto second_pub = node->create_publisher<Cloud>(second_config.topic->input_topic, 10);
+    std::vector<Cloud> first_outputs, second_outputs;
+    auto first_sub = node->create_subscription<Cloud>(first_config.topic->output_topic, 10,
+        [&first_outputs](const Cloud & msg) {first_outputs.push_back(msg);});
+    auto second_sub = node->create_subscription<Cloud>(second_config.topic->output_topic, 10,
+        [&second_outputs](const Cloud & msg) {second_outputs.push_back(msg);});
+    const auto discovery_deadline = std::chrono::steady_clock::now() + 5s;
+    while (first_pub->get_subscription_count() == 0 || second_pub->get_subscription_count() == 0 ||
+      first_sub->get_publisher_count() == 0 || second_sub->get_publisher_count() == 0)
+    {
+      ASSERT_LT(std::chrono::steady_clock::now(), discovery_deadline);
+      spin_for(node, 5ms);
+    }
+
+    std::vector<Point> points;
+    for (int i = 0; i < 32; ++i) {
+      points.push_back(Point{10.0F + i, 2.0F, 1.0F, 8.0F});
+    }
+    auto input = make_cloud(points);
+    bool sequences_differ = false;
+    for (std::size_t sequence = 0; sequence < 5; ++sequence) {
+      SCOPED_TRACE(sequence);
+      input.header.stamp.sec = static_cast<int32_t>(sequence + 1);
+      // Exactly one publish per input: retrying publication would consume extra RNG draws.
+      first_pub->publish(input);
+      second_pub->publish(input);
+      const auto deadline = std::chrono::steady_clock::now() + 3s;
+      while (first_outputs.size() <= sequence || second_outputs.size() <= sequence) {
+        ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+        spin_for(node, 5ms);
+      }
+      ASSERT_EQ(first_outputs.size(), sequence + 1);
+      ASSERT_EQ(second_outputs.size(), sequence + 1);
+      const auto & a = first_outputs.back();
+      const auto & b = second_outputs.back();
+      EXPECT_EQ(a.header, input.header);
+      EXPECT_EQ(b.header, input.header);
+      EXPECT_NE(a.data, input.data);
+      EXPECT_NE(b.data, input.data);
+      if (expect_equal) {
+        EXPECT_EQ(a, b);
+      }
+      sequences_differ |= a.data != b.data;
+      if (sequence > 0) {
+        EXPECT_NE(a.data, first_outputs[sequence - 1].data);
+      }
+      for (const auto & cloud : {a, b}) {
+        for (const auto & point : read_points(cloud)) {
+          const auto range = std::sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
+          EXPECT_GE(range, 0.2F - 1e-5F);
+          EXPECT_LE(range, 1.5F + 1e-5F);
+        }
+      }
+    }
+    EXPECT_EQ(sequences_differ, !expect_equal);
+  }
+};
+
+TEST_F(SeededDustTest, SameSeedProducesIdenticalDustOutput)
+{
+  compare_cloud_sequences(12345u, true);
+}
+
+TEST_F(SeededDustTest, DifferentSeedsProduceDifferentDustOutput)
+{
+  compare_cloud_sequences(54321u, false);
+}
+
 }  // namespace ros2_fault_injection::injectors

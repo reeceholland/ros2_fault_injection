@@ -1,6 +1,7 @@
 injectors:
   - id: odom
     type: odom
+    seed: 1961596676  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /odom_raw
       output_topic: /odom
@@ -8,6 +9,7 @@ injectors:
 
   - id: cmd_vel
     type: twist
+    seed: 3043458913  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /cmd_vel_smoothed
       output_topic: /cmd_vel_faulted
@@ -15,6 +17,7 @@ injectors:
 
   - id: scan
     type: scan
+    seed: 2754171439  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /scan_raw
       output_topic: /scan

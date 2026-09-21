@@ -129,9 +129,15 @@ public:
     return {};
   }
 
+  std::uint32_t effective_seed() const override
+  {
+    return effective_seed_;
+  }
+
 private:
   std::unordered_map<std::string, rfi_config::FaultConfig> faults_;
   std::unordered_set<std::string> active_;
+  std::uint32_t effective_seed_ = 0;
 };
 
 void spin_for(const rclcpp::Node::SharedPtr & node, std::chrono::milliseconds duration)

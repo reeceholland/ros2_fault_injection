@@ -78,6 +78,31 @@ void BatteryStateFaultInjector::on_battery_state(
 
 If the message type supports delay, follow the existing delayed-message pattern used by odom, scan, joint state, and IMU injectors.
 
+### Use the Shared Random Generator
+
+Use the inherited `rng_` for random effects so the injector respects
+`InjectorConfig::seed`. For example:
+
+```cpp
+std::normal_distribution<double> noise(0.0, standard_deviation);
+const double sample = noise(rng_);
+```
+
+`FaultInjectorBase` selects the configured seed or generates one once at
+construction, initializes `rng_`, and exposes `effective_seed()` for reports.
+Do not create a separate unseeded generator or reseed it on fault activation.
+Follow the injector's existing locking when accessing the generator.
+
+Classes deriving directly from `FaultInjector` must implement the public
+`std::uint32_t effective_seed() const` method and return the seed actually
+used. Classes deriving from `FaultInjectorBase` inherit that implementation.
+Rebuild external injector plugins against the updated interface.
+
+For random effects, test that two fresh injectors with the same seed produce
+the same outputs for identical inputs, and verify the effect's bounds or
+distribution-specific properties. See
+[random seed behaviour](fault_configuration.md#random-seeds) for replay limits.
+
 ## 4. Add Fault Config Keys
 
 Add the new keys to `fault_config_schema` so validation, services, and docs agree on what the injector accepts.
