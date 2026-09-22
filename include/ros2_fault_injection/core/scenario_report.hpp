@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@ struct InjectorReportEntry
 {
   std::string id;
   std::string type;
+  std::uint32_t seed;
 };
 
 struct FaultReportEntry

@@ -6,6 +6,76 @@ At runtime, each fault is registered against an `injector_id`. The injector type
 
 Each injector exposes a config schema made of `FaultConfigField` entries. Scenario loading and runtime config updates both use that schema, so YAML files and `/fault_injection/set_fault_config` follow the same key and value validation rules. The schema also feeds `/fault_injection/get_fault_schema`, which UI tools can use to display field types, descriptions, defaults, and numeric limits.
 
+## Random Seeds
+
+Set the optional `seed` beside an injector's `id` and `type`. It is an
+injector setting, not a key inside a fault's `config` map.
+
+```yaml
+injectors:
+  - id: ouster_points
+    type: point_cloud
+    seed: 12345
+    topic:
+      input_topic: /ouster/points_raw
+      output_topic: /ouster/points
+      qos_depth: 10
+
+faults:
+  - id: dust
+    injector_id: ouster_points
+    active_on_startup: true
+    config:
+      dust_return_probability: 0.35
+      dust_min_range: 0.2
+      dust_max_range: 1.5
+      dust_intensity_scale: 0.2
+```
+
+Seeds must be decimal integers from `0` through `4294967295`, inclusive.
+Zero is a valid fixed seed. Negative numbers, fractions, scientific notation,
+hexadecimal notation, booleans, nulls, lists, and maps are rejected. Omit the
+field to generate a seed using `std::random_device` when the injector is
+constructed. The legacy single `injector:` form also accepts `seed`.
+
+Each injector owns a separate random generator shared by its random fault
+effects. The configured seed is used directly; it is not mixed with the
+injector ID. Use different seeds for separate injectors when you want different
+random sequences. There is no scenario-level seed. Shipped injector examples
+include fixed seeds.
+
+### Reproduce a Run
+
+1. Request a report while the injector node is running:
+
+   ```bash
+   ros2 service call /fault_injection/request_report ros2_fault_injection/srv/RequestReport '{}'
+   ```
+
+2. Find the injector's **Effective Seed** in the returned `report_markdown`.
+   Runner reports written with `report_file` include the same column. This
+   records the seed actually used, whether configured or generated.
+3. Put that value in the injector's YAML `seed` field.
+4. Restart the framework to recreate the injector, then supply the same input
+   messages in the same order with the same fault settings and activation history.
+
+A fixed seed reproduces the random sequence under the same execution
+environment and sequence of random draws. It does not reproduce ROS timing,
+message delivery, or live sensor inputs. Changing enabled effects or the
+number/order of messages can change which random draws affect each message.
+Identical outputs across different C++ standard libraries or platforms are
+not guaranteed.
+
+### Reload and Activation
+
+Adding, removing, or changing a configured seed during scenario reload is
+rejected with a restart-required error. Keeping the seed unchanged preserves
+the running generator's state; reload does not rewind its sequence. Activating
+or deactivating a fault also does not reseed the injector.
+
+To replay from the beginning, restart the framework with an explicit seed.
+`SetFaultConfig` cannot change an injector's seed.
+
 ## Common Fault Fields
 
 Every fault supports these top-level fields:

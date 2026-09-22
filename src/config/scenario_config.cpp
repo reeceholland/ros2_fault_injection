@@ -8,6 +8,9 @@
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
 
 #include <chrono>
+#include <charconv>
+#include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -35,11 +38,37 @@ std::string node_to_string(const YAML::Node & node)
   throw std::runtime_error("Expected scalar YAML value");
 }
 
+std::optional<std::uint32_t> parse_seed(const YAML::Node & node, const std::string & id)
+{
+  const auto seed_node = node["seed"];
+  if (!seed_node.IsDefined()) {
+    return std::nullopt;
+  }
+
+  const auto error = "Injector '" + id +
+    "': seed must be a decimal integer between 0 and 4294967295";
+  if (!seed_node.IsScalar()) {
+    throw std::runtime_error(error);
+  }
+
+  const auto text = seed_node.Scalar();
+  if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos) {
+    throw std::runtime_error(error);
+  }
+  std::uint32_t seed{};
+  const auto result = std::from_chars(text.data(), text.data() + text.size(), seed);
+  if (result.ec != std::errc{} || result.ptr != text.data() + text.size()) {
+    throw std::runtime_error(error);
+  }
+  return seed;
+}
+
 InjectorConfig parse_injector(const YAML::Node & node)
 {
   InjectorConfig config;
   config.id = required_string(node, "id");
   config.type = required_string(node, "type");
+  config.seed = parse_seed(node, config.id);
 
   if (node["trigger_service"] || config.type == "trigger_service") {
     const auto service_node = node["trigger_service"] ? node["trigger_service"] : node;

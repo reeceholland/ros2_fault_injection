@@ -6,6 +6,7 @@
 injectors:
   - id: cmd_vel
     type: twist
+    seed: 1490459836  # Fixed seed for repeatable fault injection.
     topic:
       input_topic: /cmd_vel_raw
       output_topic: /cmd_vel

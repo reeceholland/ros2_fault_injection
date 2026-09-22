@@ -6,6 +6,7 @@
 injector:
   id: odom
   type: odom
+  seed: 3731903528  # Fixed seed for repeatable fault injection.
   input_topic: /odom_raw
   output_topic: /odom
   qos_depth: 10

@@ -94,6 +94,7 @@ rfi_config::FaultConfigField make_test_schema_field(const std::string & key)
 class FakeFaultInjector : public rfi_core::FaultInjector
 {
 public:
+  std::uint32_t effective_seed() const override {return 12345u;}
   explicit FakeFaultInjector(std::string id, std::string type = "odom")
   : id_(std::move(id)), type_(std::move(type))
   {

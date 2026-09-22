@@ -54,6 +54,13 @@ public:
     const std::string & value) override;
   void clear_faults() override;
 
+    /**
+     * @brief Get the effective seed used by this injector.
+     *
+     * @return Effective seed value.
+     */
+  std::uint32_t effective_seed() const override;
+
 protected:
     /**
      * @brief Get the largest active numeric config value for a key.
@@ -105,6 +112,7 @@ protected:
   mutable std::mutex mutex_;
   std::unordered_map<std::string, FaultConfig> faults_;
   std::unordered_map<std::string, bool> active_;
+  std::uint32_t effective_seed_;
   std::mt19937 rng_;
 };
 

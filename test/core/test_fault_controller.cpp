@@ -203,3 +203,33 @@ TEST_F(FaultControllerTest, ReloadWithChangedInjectorsIsRejected) {
   ASSERT_TRUE(original_bias_fault.has_value());
   EXPECT_EQ(original_bias_fault->config.at("x_bias"), "1.0");
 }
+
+TEST_F(FaultControllerTest, ReloadRejectsChangedSeedAndMissingInjector)
+{
+  const auto original = odom_scenario_yaml("1.0");
+  const std::string filename = "seed_reload_test.yaml";
+  const auto path = write_temp_yaml(filename, original);
+  auto node = std::make_shared<rclcpp::Node>("seed_reload_test");
+  rfi_core::FaultEventPublisher events(*node);
+  rfi_core::FaultController controller(*node, path, rfi_config::load_scenario_config(path), events);
+  const auto seed = controller.injectors().at("odom")->effective_seed();
+  auto changed = original;
+  changed.insert(changed.find("  type: odom"), "  seed: 12345\n");
+  write_temp_yaml(filename, changed);
+  EXPECT_FALSE(controller.reload_scenario().success);
+  EXPECT_EQ(controller.injectors().at("odom")->effective_seed(), seed);
+
+  changed = original;
+  auto pos = changed.find("odom");
+  while (pos != std::string::npos) {
+    changed.replace(pos, 4, "other");
+    pos = changed.find("odom", pos + 5);
+  }
+  // Keep the plugin type valid while changing the injector ID and references.
+  changed.replace(changed.find("type: other"), 11, "type: odom");
+  write_temp_yaml(filename, changed);
+  EXPECT_FALSE(controller.reload_scenario().success);
+  write_temp_yaml(filename, original);
+  EXPECT_TRUE(controller.reload_scenario().success);
+  EXPECT_EQ(controller.injectors().at("odom")->effective_seed(), seed);
+}

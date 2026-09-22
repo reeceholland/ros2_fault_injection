@@ -30,6 +30,7 @@ class TestFaultInjector : public rfi_core::FaultInjectorBase {
 public:
   TestFaultInjector(rclcpp::Node & node, const rfi_config::InjectorConfig & config)
   : rfi_core::FaultInjectorBase(node, config) {}
+  std::uint32_t draw() {return rng_();}
 };
 
 TEST(FaultInjectorBase, ReturnsStoredFaultConfig) {
@@ -300,5 +301,43 @@ TEST(FaultInjectorBase, SetFaultConfigValueRejectsUnknownFault) {
   EXPECT_FALSE(updated);
   EXPECT_FALSE(injector.has_fault("missing_fault"));
 
+  rclcpp::shutdown();
+}
+
+TEST(FaultInjectorBase, ExplicitSeedMatchesGeneratorAndRecreatesSequence)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("seed_test");
+    for (const std::uint32_t seed : {0u, 12345u, 4294967295u}) {
+      rfi_config::InjectorConfig config;
+      config.seed = seed;
+      TestFaultInjector first(*node, config);
+      TestFaultInjector second(*node, config);
+      std::mt19937 expected(seed);
+      EXPECT_EQ(first.effective_seed(), seed);
+      for (int i = 0; i < 100; ++i) {
+        const auto value = expected();
+        EXPECT_EQ(first.draw(), value);
+        EXPECT_EQ(second.draw(), value);
+      }
+    }
+  }
+  rclcpp::shutdown();
+}
+
+TEST(FaultInjectorBase, GeneratedSeedCanReplaySequence)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("generated_seed_test");
+    rfi_config::InjectorConfig config;
+    TestFaultInjector original(*node, config);
+    config.seed = original.effective_seed();
+    TestFaultInjector replay(*node, config);
+    for (int i = 0; i < 100; ++i) {
+      EXPECT_EQ(original.draw(), replay.draw());
+    }
+  }
   rclcpp::shutdown();
 }

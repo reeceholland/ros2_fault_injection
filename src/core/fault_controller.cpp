@@ -199,6 +199,11 @@ ReloadScenarioResult FaultController::validate_reload_compatible(
       return {false, "Reload cannot remove injector '" + current.id + "'"};
     }
 
+    if (updated->seed != current.seed) {
+      return {false,
+        "Reload cannot change seed for injector '" + current.id + "'; restart required"};
+    }
+
     if (updated->type != current.type) {
       return {false, "Reload cannot change type for injector '" + current.id + "'"};
     }
