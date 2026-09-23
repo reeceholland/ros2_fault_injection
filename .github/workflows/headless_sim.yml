@@ -2,6 +2,15 @@ name: Headless Unity fault-injection test
 
 on:
   workflow_dispatch:
+    inputs:
+      unity_test_commit:
+        description: 'Published 40-character Unity commit whose CI runner enables use_motor_fault_injection'
+        required: true
+        type: string
+      rover_commit:
+        description: 'Published 40-character rover commit with Unity Nav2/SLAM and simulation-time fixes'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,26 +22,28 @@ concurrency:
 env:
   ROS_DISTRO: jazzy
   ROS_DOMAIN_ID: "190"
+  CI_ROS_DOMAIN_ID: "190"
+  ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
 
   FAULT_INJECTION_WS: ${{ github.workspace }}
 
   UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
-  UNITY_TEST_COMMIT: fe2a5bf2fb2f3910f94695750340051726605150
+  UNITY_TEST_COMMIT: f664404d88faaefa8ff85431ad835ef48e3b343b
 
   ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
-  ROVER_UNITY_SIMULATION_COMMIT: 05e2b543fa76d8b6f7cbabf928351bc50bc7ca99
+  ROVER_UNITY_SIMULATION_COMMIT: d34e8309d127f38a51094a3d88c967d85dbdb307
 
   ROS_TCP_ENDPOINT_REPO: https://github.com/Unity-Technologies/ROS-TCP-Endpoint.git
   ROS_TCP_ENDPOINT_COMMIT: 54c1a64b6d5ef6ffa0a0431570bb74329b79b15b
 
-  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.0/ci-rover-linux-ci-sim-v0.1.1.tar.gz
-  SIMULATOR_SHA256: 44c4698ddb3cc07e4622e5baf83a34a504bbf95809af4ee27c504d62ff4493ff
+  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.1/ci-rover-linux-ci-sim-v0.1.1.tar.gz
+  SIMULATOR_SHA256: f05d9191fbf28f7035b4594ccf90a71e7218aaec3bb712843abe2029cf267bec
 
 jobs:
   headless-sim:
-    name: Headless simulator dropout test
+    name: Headless simulator dropout and navigation tests
     runs-on: [self-hosted, linux, x64, ros2-jazzy]
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout fault-injection framework
@@ -73,6 +84,17 @@ jobs:
           command -v Xvfb
           command -v gdb
           command -v bsdtar
+          command -v flock
+          command -v ss
+          command -v setsid
+          [[ "$UNITY_TEST_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "unity_test_commit must be a published full lowercase commit SHA" >&2
+            exit 2
+          }
+          [[ "$ROVER_UNITY_SIMULATION_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "rover_commit must be a published full lowercase commit SHA" >&2
+            exit 2
+          }
 
       - name: Prepare CI directories
         shell: bash
@@ -103,6 +125,24 @@ jobs:
 
           ACTUAL_COMMIT="$(git -C "$ROVER_WS/src/rover" rev-parse HEAD)"
           test "$ACTUAL_COMMIT" = "$ROVER_UNITY_SIMULATION_COMMIT"
+
+      - name: Check navigation launch compatibility
+        shell: bash
+        run: |
+          set -eo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          launch = Path(os.environ['ROVER_WS']) / 'src/rover/rugged_rover_bringup/launch/unity_sim.launch.py'
+          runner = Path(os.environ['UNITY_TESTS_DIR']) / 'tools/ci/run_headless.sh'
+          if 'use_motor_fault_injection:=true' not in runner.read_text():
+              raise SystemExit('Selected Unity commit must explicitly enable motor fault injection in its CI runner.')
+          text = launch.read_text()
+          missing = [name for name in ('use_nav2', 'use_slam', 'ros_tcp_ip', 'use_motor_fault_injection') if name not in text]
+          if missing:
+              raise SystemExit(f"Selected rover commit lacks required Unity launch options: {missing}. Publish the updated rover launch code first.")
+          PY
+          python3 -m unittest discover -s "$UNITY_TESTS_DIR/tools/ci" -p test_navigation_scenario.py
 
       - name: Checkout pinned ROS TCP endpoint
         shell: bash
@@ -228,6 +268,7 @@ jobs:
           TEST_SCRIPT="$UNITY_TESTS_DIR/tools/ci/run_headless_dropout.sh"
           ROSBAG_DIR="$CI_LOG_DIR/rosbag"
           BAG_PID=""
+          unset ROS_STATIC_PEERS ROS_DISCOVERY_SERVER FASTRTPS_DEFAULT_PROFILES_FILE FASTDDS_DEFAULT_PROFILES_FILE CYCLONEDDS_URI ROS_LOCALHOST_ONLY
 
           cleanup() {
             set +e
@@ -304,7 +345,7 @@ jobs:
               --signal=TERM \
               --kill-after=15s \
               180s \
-              "$TEST_SCRIPT" \
+              bash "$TEST_SCRIPT" \
             > >(tee "$CI_LOG_DIR/dropout-test.log") \
             2> >(tee "$CI_LOG_DIR/dropout-test-stderr.log" >&2)
 
@@ -401,8 +442,15 @@ jobs:
 
           exit "$TEST_STATUS"
 
+      - name: Run headless waypoint navigation with fault injection
+        id: navigation
+        timeout-minutes: 17
+        shell: bash
+        run: |
+          bash tools/ci/run_navigation_workflow.sh
+
       - name: Capture Unity native backtrace
-        if: ${{ failure() && steps.dropout.outcome == 'failure' }}
+        if: ${{ failure() && (steps.dropout.outcome == 'failure' || steps.navigation.outcome == 'failure') }}
         timeout-minutes: 2
         shell: bash
         run: |
@@ -459,6 +507,7 @@ jobs:
         shell: bash
         env:
           DROPOUT_OUTCOME: ${{ steps.dropout.outcome }}
+          NAVIGATION_OUTCOME: ${{ steps.navigation.outcome }}
           JOB_STATUS: ${{ job.status }}
         run: |
           python3 - <<'PY'
@@ -480,7 +529,7 @@ jobs:
               icon = "✅" if passed else "❌"
 
               lines.extend([
-                  f"## {icon} Result: {data.get('result', 'unknown').upper()}",
+                  f"## {icon} Dropout result: {data.get('result', 'unknown').upper()}",
                   "",
                   "| Property | Value |",
                   "|---|---|",
@@ -518,6 +567,18 @@ jobs:
                   "The workflow failed before `result.json` could be created.",
               ])
 
+          lines.extend(["", "## Navigation", "", f"Step outcome: `{os.environ.get('NAVIGATION_OUTCOME')}`", ""])
+          navigation = Path(os.environ['CI_LOG_DIR']) / 'navigation/results.json'
+          if navigation.exists():
+              data = json.loads(navigation.read_text())
+              lines.extend([f"Scenario passed: `{data.get('passed')}`", "",
+                            "| Goal | Passed | Position error (m) | Yaw error (deg) |",
+                            "|---|---|---|---|"])
+              for goal in data.get('goals', []):
+                  lines.append(f"| {goal['name']} | {goal['passed']} | {goal.get('position_error', '-')} | {goal.get('yaw_error_deg', '-')} |")
+              lines.extend(["", "Navigation artifacts: `navigation/results.json`, `navigation/junit.xml`, logs and ROS bag."])
+          else:
+              lines.append("No navigation report: inspect step outcome and logs for setup failure, timeout or skipped navigation.")
           summary.write_text("\n".join(lines) + "\n")
           PY
 
