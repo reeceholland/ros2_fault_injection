@@ -51,7 +51,7 @@ printf 'Unity scripts: %s\nRover: %s\nSimulator: %s\nSHA256: %s\n' \
   > "$CI_LOG_DIR/versions.txt"
 status=0
 xvfb-run -a timeout --signal=TERM --kill-after=20s 930s \
-  bash "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" --feedback-interval 0 \
+  bash "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" --feedback-interval 5 \
   > >(tee "$CI_LOG_DIR/navigation-console.log") \
   2> >(tee "$CI_LOG_DIR/navigation-stderr.log" >&2) || status=$?
 # A dead recorder means this run did not capture the promised diagnostics.
