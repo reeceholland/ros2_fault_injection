@@ -255,7 +255,10 @@ printf 'Unity scripts: %s\nRover: %s\nSimulator: %s\nSHA256: %s\n' \
 # can perform readiness checks and detect an early Unity/navigation crash.
 setsid bash -c '
   set -eo pipefail
-  xvfb-run -a timeout --signal=TERM --kill-after=20s 930s \
+  xvfb-run -a \
+    --error-file="$CI_LOG_DIR/xvfb.log" \
+    --server-args="-screen 0 1280x720x24 -nolisten tcp -noreset" \
+    timeout --signal=TERM --kill-after=20s 930s \
     bash "$1" --feedback-interval 5 \
     > >(tee "$2" >(awk "/OBSERVER (EVENT|FAIL)/ { print; fflush(); }" > "$4")) \
     2> >(tee "$3" >&2)
