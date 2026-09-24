@@ -84,7 +84,7 @@ jobs:
           sudo apt-get install -y \
             build-essential cmake \
             python3-colcon-common-extensions python3-rosdep \
-            xvfb xauth gdb libarchive-tools \
+            xvfb xauth gdb strace libarchive-tools \
             iproute2 util-linux \
             libgl1 libegl1 libasound2t64
 
@@ -108,6 +108,7 @@ jobs:
           command -v xvfb-run
           command -v Xvfb
           command -v gdb
+          command -v strace
           command -v bsdtar
           command -v flock
           command -v ss
