@@ -19,6 +19,15 @@ FAULT_SERVICE="/fault_injection/set_fault_state"
 
 mkdir -p "$CI_LOG_DIR" "$CI_LOG_DIR/readiness" "$CI_LOG_DIR/telemetry"
 
+# Reject reports from previous invocations and latch active-test watchdog failures.
+: > "$CI_LOG_DIR/run-started"
+rm -f -- "$CI_LOG_DIR/active-watchdog-failure.txt"
+export NAVIGATION_PHASE_HELPER="$FAULT_INJECTION_WS/tools/ci/navigation_phase.py"
+
+test_completed() {
+  python3 "$NAVIGATION_PHASE_HELPER" "$CI_LOG_DIR"
+}
+
 bag_pid=""
 navigation_pid=""
 declare -a logger_pids=()
@@ -215,11 +224,22 @@ start_fault_service_watchdog() {
   setsid bash -c '
     service="$1"
     while true; do
+      if python3 "$NAVIGATION_PHASE_HELPER" "$CI_LOG_DIR"; then
+        echo "Test report complete; stopping fault-service watchdog for shutdown"
+        exit 0
+      fi
       timestamp="$(date --iso-8601=seconds)"
       if type="$(ros2 service type "$service" 2>/dev/null)"; then
         printf "%s available %s [%s]\n" "$timestamp" "$service" "$type"
       else
-        printf "%s LOST %s\n" "$timestamp" "$service" >&2
+        # Service discovery can finish after the report is written. Recheck
+        # before classifying expected ROS shutdown as an active-test failure.
+        if python3 "$NAVIGATION_PHASE_HELPER" "$CI_LOG_DIR"; then
+          echo "Test complete; service disappearance is expected during shutdown"
+          exit 0
+        fi
+        printf "%s LOST %s during active test\n" "$timestamp" "$service" > "$CI_LOG_DIR/active-watchdog-failure.txt"
+        cat "$CI_LOG_DIR/active-watchdog-failure.txt" >&2
         exit 1
       fi
       sleep 1
@@ -305,21 +325,37 @@ start_topic_logger "observer-command" "/platform/motors/cmd"
 start_topic_logger "observer-collision" "/test/collision_status"
 start_fault_service_watchdog
 
-# Supervise the original navigation runner plus all required diagnostics.
+# ROS availability is required only while the test is active. The display
+# supervisor includes shutdown time, so its lifetime is not the test phase.
+phase=active
 while kill -0 "$navigation_pid" 2>/dev/null; do
+  if [[ -f "$CI_LOG_DIR/active-watchdog-failure.txt" ]]; then
+    cat "$CI_LOG_DIR/active-watchdog-failure.txt" >&2
+    exit 1
+  fi
+  if [[ "$phase" == active ]] && test_completed; then
+    phase=shutdown
+    echo 'Final navigation report received; waiting for process shutdown'
+  fi
   if ! kill -0 "$bag_pid" 2>/dev/null; then
-    echo "ROS bag recorder exited during navigation" >&2
+    echo "ROS bag recorder exited unexpectedly" >&2
     cat "$CI_LOG_DIR/rosbag.log" >&2 || true
     exit 1
   fi
-
-  for pid in "${logger_pids[@]}"; do
-    if ! kill -0 "$pid" 2>/dev/null; then
-      echo "Required telemetry logger/watchdog exited during navigation (pid=$pid)" >&2
-      exit 1
-    fi
-  done
-
+  if [[ "$phase" == active ]]; then
+    for pid in "${logger_pids[@]}"; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        # Resolve the boundary race with report publication without forgetting
+        # an earlier fault-service failure, which remains latched above/below.
+        if test_completed; then
+          phase=shutdown
+          break
+        fi
+        echo "Required telemetry logger/watchdog exited during active test (pid=$pid)" >&2
+        exit 1
+      fi
+    done
+  fi
   sleep 0.1
 done
 
@@ -328,5 +364,22 @@ wait "$navigation_pid"
 status=$?
 set -e
 
+# A final PASS must never erase a failure observed during active testing.
+if [[ -f "$CI_LOG_DIR/active-watchdog-failure.txt" ]]; then
+  cat "$CI_LOG_DIR/active-watchdog-failure.txt" >&2
+  status=1
+fi
+if ! kill -0 "$bag_pid" 2>/dev/null; then
+  echo 'ROS bag recorder exited before requested cleanup' >&2
+  status=1
+fi
+if ! test_completed; then
+  echo 'Navigation exited without a complete current-run report' >&2
+  status=1
+fi
+if (( status == 0 )) && ! python3 "$NAVIGATION_PHASE_HELPER" "$CI_LOG_DIR" --passed; then
+  echo 'Navigation report did not pass' >&2
+  status=1
+fi
 echo "Navigation/Unity process exited with status $status"
 exit "$status"
