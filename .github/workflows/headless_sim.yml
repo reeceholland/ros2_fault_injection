@@ -11,6 +11,14 @@ on:
         description: 'Published 40-character rover commit with Unity Nav2/SLAM and simulation-time fixes'
         required: true
         type: string
+      simulator_url:
+        description: 'Release URL of rebuilt Linux player containing CiObserverTelemetry'
+        required: true
+        type: string
+      simulator_sha256:
+        description: 'SHA256 of that player archive'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -28,16 +36,16 @@ env:
   FAULT_INJECTION_WS: ${{ github.workspace }}
 
   UNITY_TEST_REPO: https://github.com/reeceholland/unity-ros2-rover-sim.git
-  UNITY_TEST_COMMIT: f664404d88faaefa8ff85431ad835ef48e3b343b
+  UNITY_TEST_COMMIT: ${{ inputs.unity_test_commit }}
 
   ROVER_REPO: https://github.com/reeceholland/rugged_rover.git
-  ROVER_UNITY_SIMULATION_COMMIT: d34e8309d127f38a51094a3d88c967d85dbdb307
+  ROVER_UNITY_SIMULATION_COMMIT: ${{ inputs.rover_commit }}
 
   ROS_TCP_ENDPOINT_REPO: https://github.com/Unity-Technologies/ROS-TCP-Endpoint.git
   ROS_TCP_ENDPOINT_COMMIT: 54c1a64b6d5ef6ffa0a0431570bb74329b79b15b
 
-  SIMULATOR_URL: https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/ci-sim-v0.1.1/ci-rover-linux-ci-sim-v0.1.1.tar.gz
-  SIMULATOR_SHA256: f05d9191fbf28f7035b4594ccf90a71e7218aaec3bb712843abe2029cf267bec
+  SIMULATOR_URL: ${{ inputs.simulator_url }}
+  SIMULATOR_SHA256: ${{ inputs.simulator_sha256 }}
 
 jobs:
   headless-sim:
@@ -95,6 +103,14 @@ jobs:
             echo "rover_commit must be a published full lowercase commit SHA" >&2
             exit 2
           }
+          [[ "$SIMULATOR_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+            echo "simulator_sha256 must be a full lowercase SHA256" >&2
+            exit 2
+          }
+          [[ "$SIMULATOR_URL" == https://github.com/reeceholland/unity-ros2-rover-sim/releases/download/* ]] || {
+            echo "Simulator must be a release asset from the Unity repository" >&2
+            exit 2
+          }
 
       - name: Prepare CI directories
         shell: bash
@@ -143,6 +159,8 @@ jobs:
               raise SystemExit(f"Selected rover commit lacks required Unity launch options: {missing}. Publish the updated rover launch code first.")
           PY
           python3 -m unittest discover -s "$UNITY_TESTS_DIR/tools/ci" -p test_navigation_scenario.py
+          test -f "$UNITY_TESTS_DIR/tools/ci/resilience_observer.py"
+          python3 -m unittest discover -s "$UNITY_TESTS_DIR/tools/ci" -p test_resilience_observer.py
 
       - name: Checkout pinned ROS TCP endpoint
         shell: bash
@@ -581,6 +599,14 @@ jobs:
               lines.append("No navigation report: inspect step outcome and logs for setup failure, timeout or skipped navigation.")
           summary.write_text("\n".join(lines) + "\n")
           PY
+
+      - name: Write resilience and collision summary
+        if: always()
+        shell: bash
+        run: |
+          python3 tools/ci/observer_summary.py \
+            "$CI_LOG_DIR/navigation/observer/results.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Show test artifacts
         if: always()
