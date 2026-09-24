@@ -76,6 +76,7 @@ fail_if_core_process_exited() {
     local rc=$?
     set -e
     echo "Navigation/Unity process exited during startup/readiness (exit=$rc)" >&2
+    (( rc != 0 )) || rc=1
     exit "$rc"
   fi
 
@@ -89,15 +90,17 @@ fail_if_core_process_exited() {
 check_topic_ready() {
   local name="$1"
   local topic="$2"
+  local message_type="$3"
   local logfile="$CI_LOG_DIR/readiness/${name}.log"
   local pid rc
 
   echo "READINESS $name: checking $topic"
 
   setsid timeout --signal=TERM --kill-after=5s "${READINESS_TIMEOUT}s" \
-    ros2 topic echo --once "$topic" \
+    ros2 topic echo --once --qos-reliability best_effort "$topic" "$message_type" \
     >"$logfile" 2>&1 &
   pid=$!
+  register_pid "$pid"
 
   while kill -0 "$pid" 2>/dev/null; do
     fail_if_core_process_exited
@@ -136,6 +139,7 @@ check_action_ready() {
     ' _ "$action" \
     >"$logfile" 2>&1 &
   pid=$!
+  register_pid "$pid"
 
   while kill -0 "$pid" 2>/dev/null; do
     fail_if_core_process_exited
@@ -174,6 +178,7 @@ check_service_ready() {
     ' _ "$service" \
     >"$logfile" 2>&1 &
   pid=$!
+  register_pid "$pid"
 
   while kill -0 "$pid" 2>/dev/null; do
     fail_if_core_process_exited
@@ -269,20 +274,22 @@ setsid bash -c '
 navigation_pid=$!
 register_pid "$navigation_pid"
 
+# Explicit types let echo wait for discovery; inference exits immediately when
+# a topic has no publisher yet, which used to trigger premature cleanup.
 # Report each readiness condition independently. These are bounded, and each
 # probe also watches the navigation runner and rosbag for an early crash.
-check_topic_ready "clock" "/clock"
-check_topic_ready "scan-raw" "/scan_raw"
-check_topic_ready "scan-injected" "/scan"
-check_topic_ready "tf" "/tf"
+check_topic_ready "clock" "/clock" "rosgraph_msgs/msg/Clock"
+check_topic_ready "scan-raw" "/scan_raw" "sensor_msgs/msg/LaserScan"
+check_topic_ready "scan-injected" "/scan" "sensor_msgs/msg/LaserScan"
+check_topic_ready "tf" "/tf" "tf2_msgs/msg/TFMessage"
 check_action_ready "nav2" "/navigate_to_pose"
 check_service_ready "fault-service" "$FAULT_SERVICE"
 
 # The resilience observer is in-process, so its ROS-facing telemetry is checked
 # through the streams it consumes rather than through a fictitious observer topic.
-check_topic_ready "observer-ground-truth" "/ci/ground_truth/odom"
-check_topic_ready "observer-command" "/platform/motors/cmd"
-check_topic_ready "observer-collision" "/test/collision_status"
+check_topic_ready "observer-ground-truth" "/ci/ground_truth/odom" "nav_msgs/msg/Odometry"
+check_topic_ready "observer-command" "/platform/motors/cmd" "sensor_msgs/msg/JointState"
+check_topic_ready "observer-collision" "/test/collision_status" "std_msgs/msg/String"
 
 echo "All readiness checks passed."
 
