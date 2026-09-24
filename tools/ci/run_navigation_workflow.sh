@@ -1,90 +1,37 @@
 #!/usr/bin/env bash
 # Called by headless_sim.yml after building both workspaces and extracting Unity.
-#
-# Required extra environment:
-#   CI_FAULT_SERVICE   Fault-injection control service to watch.
-#   CI_OBSERVER_TOPIC  Observer telemetry topic to record.
-#
-# Optional:
-#   CI_READINESS_TIMEOUT   Maximum startup/readiness time (default: 60s).
-#   CI_ROS_DOMAIN_ID       ROS domain for this CI run (default: 190).
-
 set -eo pipefail
 
-# ROS/ament/colcon setup scripts are not safe to source with Bash nounset
-# enabled because they may read variables before defining them.
-set +u
 source /opt/ros/"$ROS_DISTRO"/setup.bash
 source "$ROVER_WS/install/setup.bash"
 source "$FAULT_INJECTION_WS/install/setup.bash"
-set -u
 
-unset \
-  ROS_STATIC_PEERS \
-  ROS_DISCOVERY_SERVER \
-  FASTRTPS_DEFAULT_PROFILES_FILE \
-  FASTDDS_DEFAULT_PROFILES_FILE \
-  CYCLONEDDS_URI \
-  ROS_LOCALHOST_ONLY
+unset ROS_STATIC_PEERS ROS_DISCOVERY_SERVER FASTRTPS_DEFAULT_PROFILES_FILE \
+  FASTDDS_DEFAULT_PROFILES_FILE CYCLONEDDS_URI ROS_LOCALHOST_ONLY
 
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 export ROS_DOMAIN_ID="${CI_ROS_DOMAIN_ID:-190}"
-
-: "${CI_LOG_DIR:?CI_LOG_DIR must be set}"
-: "${UNITY_TESTS_DIR:?UNITY_TESTS_DIR must be set}"
-: "${UNITY_TEST_COMMIT:?UNITY_TEST_COMMIT must be set}"
-: "${ROVER_UNITY_SIMULATION_COMMIT:?ROVER_UNITY_SIMULATION_COMMIT must be set}"
-: "${SIMULATOR_URL:?SIMULATOR_URL must be set}"
-: "${SIMULATOR_SHA256:?SIMULATOR_SHA256 must be set}"
-: "${CI_FAULT_SERVICE:?CI_FAULT_SERVICE must name the fault-injection control service}"
-: "${CI_OBSERVER_TOPIC:?CI_OBSERVER_TOPIC must name the observer telemetry topic}"
-
 export CI_LOG_DIR="$CI_LOG_DIR/navigation"
 export CI_TIMEOUT=900s
 
-READINESS_TIMEOUT="${CI_READINESS_TIMEOUT:-60s}"
+READINESS_TIMEOUT="${CI_READINESS_TIMEOUT:-60}"
+FAULT_SERVICE="/fault_injection/set_fault_state"
 
-mkdir -p \
-  "$CI_LOG_DIR" \
-  "$CI_LOG_DIR/readiness" \
-  "$CI_LOG_DIR/telemetry"
+mkdir -p "$CI_LOG_DIR" "$CI_LOG_DIR/readiness" "$CI_LOG_DIR/telemetry"
 
-declare -a cleanup_pids=()
-declare -a active_pids=()
-declare -A process_name=()
-declare -A process_kind=()
-
-navigation_pid=""
 bag_pid=""
+navigation_pid=""
+declare -a logger_pids=()
+declare -a all_pids=()
 
-register_process() {
-  local pid="$1"
-  local name="$2"
-  local kind="$3"
-
-  cleanup_pids+=("$pid")
-  active_pids+=("$pid")
-  process_name["$pid"]="$name"
-  process_kind["$pid"]="$kind"
+register_pid() {
+  all_pids+=("$1")
 }
 
-remove_active_pid() {
-  local dead_pid="$1"
-  local remaining=()
-  local pid
-
-  for pid in "${active_pids[@]}"; do
-    if [[ "$pid" != "$dead_pid" ]]; then
-      remaining+=("$pid")
-    fi
-  done
-
-  active_pids=("${remaining[@]}")
-}
-
-stop_process_group() {
+stop_group() {
   local pid="$1"
 
+  [[ -n "$pid" ]] || return 0
   kill -0 "$pid" 2>/dev/null || return 0
 
   kill -INT -- "-$pid" 2>/dev/null || true
@@ -104,15 +51,13 @@ stop_process_group() {
 
 cleanup() {
   local rc=$?
-  local pid
-
   trap - EXIT INT TERM
 
-  for pid in "${cleanup_pids[@]}"; do
-    stop_process_group "$pid"
+  for pid in "${all_pids[@]}"; do
+    stop_group "$pid"
   done
 
-  for pid in "${cleanup_pids[@]}"; do
+  for pid in "${all_pids[@]}"; do
     wait "$pid" 2>/dev/null || true
   done
 
@@ -124,76 +69,129 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-record_readiness_result() {
-  local name="$1"
-  local result="$2"
-  local detail="${3:-}"
+fail_if_core_process_exited() {
+  if [[ -n "$navigation_pid" ]] && ! kill -0 "$navigation_pid" 2>/dev/null; then
+    set +e
+    wait "$navigation_pid"
+    local rc=$?
+    set -e
+    echo "Navigation/Unity process exited during startup/readiness (exit=$rc)" >&2
+    exit "$rc"
+  fi
 
-  printf '%-22s %s%s\n' \
-    "$name" \
-    "$result" \
-    "${detail:+ - $detail}"
-
-  printf '%s\t%s\t%s\n' \
-    "$name" \
-    "$result" \
-    "$detail" \
-    >> "$CI_LOG_DIR/readiness/summary.tsv"
+  if [[ -n "$bag_pid" ]] && ! kill -0 "$bag_pid" 2>/dev/null; then
+    echo "ROS bag recorder exited unexpectedly" >&2
+    cat "$CI_LOG_DIR/rosbag.log" >&2 || true
+    exit 1
+  fi
 }
 
-start_topic_readiness_check() {
+check_topic_ready() {
   local name="$1"
   local topic="$2"
   local logfile="$CI_LOG_DIR/readiness/${name}.log"
+  local pid rc
 
-  setsid timeout --signal=TERM --kill-after=5s "$READINESS_TIMEOUT" \
-    env PYTHONUNBUFFERED=1 ros2 topic echo --once "$topic" \
-    > "$logfile" 2>&1 &
+  echo "READINESS $name: checking $topic"
 
-  register_process "$!" "$name" "readiness"
+  setsid timeout --signal=TERM --kill-after=5s "${READINESS_TIMEOUT}s" \
+    ros2 topic echo --once "$topic" \
+    >"$logfile" 2>&1 &
+  pid=$!
+
+  while kill -0 "$pid" 2>/dev/null; do
+    fail_if_core_process_exited
+    sleep 0.1
+  done
+
+  set +e
+  wait "$pid"
+  rc=$?
+  set -e
+
+  if (( rc != 0 )); then
+    echo "READINESS $name: FAIL" >&2
+    cat "$logfile" >&2 || true
+    exit 1
+  fi
+
+  echo "READINESS $name: PASS"
 }
 
-start_service_readiness_check() {
-  local name="$1"
-  local service="$2"
-  local logfile="$CI_LOG_DIR/readiness/${name}.log"
-
-  setsid timeout --signal=TERM --kill-after=5s "$READINESS_TIMEOUT" \
-    bash -c '
-      service="$1"
-      while true; do
-        if type="$(ros2 service type "$service" 2>/dev/null)"; then
-          printf "service: %s\ntype: %s\n" "$service" "$type"
-          exit 0
-        fi
-        sleep 0.25
-      done
-    ' _ "$service" \
-    > "$logfile" 2>&1 &
-
-  register_process "$!" "$name" "readiness"
-}
-
-start_action_readiness_check() {
+check_action_ready() {
   local name="$1"
   local action="$2"
   local logfile="$CI_LOG_DIR/readiness/${name}.log"
+  local pid rc
 
-  setsid timeout --signal=TERM --kill-after=5s "$READINESS_TIMEOUT" \
+  echo "READINESS $name: checking $action"
+
+  setsid timeout --signal=TERM --kill-after=5s "${READINESS_TIMEOUT}s" \
     bash -c '
       action="$1"
-      while true; do
-        listing="$(ros2 action list -t 2>/dev/null || true)"
-        if grep -Fq "${action} [" <<< "$listing"; then
-          grep -F "${action} [" <<< "$listing"
-          exit 0
-        fi
+      until ros2 action list -t 2>/dev/null | grep -Fq "${action} ["; do
         sleep 0.25
       done
+      ros2 action list -t | grep -F "${action} ["
     ' _ "$action" \
-    > "$logfile" 2>&1 &
+    >"$logfile" 2>&1 &
+  pid=$!
 
-  register_process "$!" "$name" "readiness"
+  while kill -0 "$pid" 2>/dev/null; do
+    fail_if_core_process_exited
+    sleep 0.1
+  done
+
+  set +e
+  wait "$pid"
+  rc=$?
+  set -e
+
+  if (( rc != 0 )); then
+    echo "READINESS $name: FAIL" >&2
+    cat "$logfile" >&2 || true
+    exit 1
+  fi
+
+  echo "READINESS $name: PASS"
+}
+
+check_service_ready() {
+  local name="$1"
+  local service="$2"
+  local logfile="$CI_LOG_DIR/readiness/${name}.log"
+  local pid rc
+
+  echo "READINESS $name: checking $service"
+
+  setsid timeout --signal=TERM --kill-after=5s "${READINESS_TIMEOUT}s" \
+    bash -c '
+      service="$1"
+      until type="$(ros2 service type "$service" 2>/dev/null)"; do
+        sleep 0.25
+      done
+      printf "service: %s\ntype: %s\n" "$service" "$type"
+    ' _ "$service" \
+    >"$logfile" 2>&1 &
+  pid=$!
+
+  while kill -0 "$pid" 2>/dev/null; do
+    fail_if_core_process_exited
+    sleep 0.1
+  done
+
+  set +e
+  wait "$pid"
+  rc=$?
+  set -e
+
+  if (( rc != 0 )); then
+    echo "READINESS $name: FAIL" >&2
+    cat "$logfile" >&2 || true
+    exit 1
+  fi
+
+  echo "READINESS $name: PASS"
 }
 
 start_topic_logger() {
@@ -201,11 +199,9 @@ start_topic_logger() {
   local topic="$2"
   local logfile="$CI_LOG_DIR/telemetry/${name}.log"
 
-  setsid env PYTHONUNBUFFERED=1 \
-    ros2 topic echo "$topic" \
-    > "$logfile" 2>&1 &
-
-  register_process "$!" "$name" "logger"
+  setsid ros2 topic echo "$topic" >"$logfile" 2>&1 &
+  logger_pids+=("$!")
+  register_pid "$!"
 }
 
 start_fault_service_watchdog() {
@@ -223,213 +219,105 @@ start_fault_service_watchdog() {
       fi
       sleep 1
     done
-  ' _ "$CI_FAULT_SERVICE" \
-    > "$logfile" 2>&1 &
+  ' _ "$FAULT_SERVICE" >"$logfile" 2>&1 &
 
-  register_process "$!" "fault-service-watchdog" "logger"
+  logger_pids+=("$!")
+  register_pid "$!"
 }
 
-start_navigation_runner() {
-  setsid bash -c '
-    set -eo pipefail
-
-    xvfb-run -a timeout --signal=TERM --kill-after=20s 930s \
-      bash "$1" --feedback-interval 5 \
-      > >(tee "$2") \
-      2> >(tee "$3" >&2)
-  ' _ \
-    "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" \
-    "$CI_LOG_DIR/navigation-console.log" \
-    "$CI_LOG_DIR/navigation-stderr.log" &
-
-  navigation_pid=$!
-  register_process "$navigation_pid" "navigation-runner" "navigation"
-}
-
-# ---------------------------------------------------------------------------
-# Version/configuration artifacts
-# ---------------------------------------------------------------------------
-
-cp "$UNITY_TESTS_DIR/tools/ci/waypoints.json" \
-  "$CI_LOG_DIR/waypoints.json"
-
-cp "$UNITY_TESTS_DIR/tools/ci/navigation_faults.yaml" \
-  "$CI_LOG_DIR/navigation_faults.yaml"
-
-printf 'Unity scripts: %s\nRover: %s\nSimulator: %s\nSHA256: %s\n' \
-  "$UNITY_TEST_COMMIT" \
-  "$ROVER_UNITY_SIMULATION_COMMIT" \
-  "$SIMULATOR_URL" \
-  "$SIMULATOR_SHA256" \
-  > "$CI_LOG_DIR/versions.txt"
-
-: > "$CI_LOG_DIR/readiness/summary.tsv"
-
-# ---------------------------------------------------------------------------
-# Start the bag recorder before the system under test so startup failures are
-# captured too.
-# ---------------------------------------------------------------------------
-
+# Capture diagnostics before the system under test starts.
 setsid ros2 bag record -o "$CI_LOG_DIR/rosbag" \
-  /clock \
-  /scan_raw \
-  /scan \
-  /map \
-  /odom \
-  /odom_raw \
-  /tf \
-  /tf_static \
-  /cmd_vel \
-  /cmd_vel_smoothed \
-  /diff_drive_controller/cmd_vel \
-  /platform/motors/cmd_raw \
-  /platform/motors/cmd \
-  /platform/motors/feedback \
-  /navigate_to_pose/_action/feedback \
-  /navigate_to_pose/_action/status \
-  "$CI_OBSERVER_TOPIC" \
+  /clock /scan_raw /scan /map /odom /odom_raw /tf /tf_static \
+  /cmd_vel /cmd_vel_smoothed /diff_drive_controller/cmd_vel \
+  /platform/motors/cmd_raw /platform/motors/cmd /platform/motors/feedback \
+  /navigate_to_pose/_action/feedback /navigate_to_pose/_action/status \
+  /ci/ground_truth/odom /test/collision_status \
   > "$CI_LOG_DIR/rosbag.log" 2>&1 &
-
 bag_pid=$!
-register_process "$bag_pid" "rosbag" "rosbag"
+register_pid "$bag_pid"
 
 sleep 2
 if ! kill -0 "$bag_pid" 2>/dev/null; then
-  cat "$CI_LOG_DIR/rosbag.log" >&2
+  cat "$CI_LOG_DIR/rosbag.log"
   exit 1
 fi
 
-# Start the navigation/Unity runner in the background so we can supervise it
-# while readiness checks are still pending.
-start_navigation_runner
+# Includes the supplied four waypoints and fault schedule from the pinned repo.
+cp "$UNITY_TESTS_DIR/tools/ci/waypoints.json" "$CI_LOG_DIR/waypoints.json"
+cp "$UNITY_TESTS_DIR/tools/ci/navigation_faults.yaml" "$CI_LOG_DIR/navigation_faults.yaml"
 
-# ---------------------------------------------------------------------------
-# Independent readiness checks.
-# ---------------------------------------------------------------------------
+printf 'Unity scripts: %s\nRover: %s\nSimulator: %s\nSHA256: %s\n' \
+  "$UNITY_TEST_COMMIT" "$ROVER_UNITY_SIMULATION_COMMIT" \
+  "$SIMULATOR_URL" "$SIMULATOR_SHA256" \
+  > "$CI_LOG_DIR/versions.txt"
 
-start_topic_readiness_check "clock" "/clock"
-start_topic_readiness_check "scan-raw" "/scan_raw"
-start_topic_readiness_check "scan-injected" "/scan"
-start_topic_readiness_check "tf" "/tf"
-start_action_readiness_check "nav2" "/navigate_to_pose"
-start_service_readiness_check "fault-service" "$CI_FAULT_SERVICE"
-start_topic_readiness_check "observer" "$CI_OBSERVER_TOPIC"
+# Run the original navigation command in the background only so this wrapper
+# can perform readiness checks and detect an early Unity/navigation crash.
+setsid bash -c '
+  set -eo pipefail
+  xvfb-run -a timeout --signal=TERM --kill-after=20s 930s \
+    bash "$1" --feedback-interval 5 \
+    > >(tee "$2" >(awk "/OBSERVER (EVENT|FAIL)/ { print; fflush(); }" > "$4")) \
+    2> >(tee "$3" >&2)
+' _ \
+  "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" \
+  "$CI_LOG_DIR/navigation-console.log" \
+  "$CI_LOG_DIR/navigation-stderr.log" \
+  "$CI_LOG_DIR/telemetry/observer.log" &
+navigation_pid=$!
+register_pid "$navigation_pid"
 
-readiness_remaining=7
+# Report each readiness condition independently. These are bounded, and each
+# probe also watches the navigation runner and rosbag for an early crash.
+check_topic_ready "clock" "/clock"
+check_topic_ready "scan-raw" "/scan_raw"
+check_topic_ready "scan-injected" "/scan"
+check_topic_ready "tf" "/tf"
+check_action_ready "nav2" "/navigate_to_pose"
+check_service_ready "fault-service" "$FAULT_SERVICE"
 
-while (( readiness_remaining > 0 )); do
-  dead_pid=""
-  set +e
-  wait -n -p dead_pid "${active_pids[@]}"
-  rc=$?
-  set -e
-
-  if [[ -z "$dead_pid" ]]; then
-    echo "Process supervisor lost track of child processes" >&2
-    exit 1
-  fi
-
-  name="${process_name[$dead_pid]:-unknown}"
-  kind="${process_kind[$dead_pid]:-unknown}"
-  remove_active_pid "$dead_pid"
-
-  case "$kind" in
-    readiness)
-      if (( rc == 0 )); then
-        record_readiness_result "$name" "PASS"
-        ((readiness_remaining -= 1))
-      else
-        record_readiness_result "$name" "FAIL" "exit=$rc"
-        echo \
-          "Readiness check '$name' failed; see $CI_LOG_DIR/readiness/${name}.log" \
-          >&2
-        exit 1
-      fi
-      ;;
-
-    navigation)
-      record_readiness_result \
-        "navigation-runner" \
-        "FAIL" \
-        "exited before readiness completed (exit=$rc)"
-      echo \
-        "Navigation/Unity runner exited before readiness completed (exit=$rc)" \
-        >&2
-      exit 1
-      ;;
-
-    rosbag)
-      echo "ROS bag recorder exited during readiness (exit=$rc)" >&2
-      cat "$CI_LOG_DIR/rosbag.log" >&2 || true
-      exit 1
-      ;;
-
-    *)
-      echo \
-        "Unexpected required process '$name' exited during readiness (exit=$rc)" \
-        >&2
-      exit 1
-      ;;
-  esac
-done
+# The resilience observer is in-process, so its ROS-facing telemetry is checked
+# through the streams it consumes rather than through a fictitious observer topic.
+check_topic_ready "observer-ground-truth" "/ci/ground_truth/odom"
+check_topic_ready "observer-command" "/platform/motors/cmd"
+check_topic_ready "observer-collision" "/test/collision_status"
 
 echo "All readiness checks passed."
 
-# ---------------------------------------------------------------------------
-# Separate human-readable telemetry streams.
-# ---------------------------------------------------------------------------
-
+# Separate human-readable telemetry logs, in addition to the rosbag.
 start_topic_logger "clock" "/clock"
 start_topic_logger "scan-raw" "/scan_raw"
 start_topic_logger "scan-injected" "/scan"
 start_topic_logger "tf" "/tf"
-start_topic_logger "tf-static" "/tf_static"
 start_topic_logger "nav2-feedback" "/navigate_to_pose/_action/feedback"
 start_topic_logger "nav2-status" "/navigate_to_pose/_action/status"
-start_topic_logger "observer" "$CI_OBSERVER_TOPIC"
+start_topic_logger "observer-ground-truth" "/ci/ground_truth/odom"
+start_topic_logger "observer-command" "/platform/motors/cmd"
+start_topic_logger "observer-collision" "/test/collision_status"
 start_fault_service_watchdog
 
-# ---------------------------------------------------------------------------
-# Supervise all required long-running processes.
-# ---------------------------------------------------------------------------
-
-while true; do
-  dead_pid=""
-  set +e
-  wait -n -p dead_pid "${active_pids[@]}"
-  rc=$?
-  set -e
-
-  if [[ -z "$dead_pid" ]]; then
-    echo "Process supervisor lost track of child processes" >&2
+# Supervise the original navigation runner plus all required diagnostics.
+while kill -0 "$navigation_pid" 2>/dev/null; do
+  if ! kill -0 "$bag_pid" 2>/dev/null; then
+    echo "ROS bag recorder exited during navigation" >&2
+    cat "$CI_LOG_DIR/rosbag.log" >&2 || true
     exit 1
   fi
 
-  name="${process_name[$dead_pid]:-unknown}"
-  kind="${process_kind[$dead_pid]:-unknown}"
-  remove_active_pid "$dead_pid"
+  for pid in "${logger_pids[@]}"; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "Required telemetry logger/watchdog exited during navigation (pid=$pid)" >&2
+      exit 1
+    fi
+  done
 
-  if [[ "$dead_pid" == "$navigation_pid" ]]; then
-    echo "Navigation/Unity runner exited with status $rc"
-    exit "$rc"
-  fi
-
-  if ! kill -0 "$navigation_pid" 2>/dev/null; then
-    set +e
-    wait "$navigation_pid"
-    navigation_rc=$?
-    set -e
-    echo "Navigation/Unity runner exited with status $navigation_rc"
-    exit "$navigation_rc"
-  fi
-
-  echo "Required process '$name' exited unexpectedly with status $rc" >&2
-
-  if [[ "$kind" == "rosbag" ]]; then
-    cat "$CI_LOG_DIR/rosbag.log" >&2 || true
-  elif [[ -f "$CI_LOG_DIR/telemetry/${name}.log" ]]; then
-    tail -n 100 "$CI_LOG_DIR/telemetry/${name}.log" >&2 || true
-  fi
-
-  exit 1
+  sleep 0.1
 done
+
+set +e
+wait "$navigation_pid"
+status=$?
+set -e
+
+echo "Navigation/Unity process exited with status $status"
+exit "$status"
