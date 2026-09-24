@@ -9,11 +9,15 @@
 #   CI_READINESS_TIMEOUT   Maximum startup/readiness time (default: 60s).
 #   CI_ROS_DOMAIN_ID       ROS domain for this CI run (default: 190).
 
-set -euo pipefail
+set -eo pipefail
 
+# ROS/ament/colcon setup scripts are not safe to source with Bash nounset
+# enabled because they may read variables before defining them.
+set +u
 source /opt/ros/"$ROS_DISTRO"/setup.bash
 source "$ROVER_WS/install/setup.bash"
 source "$FAULT_INJECTION_WS/install/setup.bash"
+set -u
 
 unset \
   ROS_STATIC_PEERS \
@@ -301,9 +305,6 @@ start_navigation_runner
 
 # ---------------------------------------------------------------------------
 # Independent readiness checks.
-#
-# Each produces its own artifact. They run concurrently, so one missing
-# endpoint does not prevent the other checks from reporting their result.
 # ---------------------------------------------------------------------------
 
 start_topic_readiness_check "clock" "/clock"
@@ -339,18 +340,21 @@ while (( readiness_remaining > 0 )); do
         ((readiness_remaining -= 1))
       else
         record_readiness_result "$name" "FAIL" "exit=$rc"
-        echo "Readiness check '$name' failed; see $CI_LOG_DIR/readiness/${name}.log" >&2
+        echo \
+          "Readiness check '$name' failed; see $CI_LOG_DIR/readiness/${name}.log" \
+          >&2
         exit 1
       fi
       ;;
 
     navigation)
-      # The system under test must not exit before readiness is complete.
       record_readiness_result \
         "navigation-runner" \
         "FAIL" \
         "exited before readiness completed (exit=$rc)"
-      echo "Navigation/Unity runner exited before readiness completed (exit=$rc)" >&2
+      echo \
+        "Navigation/Unity runner exited before readiness completed (exit=$rc)" \
+        >&2
       exit 1
       ;;
 
@@ -361,7 +365,9 @@ while (( readiness_remaining > 0 )); do
       ;;
 
     *)
-      echo "Unexpected required process '$name' exited during readiness (exit=$rc)" >&2
+      echo \
+        "Unexpected required process '$name' exited during readiness (exit=$rc)" \
+        >&2
       exit 1
       ;;
   esac
@@ -371,9 +377,6 @@ echo "All readiness checks passed."
 
 # ---------------------------------------------------------------------------
 # Separate human-readable telemetry streams.
-#
-# The rosbag remains the canonical full-fidelity capture; these logs make it
-# easy to diagnose a single subsystem from CI artifacts without replaying it.
 # ---------------------------------------------------------------------------
 
 start_topic_logger "clock" "/clock"
@@ -388,10 +391,6 @@ start_fault_service_watchdog
 
 # ---------------------------------------------------------------------------
 # Supervise all required long-running processes.
-#
-# A logger/watchdog/rosbag failure is fatal while navigation is still running.
-# If navigation has already exited, its exit status is authoritative; the
-# other processes may be naturally disappearing as the ROS graph shuts down.
 # ---------------------------------------------------------------------------
 
 while true; do
@@ -415,8 +414,6 @@ while true; do
     exit "$rc"
   fi
 
-  # Avoid turning normal teardown into a false infrastructure failure if the
-  # navigation process has already completed but another child was reaped first.
   if ! kill -0 "$navigation_pid" 2>/dev/null; then
     set +e
     wait "$navigation_pid"
