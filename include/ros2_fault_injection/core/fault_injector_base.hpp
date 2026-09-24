@@ -72,6 +72,15 @@ protected:
   double active_max_double(const std::string & key, double fallback = 0.0) const;
 
     /**
+     * @brief Get the smallest active numeric config value for a key.
+     *
+     * @param key Config key to scan across active faults.
+     * @param fallback Value returned when no active fault provides the key.
+     * @return Smallest parsed value or fallback.
+     */
+  double active_min_double(const std::string & key, double fallback = 0.0) const;
+
+    /**
      * @brief Sum active numeric config values for a key.
      *
      * @param key Config key to scan across active faults.

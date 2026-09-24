@@ -96,6 +96,7 @@ void ScanFaultInjector::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg
   apply_range_bias(out);
   apply_range_noise(out);
   apply_sector_dropout(out);
+  apply_dust_return(out);
 
   const auto delay = active_delay();
   if (delay.count() > 0) {
@@ -206,6 +207,36 @@ void ScanFaultInjector::apply_sector_dropout(sensor_msgs::msg::LaserScan & msg)
   }
 }
 
+void ScanFaultInjector::apply_dust_return(sensor_msgs::msg::LaserScan & msg)
+{
+  const auto dust_return_probability = active_max_double("dust_return_probability", 0.0);
+
+  if (dust_return_probability <= 0.0) {
+    return;
+  }
+
+  const auto dust_min_range = active_max_double("dust_min_range", 0.2);
+  const auto dust_max_range = active_min_double("dust_max_range", 10.0);
+
+  std::bernoulli_distribution dust_return_dist(dust_return_probability);
+
+  for (auto & range : msg.ranges) {
+    if (!std::isfinite(range) || range < msg.range_min || range > msg.range_max) {
+      continue;
+    }
+
+    const float minimum = std::max(msg.range_min, static_cast<float>(dust_min_range));
+    const float maximum = std::min({range, msg.range_max, static_cast<float>(dust_max_range)});
+
+    if(maximum <= minimum || !dust_return_dist(rng_)) {
+      continue;
+    }
+
+    std::uniform_real_distribution<float> dust_dist(minimum, maximum);
+    range = dust_dist(rng_);
+  }
+}
+
 std::vector<FaultConfigField> ScanFaultInjector::static_config_schema()
 {
   std::vector<FaultConfigField> schema;
@@ -244,6 +275,13 @@ std::vector<FaultConfigField> ScanFaultInjector::static_config_schema()
   add_field("sector_value", "special_float",
       "Replacement range value for points inside the affected sector.", std::nullopt, std::nullopt,
       "inf");
+  add_field("dust_return_probability", "double",
+      "Probability that a laser scan point is affected by dust.", 0.0,
+      1.0, "0.0");
+  add_field("dust_min_range", "double", "Minimum range value for points affected by dust.", 0.0,
+      std::nullopt, "0.2");
+  add_field("dust_max_range", "double", "Maximum range value for points affected by dust.", 0.0,
+      std::nullopt, "10.0");
 
   return schema;
 }

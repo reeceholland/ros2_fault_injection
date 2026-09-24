@@ -156,6 +156,21 @@ double FaultInjectorBase::active_max_double(const std::string & key, double fall
   return value;
 }
 
+double FaultInjectorBase::active_min_double(const std::string & key, double fallback) const
+{
+  double value = fallback;
+
+  for (const auto &[fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    value = std::min(value, get_double(faults_.at(fault_id), key, fallback));
+  }
+
+  return value;
+}
+
 double FaultInjectorBase::active_sum_double(const std::string & key, double fallback) const
 {
   double value = 0.0;

@@ -51,3 +51,13 @@ faults:
       sector_min_deg: -20.0
       sector_max_deg: 20.0
       sector_value: inf
+
+  # Replaces selected valid beams with short-range dust returns in metres.
+  # Enable through RViz or set_fault_state; uses the scan injector's seed.
+  - id: scan_dust_returns
+    injector_id: scan
+    active_on_startup: false
+    config:
+      dust_return_probability: 0.2
+      dust_min_range: 0.2
+      dust_max_range: 1.5

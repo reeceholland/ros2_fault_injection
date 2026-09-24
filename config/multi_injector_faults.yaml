@@ -7,7 +7,9 @@ injectors:
     type: odom
     seed: 248355399  # Fixed seed for repeatable fault injection.
     input_topic: /odom_raw
-    output_topic: /odom
+    # Feed this into EKF with use_odom_fault_injection:=true in Unity bringup.
+    # EKF alone owns /odom and odom -> base_link.
+    output_topic: /wheel/odom_faulted
     qos_depth: 10
 
   - id: scan
@@ -15,6 +17,14 @@ injectors:
     seed: 3265451764  # Fixed seed for repeatable fault injection.
     input_topic: /scan_raw
     output_topic: /scan
+    qos_depth: 10
+
+  # Forward controller commands to Unity; unchanged unless a fault is enabled.
+  - id: motor_commands
+    type: joint_state
+    seed: 12345
+    input_topic: /platform/motors/cmd_raw
+    output_topic: /platform/motors/cmd
     qos_depth: 10
 
   - id: motor_feedback
@@ -45,6 +55,13 @@ injectors:
     qos_depth: 50
 
 faults:
+  # Manual command dropout; disabled by default.
+  - id: motor_command_dropout
+    injector_id: motor_commands
+    active_on_startup: false
+    config:
+      drop_probability: 0.25
+
   # Scheduled odometry position drift.
   - id: odom_position_bias
     injector_id: odom
@@ -101,6 +118,15 @@ faults:
       sector_min_deg: -20.0
       sector_max_deg: 20.0
       sector_value: inf
+
+  # Manual short-range dust returns; uses the scan injector's fixed seed.
+  - id: scan_dust_returns
+    injector_id: scan
+    active_on_startup: false
+    config:
+      dust_return_probability: 0.2
+      dust_min_range: 0.2
+      dust_max_range: 1.5
 
   # Scheduled motor feedback velocity drift.
   - id: motor_velocity_bias
@@ -180,7 +206,7 @@ assertions:
   
   - id: odom_stays_above_10hz
     type: topic_hz
-    topic: /odom
+    topic: /wheel/odom_faulted
     message_type: nav_msgs/msg/Odometry
     min_hz: 10.0
     window: 3.0

@@ -53,6 +53,7 @@ private:
   void apply_range_bias(sensor_msgs::msg::LaserScan & msg);
   void apply_range_noise(sensor_msgs::msg::LaserScan & msg);
   void apply_sector_dropout(sensor_msgs::msg::LaserScan & msg);
+  void apply_dust_return(sensor_msgs::msg::LaserScan & msg);
 
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr pub_;
