@@ -35,6 +35,7 @@ setsid ros2 bag record -o "$CI_LOG_DIR/rosbag" \
   /clock /scan_raw /scan /map /odom /odom_raw /tf /tf_static \
   /cmd_vel /cmd_vel_smoothed /diff_drive_controller/cmd_vel \
   /platform/motors/cmd_raw /platform/motors/cmd /platform/motors/feedback \
+  /test/collision_status /ci/ground_truth/odom \
   /navigate_to_pose/_action/feedback /navigate_to_pose/_action/status \
   > "$CI_LOG_DIR/rosbag.log" 2>&1 &
 bag_pid=$!
@@ -46,12 +47,13 @@ fi
 # Includes the supplied four waypoints and fault schedule from the pinned repo.
 cp "$UNITY_TESTS_DIR/tools/ci/waypoints.json" "$CI_LOG_DIR/waypoints.json"
 cp "$UNITY_TESTS_DIR/tools/ci/navigation_faults.yaml" "$CI_LOG_DIR/navigation_faults.yaml"
+cp "$UNITY_TESTS_DIR/tools/ci/observer_limits.json" "$CI_LOG_DIR/observer_limits.json"
 printf 'Unity scripts: %s\nRover: %s\nSimulator: %s\nSHA256: %s\n' \
   "$UNITY_TEST_COMMIT" "$ROVER_UNITY_SIMULATION_COMMIT" "$SIMULATOR_URL" "$SIMULATOR_SHA256" \
   > "$CI_LOG_DIR/versions.txt"
 status=0
 xvfb-run -a timeout --signal=TERM --kill-after=20s 930s \
-  bash "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" --feedback-interval 5 \
+  bash "$UNITY_TESTS_DIR/tools/ci/run_headless_navigation.sh" --feedback-interval 5 --dropout-duration 5 \
   > >(tee "$CI_LOG_DIR/navigation-console.log") \
   2> >(tee "$CI_LOG_DIR/navigation-stderr.log" >&2) || status=$?
 # A dead recorder means this run did not capture the promised diagnostics.
