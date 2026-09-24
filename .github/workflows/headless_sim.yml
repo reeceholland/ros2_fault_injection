@@ -50,8 +50,8 @@ env:
 jobs:
   headless-sim:
     name: Headless simulator dropout and navigation tests
-    runs-on: [self-hosted, linux, x64, ros2-jazzy]
-    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
 
     steps:
       - name: Checkout fault-injection framework
@@ -71,7 +71,24 @@ jobs:
           echo "CI_LOG_DIR=$RUNNER_TEMP/test-logs" >> "$GITHUB_ENV"
           echo "CI_PLAYER=$RUNNER_TEMP/ci-player/CiRover.x86_64" >> "$GITHUB_ENV"
 
-      - name: Verify build server environment
+      - name: Install ROS 2 Jazzy
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - name: Install build and simulation tools
+        shell: bash
+        run: |
+          set -eo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            python3-colcon-common-extensions python3-rosdep \
+            xvfb xauth gdb libarchive-tools \
+            iproute2 util-linux \
+            libgl1 libegl1 libasound2t64
+
+      - name: Verify GitHub runner environment
         shell: bash
         run: |
           set -eo pipefail
@@ -597,7 +614,8 @@ jobs:
               lines.extend(["", "Navigation artifacts: `navigation/results.json`, `navigation/junit.xml`, logs and ROS bag."])
           else:
               lines.append("No navigation report: inspect step outcome and logs for setup failure, timeout or skipped navigation.")
-          summary.write_text("\n".join(lines) + "\n")
+          with summary.open("a") as stream:
+              stream.write("\n".join(lines) + "\n")
           PY
 
       - name: Write resilience and collision summary
@@ -636,3 +654,4 @@ jobs:
             ${{ runner.temp }}/test-logs
             ${{ runner.temp }}/rover_ws/log
             ${{ github.workspace }}/log
+
