@@ -54,11 +54,14 @@ private:
 
   void apply_point_dropout(sensor_msgs::msg::PointCloud2 & msg);
   void apply_range_noise(sensor_msgs::msg::PointCloud2 & msg);
-  void apply_dust_returns(sensor_msgs::msg::PointCloud2 & msg);
+  void apply_random_dust_returns(sensor_msgs::msg::PointCloud2 & msg);
   void apply_intensity_scale(sensor_msgs::msg::PointCloud2 & msg);
   double active_min_double(const std::string & key, double fallback) const;
   double active_product_double(const std::string & key, double fallback) const;
   double active_product_double_or_default(
+    const std::string & key,
+    double default_when_unconfigured) const;
+  double active_random_dust_product_or_default(
     const std::string & key,
     double default_when_unconfigured) const;
 
@@ -66,6 +69,8 @@ private:
   bool has_float32_field(
     const sensor_msgs::msg::PointCloud2 & msg,
     const std::string & field_name) const;
+  double active_random_dust_max(const std::string & key, double fallback) const;
+  double active_random_dust_min(const std::string & key, double fallback) const;
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;

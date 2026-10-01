@@ -10,6 +10,7 @@
 
 #include "ros2_fault_injection/config/fault_config.hpp"
 #include "ros2_fault_injection/config/scenario_config.hpp"
+#include "ros2_fault_injection/injectors/point_cloud_fault_injector.hpp"
 
 namespace ros2_fault_injection::config
 {
@@ -48,6 +49,55 @@ TEST(FaultConfigSchema, ValidatesRuntimeConfigValues)
   EXPECT_TRUE(validate_config_value("odom", "delay_ms", "10.5").has_value());
   EXPECT_TRUE(validate_config_value("trigger_service", "force_failure", "yes").has_value());
   EXPECT_TRUE(validate_config_value("tf", "parent_frame", "").has_value());
+}
+
+
+TEST(FaultConfigSchema, ValidatesPlumeParametersThroughBothPaths)
+{
+  const auto schema = injectors::PointCloudFaultInjector::static_config_schema();
+  std::size_t checked = 0;
+  for (const auto & field : schema) {
+    if (field.key.find("plume_") != 0) {
+      continue;
+    }
+    ++checked;
+    SCOPED_TRACE(field.key);
+    ASSERT_TRUE(field.default_value.has_value());
+    EXPECT_TRUE(is_allowed_config_key("point_cloud", field.key));
+    EXPECT_FALSE(is_allowed_config_key("scan", field.key));
+
+    const auto check = [&](const std::string & value, bool valid) {
+        EXPECT_EQ(!validate_config_value("point_cloud", field.key, value).has_value(), valid);
+        EXPECT_EQ(!validate_config_value(field, value).has_value(), valid);
+      };
+    check(*field.default_value, true);
+    check("1.25", true);
+    const bool centre = field.key.find("plume_center_") == 0;
+    check("-1.0", centre);
+    check("0.0", centre || field.key == "plume_interaction_coefficient");
+    for (const auto * invalid : {"nan", "inf", "-inf", "1e999", "", "abc", "1.0m"}) {
+      check(invalid, false);
+    }
+  }
+  EXPECT_EQ(checked, 8u);
+}
+
+TEST(FaultConfigSchema, ValidatesDustModelThroughBothPaths)
+{
+  const auto schema = injectors::PointCloudFaultInjector::static_config_schema();
+  bool found = false;
+  for (const auto & field : schema) {
+    if (field.key != "dust_model") {
+      continue;
+    }
+    found = true;
+    for (const auto * value : {"random", "plume", "", "Plume", "unknown"}) {
+      const bool valid = std::string(value) == "random" || std::string(value) == "plume";
+      EXPECT_EQ(!validate_config_value("point_cloud", field.key, value).has_value(), valid);
+      EXPECT_EQ(!validate_config_value(field, value).has_value(), valid);
+    }
+  }
+  EXPECT_TRUE(found);
 }
 
 }  // namespace ros2_fault_injection::config

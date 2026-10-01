@@ -22,6 +22,33 @@
 namespace ros2_fault_injection::injectors
 {
 
+namespace
+{
+std::string dust_model_for(const FaultConfig & fault)
+{
+  const auto it = fault.config.find("dust_model");
+  if(it == fault.config.end()) {
+    return "random";
+  }
+  return it->second;
+}
+
+double fault_double(
+  const FaultConfig & fault,
+  const std::string & key,
+  double fallback)
+{
+  const auto it = fault.config.find(key);
+
+  if (it == fault.config.end()) {
+    return fallback;
+  }
+
+  return std::stod(it->second);
+}
+}
+
+
 PointCloudFaultInjector::PointCloudFaultInjector(rclcpp::Node & node, const InjectorConfig & config)
 : FaultInjectorBase(node, config)
 {
@@ -82,6 +109,27 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
   add_field("intensity_scale", "double",
     "Multiplier applied to float32 intensity values when an intensity field exists.", 0.0,
     std::nullopt, "1.0");
+  add_field("dust_model", "string", "Dust model: random or plume.", std::nullopt, std::nullopt,
+      "random");
+
+  add_field("plume_center_x", "double",
+    "Plume centre X in metres in the sensor frame.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_center_y", "double",
+    "Plume centre Y in metres in the sensor frame.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_center_z", "double",
+    "Plume centre Z in metres in the sensor frame.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_sigma_x", "double",
+    "Gaussian width along X in metres; must be greater than zero.", 0.0, std::nullopt, "1.0");
+  add_field("plume_sigma_y", "double",
+    "Gaussian width along Y in metres; must be greater than zero.", 0.0, std::nullopt, "1.0");
+  add_field("plume_sigma_z", "double",
+    "Gaussian width along Z in metres; must be greater than zero.", 0.0, std::nullopt, "1.0");
+  add_field("plume_interaction_coefficient", "double",
+    "Peak interaction rate in inverse metres; zero disables plume interactions.",
+    0.0, std::nullopt, "0.0");
+  add_field("plume_step_size", "double",
+    "Maximum ray integration step in metres; must be greater than zero.",
+    0.0, std::nullopt, "0.1");
 
   return schema;
 }
@@ -102,7 +150,7 @@ void PointCloudFaultInjector::on_point_cloud(const sensor_msgs::msg::PointCloud2
   auto out = *msg;
   apply_point_dropout(out);
   apply_range_noise(out);
-  apply_dust_returns(out);
+  apply_random_dust_returns(out);
   apply_intensity_scale(out);
 
   const auto delay = active_delay();
@@ -201,9 +249,10 @@ void PointCloudFaultInjector::apply_range_noise(sensor_msgs::msg::PointCloud2 & 
   }
 }
 
-void PointCloudFaultInjector::apply_dust_returns(sensor_msgs::msg::PointCloud2 & msg)
+void PointCloudFaultInjector::apply_random_dust_returns(sensor_msgs::msg::PointCloud2 & msg)
 {
-  const double dust_return_probability = active_max_double("dust_return_probability", 0.0);
+  const double dust_return_probability =
+    active_random_dust_max("dust_return_probability", 0.0);
 
   if (dust_return_probability <= 0.0) {
     return;
@@ -218,8 +267,9 @@ void PointCloudFaultInjector::apply_dust_returns(sensor_msgs::msg::PointCloud2 &
     return;
   }
 
-  const double dust_min_range = active_max_double("dust_min_range", 0.2);
-  const double dust_max_range = active_min_double("dust_max_range", 2.0);
+  const double dust_min_range = active_random_dust_max("dust_min_range", 0.2);
+  const double dust_max_range = active_random_dust_min("dust_max_range", 2.0);
+
   if (dust_max_range < dust_min_range) {
     RCLCPP_WARN_THROTTLE(
       node_.get_logger(), *node_.get_clock(), 5000,
@@ -230,8 +280,8 @@ void PointCloudFaultInjector::apply_dust_returns(sensor_msgs::msg::PointCloud2 &
   std::bernoulli_distribution should_add_dust_return(dust_return_probability);
   std::uniform_real_distribution<float> dust_range_dist(
     static_cast<float>(dust_min_range), static_cast<float>(dust_max_range));
-  const auto dust_intensity_scale =
-    static_cast<float>(active_product_double_or_default("dust_intensity_scale", 0.2));
+  const auto dust_intensity_scale = static_cast<float>(
+    active_random_dust_product_or_default("dust_intensity_scale", 0.2));
 
   sensor_msgs::PointCloud2Iterator<float> x(msg, "x");
   sensor_msgs::PointCloud2Iterator<float> y(msg, "y");
@@ -397,6 +447,86 @@ bool PointCloudFaultInjector::has_float32_field(
       return field.name == field_name &&
              field.datatype == sensor_msgs::msg::PointField::FLOAT32;
     });
+}
+
+double PointCloudFaultInjector::active_random_dust_max(
+  const std::string & key, double fallback) const
+{
+  double value = fallback;
+
+  for (const auto & [fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto & fault = faults_.at(fault_id);
+
+    if (dust_model_for(fault) != "random") {
+      continue;
+    }
+
+    const auto it = fault.config.find(key);
+    if (it != fault.config.end()) {
+      value = std::max(value, std::stod(it->second));
+    }
+  }
+
+  return value;
+}
+
+double PointCloudFaultInjector::active_random_dust_min(
+  const std::string & key, double fallback) const
+{
+  double value = fallback;
+
+  for (const auto & [fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto & fault = faults_.at(fault_id);
+
+    if (dust_model_for(fault) != "random") {
+      continue;
+    }
+
+    const auto it = fault.config.find(key);
+    if (it != fault.config.end()) {
+      value = std::min(value, std::stod(it->second));
+    }
+  }
+
+  return value;
+}
+
+double PointCloudFaultInjector::active_random_dust_product_or_default(
+  const std::string & key,
+  double default_when_unconfigured) const
+{
+  double value = 1.0;
+  bool has_configured_value = false;
+
+  for (const auto &[fault_id, is_active] : active_) {
+    if (!is_active) {
+      continue;
+    }
+
+    const auto & fault = faults_.at(fault_id);
+    if (dust_model_for(fault) != "random") {
+      continue;
+    }
+    const auto it = fault.config.find(key);
+    if (it != fault.config.end()) {
+      value *= std::stod(it->second);
+      has_configured_value = true;
+    }
+  }
+
+  if (!has_configured_value) {
+    return default_when_unconfigured;
+  }
+
+  return value;
 }
 
 }  // namespace ros2_fault_injection::injectors

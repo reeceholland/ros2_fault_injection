@@ -7,6 +7,7 @@
 #include "ros2_fault_injection/config/fault_config_schema.hpp"
 
 #include <charconv>
+#include <cmath>
 #include <system_error>
 namespace ros2_fault_injection::config
 {
@@ -39,6 +40,32 @@ bool is_special_float_value(const std::string & value)
 bool contains(const std::unordered_set<std::string> & keys, const std::string & key)
 {
   return keys.find(key) != keys.end();
+}
+
+bool is_plume_numeric_key(const std::string & key)
+{
+  return key == "plume_center_x" || key == "plume_center_y" ||
+         key == "plume_center_z" || key == "plume_sigma_x" ||
+         key == "plume_sigma_y" || key == "plume_sigma_z" ||
+         key == "plume_interaction_coefficient" || key == "plume_step_size";
+}
+
+std::optional<std::string> validate_plume_value(
+  const std::string & key, const std::string & value)
+{
+  double parsed = 0.0;
+  if (!parse_double(value, parsed) || !std::isfinite(parsed)) {
+    return "config '" + key + "' must be a finite number";
+  }
+  if (key == "plume_interaction_coefficient" && parsed < 0.0) {
+    return "config '" + key + "' must be non-negative";
+  }
+  if ((key == "plume_sigma_x" || key == "plume_sigma_y" ||
+    key == "plume_sigma_z" || key == "plume_step_size") && parsed <= 0.0)
+  {
+    return "config '" + key + "' must be greater than zero";
+  }
+  return std::nullopt;
 }
 
 const std::unordered_set<std::string> kNumberKeys = {
@@ -130,6 +157,14 @@ const std::unordered_set<std::string> kTwistKeys = {
 };
 
 const std::unordered_set<std::string> kPointCloudKeys = {
+  "plume_center_x",
+  "plume_center_y",
+  "plume_center_z",
+  "plume_sigma_x",
+  "plume_sigma_y",
+  "plume_sigma_z",
+  "plume_interaction_coefficient",
+  "plume_step_size",
   "drop_probability",
   "delay_ms",
   "point_dropout_probability",
@@ -139,6 +174,7 @@ const std::unordered_set<std::string> kPointCloudKeys = {
   "dust_max_range",
   "dust_intensity_scale",
   "intensity_scale",
+  "dust_model",
 };
 
 const std::unordered_set<std::string> kImuKeys = {
@@ -230,6 +266,10 @@ std::optional<std::string> validate_config_value(
     return "key '" + key + "' is not valid for injector type '" + injector_type + "'";
   }
 
+  if (is_plume_numeric_key(key)) {
+    return validate_plume_value(key, value);
+  }
+
   if (key == "drop_probability") {
     double parsed_value = 0.0;
     if (!parse_double(value, parsed_value)) {
@@ -315,6 +355,14 @@ std::optional<std::string> validate_config_value(
     return std::nullopt;
   }
 
+  if (key == "dust_model") {
+    if (value != "random" && value != "plume") {
+      return "config 'dust_model' must be 'random' or 'plume'";
+    }
+
+    return std::nullopt;
+  }
+
   return std::nullopt;
 }
 
@@ -322,6 +370,20 @@ std::optional<std::string> validate_config_value(
   const FaultConfigField & field,
   const std::string & value)
 {
+  if (is_plume_numeric_key(field.key)) {
+    if (const auto error = validate_plume_value(field.key, value)) {
+      return error;
+    }
+  }
+
+  if (field.key == "dust_model") {
+    if (value != "random" && value != "plume") {
+      return "config 'dust_model' must be 'random' or 'plume'";
+    }
+
+    return std::nullopt;
+  }
+
   if (field.type.empty() || field.type == "string") {
     return std::nullopt;
   }
