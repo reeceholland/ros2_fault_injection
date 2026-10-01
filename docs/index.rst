@@ -10,6 +10,7 @@ A ROS 2 framework for injecting faults into topics, transforms, and services.
    mainpage
    architecture
    fault_configuration
+   dust_model
    services
    adding_an_injector
    adding_a_fault_type

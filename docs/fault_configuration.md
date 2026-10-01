@@ -6,6 +6,8 @@ At runtime, each fault is registered against an `injector_id`. The injector type
 
 Each injector exposes a config schema made of `FaultConfigField` entries. Scenario loading and runtime config updates both use that schema, so YAML files and `/fault_injection/set_fault_config` follow the same key and value validation rules. The schema also feeds `/fault_injection/get_fault_schema`, which UI tools can use to display field types, descriptions, defaults, and numeric limits.
 
+(random-seeds)=
+
 ## Random Seeds
 
 Set the optional `seed` beside an injector's `id` and `type`. It is an
@@ -302,6 +304,9 @@ Example:
 ```
 
 ## Point Cloud Faults
+
+For the experimental plume model, see [dust model assumptions and Carén reference](dust_model.md).
+That page distinguishes implemented configuration from pending point-cloud integration.
 
 Injector type: `point_cloud`
 
