@@ -83,6 +83,7 @@ add_library(${PROJECT_NAME}_core
   src/assertions/topic_hz_assertion.cpp
   src/assertions/scenario_monitor.cpp
   src/core/fault_scenario_runner.cpp
+  src/core/dust_plume.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -367,6 +368,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_fault_assertion_runner
     ${PROJECT_NAME}_core
     "${cpp_typesupport_target}"
+  )
+
+  ament_add_gtest(test_dust_plume
+  test/core/test_dust_plume.cpp
+  )
+  target_link_libraries(test_dust_plume
+    ${PROJECT_NAME}_core
   )
   
   add_launch_test(
