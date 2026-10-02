@@ -12,6 +12,7 @@
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
 
+#include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
 #include "gtest/gtest.h"
@@ -190,5 +191,119 @@ TEST_F(FaultAssertionRunnerTest, TopicHzAssertionFailsWhenOdomPublishesTooSlowly
     EXPECT_EQ(results.front().id, "odom_stays_above_10hz");
     EXPECT_EQ(results.front().type, "topic_hz");
     EXPECT_EQ(results.front().state, AssertionState::Failed);
+}
+
+TEST_F(FaultAssertionRunnerTest, TwistStoppedAssertionObservesCommandsAndFaultEvents)
+{
+  auto node = std::make_shared<rclcpp::Node>("test_twist_stopped_assertion_runner");
+
+  AssertionConfig config;
+  config.id = "watchdog_stops_after_cmd_dropout";
+  config.type = "twist_stopped";
+  config.topic = "/cmd_vel_test";
+  config.fault_id = "drop_cmd_vel";
+  config.trigger_within = 2.0;
+  config.within = 0.5;
+  config.duration = 0.4;
+  config.linear_tolerance = 0.01;
+  config.angular_tolerance = 0.01;
+  config.max_gap = 0.15;
+
+  FaultAssertionRunner runner(*node);
+  runner.start({config});
+
+  auto command_publisher = node->create_publisher<geometry_msgs::msg::Twist>(
+    "/cmd_vel_test", rclcpp::QoS(10));
+  auto event_publisher = node->create_publisher<msg::FaultEvent>(
+    "/fault_injection/events", rclcpp::QoS(10));
+
+  const auto discovery_start = std::chrono::steady_clock::now();
+  while ((command_publisher->get_subscription_count() == 0 ||
+    event_publisher->get_subscription_count() == 0) &&
+    std::chrono::steady_clock::now() - discovery_start < 1s)
+  {
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(10ms);
+  }
+
+  ASSERT_GT(command_publisher->get_subscription_count(), 0u);
+  ASSERT_GT(event_publisher->get_subscription_count(), 0u);
+
+  geometry_msgs::msg::Twist moving;
+  moving.linear.x = 0.5;
+  command_publisher->publish(moving);
+  rclcpp::spin_some(node);
+
+  msg::FaultEvent event;
+  event.stamp = node->now();
+  event.fault_id = "drop_cmd_vel";
+  event.state = "active";
+  event_publisher->publish(event);
+  rclcpp::spin_some(node);
+
+  geometry_msgs::msg::Twist stopped;
+  const auto stop_start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - stop_start < 700ms) {
+    command_publisher->publish(stopped);
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(50ms);
+  }
+
+  const auto results = runner.results();
+  ASSERT_EQ(results.size(), 1u);
+  EXPECT_EQ(results.front().type, "twist_stopped");
+  EXPECT_EQ(results.front().state, AssertionState::Passed);
+}
+
+TEST_F(FaultAssertionRunnerTest, UsesFaultEventStampForStopResponseDeadline)
+{
+  auto node = std::make_shared<rclcpp::Node>("test_twist_stopped_delayed_event");
+
+  AssertionConfig config;
+  config.id = "watchdog_stops_after_cmd_dropout";
+  config.type = "twist_stopped";
+  config.topic = "/cmd_vel_delayed_test";
+  config.fault_id = "drop_cmd_vel";
+  config.trigger_within = 2.0;
+  config.within = 0.5;
+  config.duration = 0.4;
+  config.linear_tolerance = 0.01;
+  config.angular_tolerance = 0.01;
+  config.max_gap = 0.15;
+
+  FaultAssertionRunner runner(*node);
+  runner.start({config});
+
+  auto event_publisher = node->create_publisher<msg::FaultEvent>(
+    "/fault_injection/events", rclcpp::QoS(10));
+  const auto discovery_start = std::chrono::steady_clock::now();
+  while (event_publisher->get_subscription_count() == 0 &&
+    std::chrono::steady_clock::now() - discovery_start < 1s)
+  {
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(10ms);
+  }
+  ASSERT_GT(event_publisher->get_subscription_count(), 0u);
+
+  const auto assertion_start = node->now();
+  std::this_thread::sleep_for(700ms);
+
+  msg::FaultEvent event;
+  event.stamp = assertion_start + rclcpp::Duration::from_seconds(0.1);
+  event.fault_id = "drop_cmd_vel";
+  event.state = "active";
+  event_publisher->publish(event);
+
+  const auto update_start = std::chrono::steady_clock::now();
+  while (runner.results().front().state == AssertionState::Pending &&
+    std::chrono::steady_clock::now() - update_start < 400ms)
+  {
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(10ms);
+  }
+
+  const auto results = runner.results();
+  ASSERT_EQ(results.size(), 1u);
+  EXPECT_EQ(results.front().state, AssertionState::Failed);
 }
 }

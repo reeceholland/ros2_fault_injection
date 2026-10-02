@@ -43,8 +43,11 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
 {
   fault_event_assertions_.clear();
   topic_hz_assertions_.clear();
+  twist_stopped_assertions_.clear();
   topic_hz_subscriptions_.clear();
+  twist_stopped_subscriptions_.clear();
   last_published_states_.clear();
+  start_time_ = node_.now();
 
   for (const auto & config : assertions) {
     if (config.type == "fault_event") {
@@ -59,13 +62,20 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
           {
             topic_hz_assertions_.at(assertion_index).observe_message(node_.now());
             }));
+    } else if (config.type == "twist_stopped") {
+      const auto assertion_index = twist_stopped_assertions_.size();
+      twist_stopped_assertions_.emplace_back(config, start_time_);
+      twist_stopped_subscriptions_.push_back(node_.create_subscription<geometry_msgs::msg::Twist>(
+            config.topic, rclcpp::QoS(10),
+          [this, assertion_index](geometry_msgs::msg::Twist::ConstSharedPtr message)
+          {
+            twist_stopped_assertions_.at(assertion_index).observe_message(*message, node_.now());
+            }));
     } else {
       RCLCPP_ERROR(node_.get_logger(), "Unknown assertion type '%s' for assertion '%s'",
                      config.type.c_str(), config.id.c_str());
     }
   }
-
-  start_time_ = node_.now();
 
   fault_event_subscription_ = node_.create_subscription<msg::FaultEvent>(
         "/fault_injection/events", 10, [this](const msg::FaultEvent::SharedPtr event)
@@ -79,19 +89,26 @@ void FaultAssertionRunner::start(const std::vector<AssertionConfig> & assertions
     {update();});
 
   RCLCPP_INFO(node_.get_logger(), "Started %zu assertions",
-                fault_event_assertions_.size() + topic_hz_assertions_.size());
+                fault_event_assertions_.size() + topic_hz_assertions_.size() +
+                twist_stopped_assertions_.size());
 }
 
 std::vector<AssertionResult> FaultAssertionRunner::results() const
 {
   std::vector<AssertionResult> results;
-  results.reserve(fault_event_assertions_.size() + topic_hz_assertions_.size());
+  results.reserve(
+    fault_event_assertions_.size() + topic_hz_assertions_.size() +
+    twist_stopped_assertions_.size());
 
   for (const auto & assertion : fault_event_assertions_) {
     results.push_back(assertion.result());
   }
 
   for (const auto & assertion : topic_hz_assertions_) {
+    results.push_back(assertion.result());
+  }
+
+  for (const auto & assertion : twist_stopped_assertions_) {
     results.push_back(assertion.result());
   }
   return results;
@@ -101,6 +118,11 @@ void FaultAssertionRunner::on_fault_event(const msg::FaultEvent & event)
 {
   for (auto & assertion : fault_event_assertions_) {
     assertion.observe(event);
+  }
+
+  const rclcpp::Time event_stamp(event.stamp, node_.get_clock()->get_clock_type());
+  for (auto & assertion : twist_stopped_assertions_) {
+    assertion.observe_fault_event(event, event_stamp);
   }
 
   publish_assertion_event();
@@ -117,6 +139,10 @@ void FaultAssertionRunner::update()
 
   for (auto & assertion : topic_hz_assertions_) {
     assertion.update(elapsed_seconds, now);
+  }
+
+  for (auto & assertion : twist_stopped_assertions_) {
+    assertion.update(now);
   }
 
   publish_assertion_event();

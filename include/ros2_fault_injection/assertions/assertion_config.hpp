@@ -22,6 +22,10 @@ struct AssertionConfig
   std::string state;
   std::optional<double> min_hz;
   std::optional<double> window;
+  std::optional<double> trigger_within;
+  std::optional<double> linear_tolerance;
+  std::optional<double> angular_tolerance;
+  std::optional<double> max_gap;
   std::optional<double> within;
   std::optional<double> duration;
 };

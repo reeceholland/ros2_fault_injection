@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -287,6 +288,79 @@ void validate_assertions(
 
     if (assertion.message_type.empty()) {
       result.errors.push_back("assertion '" + assertion.id + "' message_type must not be empty");
+    }
+  } else if (assertion.type == "twist_stopped") {
+    if (assertion.topic.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' topic must not be empty");
+    }
+
+    if (assertion.fault_id.empty()) {
+      result.errors.push_back("assertion '" + assertion.id + "' fault_id must not be empty");
+    } else if (!fault_exists(scenario, assertion.fault_id)) {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' references unknown fault_id '" + assertion.fault_id +
+          "'");
+    }
+
+    if (!assertion.trigger_within.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' trigger_within must be set");
+    } else if (!std::isfinite(assertion.trigger_within.value()) ||
+      assertion.trigger_within.value() <= 0.0)
+    {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' trigger_within must be finite and greater than 0");
+    }
+
+    if (!assertion.within.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' within must be set");
+    } else if (!std::isfinite(assertion.within.value()) || assertion.within.value() <= 0.0) {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' within must be finite and greater than 0");
+    }
+
+    if (assertion.trigger_within.has_value() && assertion.within.has_value() &&
+      std::isfinite(assertion.trigger_within.value()) && std::isfinite(assertion.within.value()) &&
+      !std::isfinite(assertion.trigger_within.value() + assertion.within.value()))
+    {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' trigger_within + within must be finite");
+    }
+
+    if (!assertion.duration.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' duration must be set");
+    } else if (!std::isfinite(assertion.duration.value()) || assertion.duration.value() <= 0.0) {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' duration must be finite and greater than 0");
+    }
+
+    if (!assertion.linear_tolerance.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' linear_tolerance must be set");
+    } else if (!std::isfinite(assertion.linear_tolerance.value()) ||
+      assertion.linear_tolerance.value() < 0.0)
+    {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' linear_tolerance must be finite and non-negative");
+    }
+
+    if (!assertion.angular_tolerance.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' angular_tolerance must be set");
+    } else if (!std::isfinite(assertion.angular_tolerance.value()) ||
+      assertion.angular_tolerance.value() < 0.0)
+    {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' angular_tolerance must be finite and non-negative");
+    }
+
+    if (!assertion.max_gap.has_value()) {
+      result.errors.push_back("assertion '" + assertion.id + "' max_gap must be set");
+    } else if (!std::isfinite(assertion.max_gap.value()) || assertion.max_gap.value() <= 0.0) {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' max_gap must be finite and greater than 0");
+    } else if (assertion.duration.has_value() &&
+      assertion.max_gap.value() >= assertion.duration.value())
+    {
+      result.errors.push_back(
+        "assertion '" + assertion.id + "' max_gap must be less than duration");
     }
   } else {
     result.errors.push_back(

@@ -13,8 +13,10 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/generic_subscription.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 #include "ros2_fault_injection/assertions/topic_hz_assertion.hpp"
+#include "ros2_fault_injection/assertions/twist_stopped_assertion.hpp"
 #include "ros2_fault_injection/assertions/assertion_config.hpp"
 #include "ros2_fault_injection/assertions/assertion_result.hpp"
 #include "ros2_fault_injection/assertions/fault_event_assertion.hpp"
@@ -41,11 +43,14 @@ private:
   rclcpp::Time start_time_;
 
   std::vector<TopicHzAssertion> topic_hz_assertions_;
+  std::vector<TwistStoppedAssertion> twist_stopped_assertions_;
   std::vector<FaultEventAssertion> fault_event_assertions_;
   std::unordered_map<std::string, AssertionState> last_published_states_;
 
   rclcpp::Subscription<msg::FaultEvent>::SharedPtr fault_event_subscription_;
   std::vector<std::shared_ptr<rclcpp::GenericSubscription>> topic_hz_subscriptions_;
+  std::vector<rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr>
+  twist_stopped_subscriptions_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<msg::AssertionEvent>::SharedPtr assertion_event_publisher_;
   ScenarioMonitor scenario_monitor_;

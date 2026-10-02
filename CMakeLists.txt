@@ -81,6 +81,7 @@ add_library(${PROJECT_NAME}_core
   src/assertions/fault_assertion_runner.cpp
   src/assertions/fault_event_assertion.cpp
   src/assertions/topic_hz_assertion.cpp
+  src/assertions/twist_stopped_assertion.cpp
   src/assertions/scenario_monitor.cpp
   src/core/fault_scenario_runner.cpp
 )
@@ -344,6 +345,13 @@ if(BUILD_TESTING)
     test/assertions/test_topic_hz_assertion.cpp
   )
   target_link_libraries(test_topic_hz_assertion
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_twist_stopped_assertion
+    test/assertions/test_twist_stopped_assertion.cpp
+  )
+  target_link_libraries(test_twist_stopped_assertion
     ${PROJECT_NAME}_core
   )
 
