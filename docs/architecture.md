@@ -93,7 +93,7 @@ Scheduler actions publish fault events so UI tools, assertions, and logs can sho
 
 ## Assertions
 
-`FaultAssertionRunner` evaluates optional scenario assertions while the node is running. `fault_event` assertions listen to `/fault_injection/events` and pass when a named fault reaches an expected state such as `active` or `inactive`. `topic_hz` assertions use generic ROS 2 subscriptions to count serialized messages and pass when a topic stays above a configured publish rate.
+`FaultAssertionRunner` evaluates optional scenario assertions while the node is running. `fault_event` assertions listen to `/fault_injection/events` and pass when a named fault reaches an expected state such as `active` or `inactive`. `topic_hz` assertions use generic ROS 2 subscriptions to count serialized messages and pass when a topic stays above a configured publish rate. `twist_stopped` assertions subscribe to `geometry_msgs/msg/Twist` and verify a command stream goes to zero after a configured fault activates, then remains zero within a bounded hold window.
 
 Assertion state changes are published on `/fault_injection/assertion_events` as `ros2_fault_injection/msg/AssertionEvent`. Pending assertions are kept internal; the runner publishes when an assertion changes to `passed` or `failed`.
 

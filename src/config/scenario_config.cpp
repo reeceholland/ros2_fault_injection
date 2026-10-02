@@ -144,6 +144,25 @@ assertions::AssertionConfig parse_assertion(const YAML::Node & node)
     if (node["window"]) {
       assertion.window = node["window"].as<double>();
     }
+  } else if (assertion.type == "twist_stopped") {
+    assertion.topic = required_string(node, "topic");
+    assertion.fault_id = required_string(node, "fault_id");
+
+    if (node["trigger_within"]) {
+      assertion.trigger_within = node["trigger_within"].as<double>();
+    }
+
+    if (node["linear_tolerance"]) {
+      assertion.linear_tolerance = node["linear_tolerance"].as<double>();
+    }
+
+    if (node["angular_tolerance"]) {
+      assertion.angular_tolerance = node["angular_tolerance"].as<double>();
+    }
+
+    if (node["max_gap"]) {
+      assertion.max_gap = node["max_gap"].as<double>();
+    }
   }
 
   if (node["within"]) {

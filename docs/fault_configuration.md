@@ -386,13 +386,14 @@ Supported assertion types:
 | --- | --- |
 | `fault_event` | Passes when a named fault publishes an expected state. |
 | `topic_hz` | Passes when a topic publishes at or above a minimum frequency. |
+| `twist_stopped` | Verifies a `geometry_msgs/msg/Twist` command stream returns to zero and stays there after a fault activates. |
 
 Common fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `id` | string | Unique assertion name used in assertion events and scenario status. |
-| `type` | string | Assertion type, such as `fault_event` or `topic_hz`. |
+| `type` | string | Assertion type, such as `fault_event`, `topic_hz`, or `twist_stopped`. |
 | `within` | seconds | Optional deadline. The assertion fails if the expected condition is not observed before this time. |
 
 `fault_event` fields:
@@ -410,6 +411,21 @@ Common fields:
 | `message_type` | string | ROS interface type, such as `nav_msgs/msg/Odometry`. |
 | `min_hz` | number | Minimum acceptable publish frequency. Must be greater than `0.0`. |
 | `window` | seconds | Rolling measurement window used to estimate topic frequency. Must be greater than `0.0`. |
+
+`twist_stopped` fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `topic` | string | `geometry_msgs/msg/Twist` command topic to observe. |
+| `fault_id` | string | Fault event whose activation starts the stop-response check. Must reference an existing fault ID. |
+| `trigger_within` | seconds | Deadline from assertion start for the fault to activate. If no activation event is observed, the assertion waits until this deadline plus `within` before failing, so a timely activation event can still use its full stop-response window. |
+| `within` | seconds | Deadline after fault activation for the first zero command to arrive. |
+| `duration` | seconds | How long zero commands must continue to be observed. |
+| `linear_tolerance` | m/s | Maximum absolute value for each linear velocity component to count as zero. |
+| `angular_tolerance` | rad/s | Maximum absolute value for each angular velocity component to count as zero. |
+| `max_gap` | seconds | Maximum allowed gap between zero commands during the hold period. Must be less than `duration`. |
+
+For `twist_stopped`, `trigger_within + within` must also remain finite.
 
 Example:
 
@@ -434,6 +450,19 @@ assertions:
     min_hz: 10.0
     window: 3.0
     within: 8.0
+
+  - id: watchdog_stops_after_sensor_fault
+    type: twist_stopped
+    topic: /safe_cmd_vel
+    fault_id: scan_front_blind
+    trigger_within: 12.0
+    within: 0.5
+    duration: 1.0
+    linear_tolerance: 0.01
+    angular_tolerance: 0.01
+    max_gap: 0.2
 ```
+
+The `twist_stopped` assertion observes all six linear and angular velocity components. Up to 16,384 Twist messages observed while waiting for the activation event are retained and evaluated only when their observation timestamps are at or after the event timestamp, including equal timestamps; exceeding this limit fails the assertion because the stop response can no longer be verified safely. It passes only after a matching fault activates, a zero command arrives before `within` expires, and zero commands continue for `duration` without exceeding `max_gap`. Non-finite values, renewed motion, a missed deadline, or a gap that is too long fail the assertion. This verifies the command topic behavior; it does not prove that the robot's physical motion has stopped.
 
 The validator rejects duplicate assertion IDs, unsupported assertion types, unknown fault IDs, unsupported states, missing topic rate fields, invalid timing values, and non-positive `min_hz` or `window` values. Assertion state changes are published on `/fault_injection/assertion_events`; the current scenario summary is published on `/fault_injection/scenario_status`.

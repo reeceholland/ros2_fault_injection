@@ -214,6 +214,48 @@ injector:
   EXPECT_EQ(scenario.injectors[0].seed, 12345u);
 }
 
+TEST(ScenarioConfig, ParsesTwistStoppedAssertion)
+{
+  const auto path =
+    write_temp_yaml(
+    R"(
+injector:
+  id: twist
+  type: twist
+  input_topic: /cmd_vel_raw
+  output_topic: /cmd_vel
+faults:
+  - id: drop_cmd_vel
+    injector_id: twist
+    config:
+      drop_probability: 1.0
+assertions:
+  - id: watchdog_stops
+    type: twist_stopped
+    topic: /cmd_vel
+    fault_id: drop_cmd_vel
+    trigger_within: 2.0
+    within: 0.5
+    duration: 1.0
+    linear_tolerance: 0.01
+    angular_tolerance: 0.01
+    max_gap: 0.2
+)");
+
+  const auto scenario = ros2_fault_injection::load_scenario_config(path);
+  ASSERT_EQ(scenario.assertions.size(), 1u);
+  const auto & assertion = scenario.assertions.front();
+  EXPECT_EQ(assertion.type, "twist_stopped");
+  EXPECT_EQ(assertion.topic, "/cmd_vel");
+  EXPECT_EQ(assertion.fault_id, "drop_cmd_vel");
+  EXPECT_DOUBLE_EQ(assertion.trigger_within.value(), 2.0);
+  EXPECT_DOUBLE_EQ(assertion.within.value(), 0.5);
+  EXPECT_DOUBLE_EQ(assertion.duration.value(), 1.0);
+  EXPECT_DOUBLE_EQ(assertion.linear_tolerance.value(), 0.01);
+  EXPECT_DOUBLE_EQ(assertion.angular_tolerance.value(), 0.01);
+  EXPECT_DOUBLE_EQ(assertion.max_gap.value(), 0.2);
+}
+
 TEST(ScenarioConfig, RejectsInvalidSeedsWithInjectorContext)
 {
   for (const auto * value : {"-1", "4294967296", "99999999999999999999999999",
