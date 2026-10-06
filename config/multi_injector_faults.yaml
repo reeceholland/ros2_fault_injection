@@ -17,6 +17,14 @@ injectors:
     output_topic: /scan
     qos_depth: 10
 
+  # Publish raw 3D lidar here; view the injected output on /ouster/points.
+  - id: ouster_points
+    type: point_cloud
+    seed: 12345  # Fixed seed for repeatable fault injection.
+    input_topic: /ouster/points_raw
+    output_topic: /ouster/points
+    qos_depth: 10
+
   - id: motor_feedback
     type: joint_state
     seed: 659371508  # Fixed seed for repeatable fault injection.
@@ -101,6 +109,23 @@ faults:
       sector_min_deg: -20.0
       sector_max_deg: 20.0
       sector_value: inf
+
+  # Manual Gaussian plume in the sensor frame, centred 2 m along +X.
+  # Widths are standard deviations in metres, not hard boundaries.
+  # Demonstration settings, not a fitted Caren calibration.
+  - id: ouster_dust_plume
+    injector_id: ouster_points
+    active_on_startup: false
+    config:
+      dust_model: plume
+      plume_center_x: 2.0
+      plume_center_y: 0.0
+      plume_center_z: 0.0
+      plume_sigma_x: 0.5
+      plume_sigma_y: 0.5
+      plume_sigma_z: 0.3
+      plume_interaction_coefficient: 2.0  # Peak rate in inverse metres.
+      plume_step_size: 0.1  # Maximum integration segment length in metres.
 
   # Scheduled motor feedback velocity drift.
   - id: motor_velocity_bias

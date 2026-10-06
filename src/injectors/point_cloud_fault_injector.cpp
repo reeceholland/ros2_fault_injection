@@ -19,6 +19,8 @@
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
+#include "ros2_fault_injection/core/dust_plume.hpp"
+
 namespace ros2_fault_injection::injectors
 {
 
@@ -45,6 +47,20 @@ double fault_double(
   }
 
   return std::stod(it->second);
+}
+
+core::DustPlume plume_for(const FaultConfig & fault)
+{
+  core::DustPlume plume;
+  plume.center_x = fault_double(fault, "plume_center_x", 0.0);
+  plume.center_y = fault_double(fault, "plume_center_y", 0.0);
+  plume.center_z = fault_double(fault, "plume_center_z", 0.0);
+  plume.sigma_x = fault_double(fault, "plume_sigma_x", 1.0);
+  plume.sigma_y = fault_double(fault, "plume_sigma_y", 1.0);
+  plume.sigma_z = fault_double(fault, "plume_sigma_z", 1.0);
+
+  plume.validate();
+  return plume;
 }
 }
 
@@ -151,6 +167,31 @@ void PointCloudFaultInjector::on_point_cloud(const sensor_msgs::msg::PointCloud2
   apply_point_dropout(out);
   apply_range_noise(out);
   apply_random_dust_returns(out);
+
+  std::vector<std::string> plume_ids;
+
+  for (const auto & [fault_id, is_active] : active_) {
+    if (is_active && dust_model_for(faults_.at(fault_id)) == "plume") {
+      plume_ids.push_back(fault_id);
+    }
+  }
+
+  std::sort(plume_ids.begin(), plume_ids.end());
+
+  for (const auto & fault_id : plume_ids) {
+    try {
+      apply_plume_dust_returns(out, faults_.at(fault_id));
+    } catch (const std::invalid_argument & error) {
+      RCLCPP_WARN_THROTTLE(
+      node_.get_logger(), *node_.get_clock(), 5000,
+      "Skipping plume fault '%s': %s", fault_id.c_str(), error.what());
+    } catch (const std::out_of_range & error) {
+      RCLCPP_WARN_THROTTLE(
+      node_.get_logger(), *node_.get_clock(), 5000,
+      "Skipping plume fault '%s': %s", fault_id.c_str(), error.what());
+    }
+  }
+
   apply_intensity_scale(out);
 
   const auto delay = active_delay();
@@ -527,6 +568,78 @@ double PointCloudFaultInjector::active_random_dust_product_or_default(
   }
 
   return value;
+}
+
+void PointCloudFaultInjector::apply_plume_dust_returns(
+  sensor_msgs::msg::PointCloud2 & msg,
+  const FaultConfig & fault)
+{
+  const auto plume = plume_for(fault);
+
+  const double coefficient =
+    fault_double(fault, "plume_interaction_coefficient", 0.0);
+
+  const double step_size =
+    fault_double(fault, "plume_step_size", 0.1);
+
+  if (coefficient == 0.0) {
+    return;
+  }
+
+  if (!has_float32_field(msg, "x") ||
+    !has_float32_field(msg, "y") ||
+    !has_float32_field(msg, "z"))
+  {
+    RCLCPP_WARN_THROTTLE(
+      node_.get_logger(), *node_.get_clock(), 5000,
+      "PointCloud2 requires float32 x, y, z fields; skipping plume dust");
+    return;
+  }
+
+  std::uniform_real_distribution<double> uniform(0.0, 1.0);
+
+  sensor_msgs::PointCloud2Iterator<float> x(msg, "x");
+  sensor_msgs::PointCloud2Iterator<float> y(msg, "y");
+  sensor_msgs::PointCloud2Iterator<float> z(msg, "z");
+
+  for (; x != x.end(); ++x, ++y, ++z) {
+    if (!std::isfinite(*x) ||
+      !std::isfinite(*y) ||
+      !std::isfinite(*z))
+    {
+      continue;
+    }
+
+    const double range = std::hypot(
+    static_cast<double>(*x),
+    static_cast<double>(*y),
+    static_cast<double>(*z));
+
+    if (range <= std::numeric_limits<float>::epsilon()) {
+      continue;
+    }
+
+    std::optional<double> distance;
+
+    try {
+      distance = plume.first_interaction_distance(
+    *x, *y, *z, coefficient, step_size, uniform(rng_));
+    } catch (const std::invalid_argument & error) {
+      RCLCPP_WARN_THROTTLE(
+    node_.get_logger(), *node_.get_clock(), 5000,
+    "Skipping plume dust for a point: %s", error.what());
+      continue;
+    }
+
+    if (!distance.has_value()) {
+      continue;
+    }
+
+    const double scale = distance.value() / range;
+    *x = static_cast<float>(*x * scale);
+    *y = static_cast<float>(*y * scale);
+    *z = static_cast<float>(*z * scale);
+  }
 }
 
 }  // namespace ros2_fault_injection::injectors

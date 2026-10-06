@@ -71,6 +71,7 @@ private:
     const std::string & field_name) const;
   double active_random_dust_max(const std::string & key, double fallback) const;
   double active_random_dust_min(const std::string & key, double fallback) const;
+  void apply_plume_dust_returns(sensor_msgs::msg::PointCloud2 & msg, const FaultConfig & fault);
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
