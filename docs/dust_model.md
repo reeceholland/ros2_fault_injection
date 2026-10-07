@@ -2,10 +2,27 @@
 
 ## Status and purpose
 
-The plume model is under development. The current implementation provides a
-Gaussian geometry helper, midpoint ray integration, first-interaction sampling,
-and configuration validation. It is not yet connected to point-cloud mutation.
-Selecting `dust_model: plume` therefore does not yet generate visible dust.
+The first plume implementation is connected to the point-cloud injector.
+An active fault with `dust_model: plume` and a positive interaction coefficient
+samples dust interactions along valid input rays and replaces affected surface
+points with nearer returns. The original beam direction and point count are
+preserved. Geometry, midpoint integration, seeded sampling, and configuration
+validation are implemented; Caren-specific calibration remains future work.
+
+Only existing valid points provide rays. Missing beams do not gain new returns.
+Each sampled interaction is currently treated as a detected replacement return;
+the original intensity is retained by the plume operation. General cloud-wide
+intensity scaling can still run afterwards. Background survival, multiple
+returns, and a calibrated dust-intensity response are not implemented.
+
+Active plume faults are processed in sorted fault-ID order, after random dust.
+Multiple plumes therefore mutate points sequentially; they are not integrated
+as a combined density field. For an isolated demonstration, enable one plume
+and leave random dust and other point mutations disabled.
+
+Point-cloud tests cover ray direction and bounds, spatial selectivity for a
+fixed seed, equal-seed output sequences, zero-coefficient forwarding, and
+unchanged forwarding after deactivation.
 
 The existing random-dust mode remains the default. It selects individual points
 using a probability and assigns random dust ranges. The plume mode is intended
@@ -102,15 +119,15 @@ interpolates within the segment assuming its midpoint rate is constant.
 If no crossing occurs before the surface, it returns `std::nullopt`.
 There is no separate probability coin flip before this sampling.
 
-The helper owns no random generator. Integration with the injector should
-use its existing seeded generator. Matching samples, inputs, parameters, and
+The helper owns no random generator. The point-cloud injector uses
+its existing seeded generator. Matching samples, inputs, parameters, and
 numerical environment makes this calculation repeatable; a seed alone does
 not reproduce ROS timing or live input clouds. See
-[random seed configuration](fault_configuration.md#random-seeds).
+{ref}`random seed configuration <random-seeds>`.
 
 Zero-length rays and zero coefficients produce no interaction. A uniform
 sample of zero can produce an interaction at zero metres. A sensor minimum
-detection range must therefore be handled explicitly by the eventual sensor
+detection range must therefore be handled explicitly by a future sensor
 response layer.
 
 ## Configuration and current defaults
@@ -120,7 +137,7 @@ starting values, not a fitted Carén calibration.
 
 | Field | Default | Meaning and constraints |
 | --- | --- | --- |
-| `dust_model` | `random` | Either `random` or `plume`; runtime plume mutation is pending. |
+| `dust_model` | `random` | Either `random` or `plume`; plume replaces points at sampled interaction distances. |
 | `plume_center_x/y/z` | 0.0 | Finite centre coordinates in metres in the sensor frame. |
 | `plume_sigma_x/y/z` | 1.0 | Finite, strictly positive Gaussian widths in metres. |
 | `plume_interaction_coefficient` | 0.0 | Finite non-negative peak rate in inverse metres; zero means no interactions. |

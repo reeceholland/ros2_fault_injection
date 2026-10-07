@@ -101,7 +101,7 @@ Rebuild external injector plugins against the updated interface.
 For random effects, test that two fresh injectors with the same seed produce
 the same outputs for identical inputs, and verify the effect's bounds or
 distribution-specific properties. See
-[random seed behaviour](fault_configuration.md#random-seeds) for replay limits.
+{ref}`random seed behaviour <random-seeds>` for replay limits.
 
 ## 4. Add Fault Config Keys
 

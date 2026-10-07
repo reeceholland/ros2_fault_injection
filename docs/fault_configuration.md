@@ -306,7 +306,7 @@ Example:
 ## Point Cloud Faults
 
 For the experimental plume model, see [dust model assumptions and Carén reference](dust_model.md).
-That page distinguishes implemented configuration from pending point-cloud integration.
+That page describes the connected plume mode, configuration defaults, and remaining modelling limitations.
 
 Injector type: `point_cloud`
 

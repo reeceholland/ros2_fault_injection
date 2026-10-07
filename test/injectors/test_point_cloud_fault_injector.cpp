@@ -456,94 +456,94 @@ TEST_F(SeededDustTest, DifferentSeedsProduceDifferentDustOutput)
 
 class PlumeDustTest : public ::testing::Test
 {
-  protected:
-    using Cloud = sensor_msgs::msg::PointCloud2;
+protected:
+  using Cloud = sensor_msgs::msg::PointCloud2;
 
-    void SetUp() override
-    {
-      rclcpp::init(0, nullptr);
-      node_ = std::make_shared<rclcpp::Node>("plume_dust_test");
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+    node_ = std::make_shared<rclcpp::Node>("plume_dust_test");
 
-      auto config = make_injector_config();
-      config.seed = 12345u;
-      config.topic->input_topic = "/plume_test/points_raw";
-      config.topic->output_topic = "/plume_test/points";
+    auto config = make_injector_config();
+    config.seed = 12345u;
+    config.topic->input_topic = "/plume_test/points_raw";
+    config.topic->output_topic = "/plume_test/points";
 
-      injector_ = std::make_unique<PointCloudFaultInjector>(*node_, config);
+    injector_ = std::make_unique<PointCloudFaultInjector>(*node_, config);
 
-      publisher_ = node_->create_publisher<Cloud>(config.topic->input_topic, rclcpp::QoS(10));
-      subscription_ = node_->create_subscription<Cloud>(
+    publisher_ = node_->create_publisher<Cloud>(config.topic->input_topic, rclcpp::QoS(10));
+    subscription_ = node_->create_subscription<Cloud>(
         config.topic->output_topic,
         rclcpp::QoS(10),
-        [this](const Cloud & cloud) {
-          received_ = cloud;
+      [this](const Cloud & cloud) {
+        received_ = cloud;
         });
-    }
+  }
 
-    void TearDown() override
-    {
-      subscription_.reset();
-      publisher_.reset();
-      injector_.reset();
-      node_.reset();
-      rclcpp::shutdown();
-    }
+  void TearDown() override
+  {
+    subscription_.reset();
+    publisher_.reset();
+    injector_.reset();
+    node_.reset();
+    rclcpp::shutdown();
+  }
 
-    FaultConfig plume_fault(const std::string & coefficient)
-    {
-      FaultConfig fault;
-      fault.id = "test_plume";
-      fault.injector_id = "point_cloud";
-      fault.config = {
-        {"dust_model", "plume"},
-        {"plume_center_x", "2.0"},
-        {"plume_center_y", "0.0"},
-        {"plume_center_z", "0.0"},
-        {"plume_sigma_x", "0.5"},
-        {"plume_sigma_y", "0.5"},
-        {"plume_sigma_z", "0.3"},
-        {"plume_interaction_coefficient", coefficient},
-        {"plume_step_size", "0.1"}
-      };
-      return fault;
-    }
+  FaultConfig plume_fault(const std::string & coefficient)
+  {
+    FaultConfig fault;
+    fault.id = "test_plume";
+    fault.injector_id = "point_cloud";
+    fault.config = {
+      {"dust_model", "plume"},
+      {"plume_center_x", "2.0"},
+      {"plume_center_y", "0.0"},
+      {"plume_center_z", "0.0"},
+      {"plume_sigma_x", "0.5"},
+      {"plume_sigma_y", "0.5"},
+      {"plume_sigma_z", "0.3"},
+      {"plume_interaction_coefficient", coefficient},
+      {"plume_step_size", "0.1"}
+    };
+    return fault;
+  }
 
-    bool wait_for_connections()
-    {
-      const auto deadline = std::chrono::steady_clock::now() + 5s;
-      while (std::chrono::steady_clock::now() < deadline) {
-        if (publisher_->get_subscription_count() > 0 &&
-            subscription_->get_publisher_count() > 0)
-        {
-          return true;
-        }
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(5ms);
+  bool wait_for_connections()
+  {
+    const auto deadline = std::chrono::steady_clock::now() + 5s;
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (publisher_->get_subscription_count() > 0 &&
+        subscription_->get_publisher_count() > 0)
+      {
+        return true;
       }
-      return false;
+      rclcpp::spin_some(node_);
+      std::this_thread::sleep_for(5ms);
     }
+    return false;
+  }
 
-    bool publish_once_and_wait(const Cloud & input)
-    {
-      received_.reset();
-      publisher_->publish(input);
-      const auto deadline = std::chrono::steady_clock::now() + 3s;
-      while (std::chrono::steady_clock::now() < deadline) {
-        rclcpp::spin_some(node_);
+  bool publish_once_and_wait(const Cloud & input)
+  {
+    received_.reset();
+    publisher_->publish(input);
+    const auto deadline = std::chrono::steady_clock::now() + 3s;
+    while (std::chrono::steady_clock::now() < deadline) {
+      rclcpp::spin_some(node_);
         // Match the stamp so an earlier phase cannot satisfy this wait.
-        if (received_ && received_->header.stamp == input.header.stamp) {
-          return true;
-        }
-        std::this_thread::sleep_for(5ms);
+      if (received_ && received_->header.stamp == input.header.stamp) {
+        return true;
       }
-      return false;
+      std::this_thread::sleep_for(5ms);
     }
+    return false;
+  }
 
-    rclcpp::Node::SharedPtr node_;
-    std::unique_ptr<PointCloudFaultInjector> injector_;
-    rclcpp::Publisher<Cloud>::SharedPtr publisher_;
-    rclcpp::Subscription<Cloud>::SharedPtr subscription_;
-    std::optional<Cloud> received_;
+  rclcpp::Node::SharedPtr node_;
+  std::unique_ptr<PointCloudFaultInjector> injector_;
+  rclcpp::Publisher<Cloud>::SharedPtr publisher_;
+  rclcpp::Subscription<Cloud>::SharedPtr subscription_;
+  std::optional<Cloud> received_;
 
 };
 
@@ -572,8 +572,8 @@ TEST_F(PlumeDustTest, PlumeDustMovesPointsAlongOriginalRays)
     std::chrono::steady_clock::now() + std::chrono::seconds(5);
 
   while ((publisher_->get_subscription_count() == 0 ||
-          subscription_->get_publisher_count() == 0) &&
-         std::chrono::steady_clock::now() < discovery_deadline)
+    subscription_->get_publisher_count() == 0) &&
+    std::chrono::steady_clock::now() < discovery_deadline)
   {
     rclcpp::spin_some(node_);
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -592,7 +592,7 @@ TEST_F(PlumeDustTest, PlumeDustMovesPointsAlongOriginalRays)
     std::chrono::steady_clock::now() + std::chrono::seconds(3);
 
   while (!received_.has_value() &&
-         std::chrono::steady_clock::now() < response_deadline)
+    std::chrono::steady_clock::now() < response_deadline)
   {
     rclcpp::spin_some(node_);
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -634,9 +634,9 @@ TEST_F(PlumeDustTest, ZeroCoefficientForwardsCloudUnchanged)
   ASSERT_TRUE(wait_for_connections()) << "ROS discovery timed out";
 
   auto input = make_cloud({
-    {5.0F, 0.0F, 0.0F, 100.0F},
-    {3.0F, 1.0F, -0.5F, 25.0F},
-    {-2.0F, 0.5F, 1.0F, 7.0F}
+      {5.0F, 0.0F, 0.0F, 100.0F},
+      {3.0F, 1.0F, -0.5F, 25.0F},
+      {-2.0F, 0.5F, 1.0F, 7.0F}
   });
   input.header.stamp.sec = 1;
 
