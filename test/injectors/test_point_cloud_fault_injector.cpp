@@ -454,4 +454,322 @@ TEST_F(SeededDustTest, DifferentSeedsProduceDifferentDustOutput)
   compare_cloud_sequences(54321u, false);
 }
 
+class PlumeDustTest : public ::testing::Test
+{
+  protected:
+    using Cloud = sensor_msgs::msg::PointCloud2;
+
+    void SetUp() override
+    {
+      rclcpp::init(0, nullptr);
+      node_ = std::make_shared<rclcpp::Node>("plume_dust_test");
+
+      auto config = make_injector_config();
+      config.seed = 12345u;
+      config.topic->input_topic = "/plume_test/points_raw";
+      config.topic->output_topic = "/plume_test/points";
+
+      injector_ = std::make_unique<PointCloudFaultInjector>(*node_, config);
+
+      publisher_ = node_->create_publisher<Cloud>(config.topic->input_topic, rclcpp::QoS(10));
+      subscription_ = node_->create_subscription<Cloud>(
+        config.topic->output_topic,
+        rclcpp::QoS(10),
+        [this](const Cloud & cloud) {
+          received_ = cloud;
+        });
+    }
+
+    void TearDown() override
+    {
+      subscription_.reset();
+      publisher_.reset();
+      injector_.reset();
+      node_.reset();
+      rclcpp::shutdown();
+    }
+
+    FaultConfig plume_fault(const std::string & coefficient)
+    {
+      FaultConfig fault;
+      fault.id = "test_plume";
+      fault.injector_id = "point_cloud";
+      fault.config = {
+        {"dust_model", "plume"},
+        {"plume_center_x", "2.0"},
+        {"plume_center_y", "0.0"},
+        {"plume_center_z", "0.0"},
+        {"plume_sigma_x", "0.5"},
+        {"plume_sigma_y", "0.5"},
+        {"plume_sigma_z", "0.3"},
+        {"plume_interaction_coefficient", coefficient},
+        {"plume_step_size", "0.1"}
+      };
+      return fault;
+    }
+
+    bool wait_for_connections()
+    {
+      const auto deadline = std::chrono::steady_clock::now() + 5s;
+      while (std::chrono::steady_clock::now() < deadline) {
+        if (publisher_->get_subscription_count() > 0 &&
+            subscription_->get_publisher_count() > 0)
+        {
+          return true;
+        }
+        rclcpp::spin_some(node_);
+        std::this_thread::sleep_for(5ms);
+      }
+      return false;
+    }
+
+    bool publish_once_and_wait(const Cloud & input)
+    {
+      received_.reset();
+      publisher_->publish(input);
+      const auto deadline = std::chrono::steady_clock::now() + 3s;
+      while (std::chrono::steady_clock::now() < deadline) {
+        rclcpp::spin_some(node_);
+        // Match the stamp so an earlier phase cannot satisfy this wait.
+        if (received_ && received_->header.stamp == input.header.stamp) {
+          return true;
+        }
+        std::this_thread::sleep_for(5ms);
+      }
+      return false;
+    }
+
+    rclcpp::Node::SharedPtr node_;
+    std::unique_ptr<PointCloudFaultInjector> injector_;
+    rclcpp::Publisher<Cloud>::SharedPtr publisher_;
+    rclcpp::Subscription<Cloud>::SharedPtr subscription_;
+    std::optional<Cloud> received_;
+
+};
+
+TEST_F(PlumeDustTest, PlumeDustMovesPointsAlongOriginalRays)
+{
+  FaultConfig fault;
+  fault.id = "test_plume";
+  fault.injector_id = "point_cloud";  // ID from make_injector_config().
+  fault.config = {
+    {"dust_model", "plume"},
+    {"plume_center_x", "2.0"},
+    {"plume_center_y", "0.0"},
+    {"plume_center_z", "0.0"},
+    {"plume_sigma_x", "0.5"},
+    {"plume_sigma_y", "0.5"},
+    {"plume_sigma_z", "0.3"},
+    {"plume_interaction_coefficient", "10.0"},
+    {"plume_step_size", "0.1"}
+  };
+
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+
+  // Wait for both sides of the proxy to discover their connections.
+  const auto discovery_deadline =
+    std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+  while ((publisher_->get_subscription_count() == 0 ||
+          subscription_->get_publisher_count() == 0) &&
+         std::chrono::steady_clock::now() < discovery_deadline)
+  {
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  ASSERT_GT(publisher_->get_subscription_count(), 0u);
+  ASSERT_GT(subscription_->get_publisher_count(), 0u);
+
+  const auto input = make_cloud(
+    std::vector<Point>(32, Point{5.0F, 0.0F, 0.0F, 100.0F}));
+
+  received_.reset();
+  publisher_->publish(input);  // Publish once to preserve the RNG sequence.
+
+  const auto response_deadline =
+    std::chrono::steady_clock::now() + std::chrono::seconds(3);
+
+  while (!received_.has_value() &&
+         std::chrono::steady_clock::now() < response_deadline)
+  {
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  ASSERT_TRUE(received_.has_value()) << "No output cloud received";
+
+  const auto points = read_points(received_.value());
+  ASSERT_EQ(points.size(), 32u);
+  EXPECT_EQ(received_->header.frame_id, input.header.frame_id);
+
+  std::size_t moved_points = 0;
+
+  for (const auto & point : points) {
+    ASSERT_TRUE(std::isfinite(point.x));
+    ASSERT_TRUE(std::isfinite(point.y));
+    ASSERT_TRUE(std::isfinite(point.z));
+
+    EXPECT_GE(point.x, 0.0F);
+    EXPECT_LE(point.x, 5.0F);
+    EXPECT_FLOAT_EQ(point.y, 0.0F);
+    EXPECT_FLOAT_EQ(point.z, 0.0F);
+
+    if (point.x < 5.0F) {
+      ++moved_points;
+    }
+  }
+
+  EXPECT_GT(moved_points, 0u)
+    << "The active plume did not modify any points";
+}
+
+
+TEST_F(PlumeDustTest, ZeroCoefficientForwardsCloudUnchanged)
+{
+  const auto fault = plume_fault("0.0");
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections()) << "ROS discovery timed out";
+
+  auto input = make_cloud({
+    {5.0F, 0.0F, 0.0F, 100.0F},
+    {3.0F, 1.0F, -0.5F, 25.0F},
+    {-2.0F, 0.5F, 1.0F, 7.0F}
+  });
+  input.header.stamp.sec = 1;
+
+  ASSERT_TRUE(publish_once_and_wait(input)) << "No matching output cloud";
+  EXPECT_EQ(received_.value(), input);
+}
+
+TEST_F(PlumeDustTest, DeactivatingPlumeRestoresUnchangedForwarding)
+{
+  const auto fault = plume_fault("10.0");
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections()) << "ROS discovery timed out";
+
+  auto input = make_cloud(
+    std::vector<Point>(32, Point{5.0F, 0.0F, 0.0F, 100.0F}));
+  input.header.stamp.sec = 1;
+  ASSERT_TRUE(publish_once_and_wait(input)) << "No active-phase output";
+  ASSERT_NE(received_->data, input.data) << "Active plume must modify the input";
+
+  injector_->deactivate_fault(fault.id);
+  // Check multiple subsequent messages to catch retained mutation/state.
+  for (int sequence = 2; sequence <= 4; ++sequence) {
+    SCOPED_TRACE(sequence);
+    input.header.stamp.sec = sequence;
+    ASSERT_TRUE(publish_once_and_wait(input)) << "No recovery output";
+    EXPECT_EQ(received_.value(), input);
+  }
+}
+
+
+TEST_F(PlumeDustTest, PlumeDustLeavesDistantRaysUnchanged)
+{
+  const auto fault = plume_fault("10.0");
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections());
+
+  std::vector<Point> inputs(32, Point{5.0F, 0.0F, 0.0F, 100.0F});
+  inputs.insert(inputs.end(), 32, Point{0.0F, 5.0F, 0.0F, 25.0F});
+  auto input = make_cloud(inputs);
+  input.header.stamp.sec = 1;
+  ASSERT_TRUE(publish_once_and_wait(input));
+
+  const auto points = read_points(received_.value());
+  ASSERT_EQ(points.size(), inputs.size());
+  std::size_t moved = 0;
+  for (std::size_t i = 0; i < 32; ++i) {
+    ASSERT_TRUE(std::isfinite(points[i].x));
+    EXPECT_GE(points[i].x, 0.0F);
+    EXPECT_LE(points[i].x, 5.0F);
+    EXPECT_FLOAT_EQ(points[i].y, 0.0F);
+    EXPECT_FLOAT_EQ(points[i].z, 0.0F);
+    if (points[i].x < inputs[i].x) {
+      ++moved;
+    }
+  }
+  EXPECT_GT(moved, 0u);
+  // Gaussian tails are nonzero: unchanged distant rays are a fixed-seed case,
+  // not a claim that interactions outside a hard boundary are impossible.
+  for (std::size_t i = 32; i < points.size(); ++i) {
+    SCOPED_TRACE(i);
+    EXPECT_FLOAT_EQ(points[i].x, inputs[i].x);
+    EXPECT_FLOAT_EQ(points[i].y, inputs[i].y);
+    EXPECT_FLOAT_EQ(points[i].z, inputs[i].z);
+    EXPECT_FLOAT_EQ(points[i].intensity, inputs[i].intensity);
+  }
+}
+
+TEST_F(PlumeDustTest, SameSeedReproducesPlumeCloudSequence)
+{
+  auto second_config = make_injector_config();
+  second_config.id = "second_plume";
+  second_config.seed = 12345u;
+  second_config.topic->input_topic = "/plume_test/second_raw";
+  second_config.topic->output_topic = "/plume_test/second";
+
+  PointCloudFaultInjector second(*node_, second_config);
+  auto fault = plume_fault("10.0");
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  fault.injector_id = second_config.id;
+  second.add_fault(fault);
+  second.activate_fault(fault.id);
+
+  std::optional<Cloud> second_received;
+  auto second_pub = node_->create_publisher<Cloud>(second_config.topic->input_topic, 10);
+  auto second_sub = node_->create_subscription<Cloud>(
+    second_config.topic->output_topic, 10,
+    [&second_received](const Cloud & cloud) {second_received = cloud;});
+
+  ASSERT_TRUE(wait_for_connections());
+  const auto discovery_deadline = std::chrono::steady_clock::now() + 5s;
+  while ((second_pub->get_subscription_count() == 0 ||
+    second_sub->get_publisher_count() == 0) &&
+    std::chrono::steady_clock::now() < discovery_deadline)
+  {
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(5ms);
+  }
+  ASSERT_GT(second_pub->get_subscription_count(), 0u);
+  ASSERT_GT(second_sub->get_publisher_count(), 0u);
+
+  std::optional<Cloud> previous;
+  for (int sequence = 1; sequence <= 5; ++sequence) {
+    SCOPED_TRACE(sequence);
+    auto input = make_cloud(
+      std::vector<Point>(32, Point{5.0F, 0.0F, 0.0F, 100.0F}));
+    input.header.stamp.sec = sequence;
+    received_.reset();
+    second_received.reset();
+    // Exactly one input per injector per sequence element.
+    publisher_->publish(input);
+    second_pub->publish(input);
+
+    const auto deadline = std::chrono::steady_clock::now() + 3s;
+    const auto complete = [&]() {
+        return received_ && second_received &&
+               received_->header.stamp == input.header.stamp &&
+               second_received->header.stamp == input.header.stamp;
+      };
+    while (!complete() && std::chrono::steady_clock::now() < deadline) {
+      rclcpp::spin_some(node_);
+      std::this_thread::sleep_for(5ms);
+    }
+    ASSERT_TRUE(complete()) << "Missing matching cloud from one of the injectors";
+    EXPECT_EQ(received_.value(), second_received.value());
+    EXPECT_NE(received_->data, input.data) << "Must compare actual plume mutations";
+    if (previous) {
+      EXPECT_NE(received_->data, previous->data) << "RNG must advance across clouds";
+    }
+    previous = received_;
+  }
+}
+
 }  // namespace ros2_fault_injection::injectors
