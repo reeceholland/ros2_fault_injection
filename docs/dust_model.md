@@ -7,13 +7,14 @@ An active fault with `dust_model: plume` and a positive interaction coefficient
 samples dust interactions along valid input rays and replaces affected surface
 points with nearer returns. The original beam direction and point count are
 preserved. Geometry, midpoint integration, seeded sampling, and configuration
-validation are implemented; Caren-specific calibration remains future work.
+validation and range-dependent intensity sampling are implemented; Carén-specific calibration remains future work.
 
 Only existing valid points provide rays. Missing beams do not gain new returns.
 Each sampled interaction is currently treated as a detected replacement return;
-the original intensity is retained by the plume operation. General cloud-wide
-intensity scaling can still run afterwards. Background survival, multiple
-returns, and a calibrated dust-intensity response are not implemented.
+a new intensity is sampled at the replacement range when a FLOAT32 intensity
+field exists. General cloud-wide intensity scaling can still run afterwards.
+Background survival, multiple returns, and a calibrated sensor response are not
+implemented.
 
 Active plume faults are processed in sorted fault-ID order, after random dust.
 Multiple plumes therefore mutate points sequentially; they are not integrated
@@ -22,7 +23,9 @@ and leave random dust and other point mutations disabled.
 
 Point-cloud tests cover ray direction and bounds, spatial selectivity for a
 fixed seed, equal-seed output sequences, zero-coefficient forwarding, and
-unchanged forwarding after deactivation.
+unchanged forwarding after deactivation. Intensity tests cover zero spread,
+seeded output intensities, preservation of non-interacting points, and XYZ-only
+clouds without an intensity field.
 
 The existing random-dust mode remains the default. It selects individual points
 using a probability and assigns random dust ranges. The plume mode is intended
@@ -130,6 +133,41 @@ sample of zero can produce an interaction at zero metres. A sensor minimum
 detection range must therefore be handled explicitly by a future sensor
 response layer.
 
+## Dust-return intensity
+
+For a sampled dust return at range r in metres, the model computes:
+
+```text
+median(r) = clamp(intercept + slope_per_m * r, minimum_median, maximum_median)
+ln(intensity) ~ Normal(ln(median(r)), log_sigma^2)
+```
+
+The median is not the mean: for nonzero spread the theoretical mean is
+`median(r) * exp(log_sigma^2 / 2)`. With `log_sigma: 0.0`, the model returns
+exactly the median without consuming an intensity random sample. The bounds
+clamp the median only; individual lognormal samples can exceed either bound.
+There is no sensor saturation clamp, and extreme parameters can overflow the
+numeric representation. Intensities use the input sensor's intensity scale,
+not universal reflectance units.
+
+Only points replaced by plume dust receive sampled intensities. Points without
+an interaction retain their intensity unless another enabled fault changes it.
+The injector modifies intensity only when a FLOAT32 intensity field exists;
+XYZ-only clouds still receive spatial dust returns without gaining a new field.
+Other intensity field types are left untouched by this operation.
+
+Plume intensity uses the injector's seeded generator, shared with interaction
+sampling. Identical seeds, inputs, configuration, and execution environment
+reproduce the sequence. Adding an intensity field or changing from zero to
+nonzero spread changes random-number consumption and can alter subsequent
+interaction locations. A seed alone does not reproduce a live ROS input stream.
+
+`dust_intensity_scale` belongs to random dust and does not control plume
+intensity. `intensity_scale` is applied afterwards to the whole cloud, including
+plume returns. Leave it unset or at 1.0 to inspect the sampled model directly.
+The current intensity values are illustrative engineering defaults, not a fit
+to Carén measurements or an Ouster OS0 calibration.
+
 ## Configuration and current defaults
 
 These fields are registered for the point-cloud injector. They are engineering
@@ -142,10 +180,19 @@ starting values, not a fitted Carén calibration.
 | `plume_sigma_x/y/z` | 1.0 | Finite, strictly positive Gaussian widths in metres. |
 | `plume_interaction_coefficient` | 0.0 | Finite non-negative peak rate in inverse metres; zero means no interactions. |
 | `plume_step_size` | 0.1 | Finite, strictly positive maximum integration segment length in metres. |
+| `plume_intensity_median_intercept` | 30.0 | Finite intensity intercept; signed values allowed. |
+| `plume_intensity_median_slope_per_m` | -2.0 | Finite intensity change per metre; signed values allowed. |
+| `plume_intensity_minimum_median` | 10.0 | Finite, strictly positive lower median bound. |
+| `plume_intensity_maximum_median` | 25.0 | Finite, strictly positive upper median bound, at least the minimum. |
+| `plume_intensity_log_sigma` | 0.63 | Finite, non-negative standard deviation in log space; zero returns the median exactly. |
 
 Negative centre coordinates are valid. Non-finite values, non-positive widths,
 and non-positive step sizes are rejected. Parameter validation does not certify
 the physical realism of a scenario or guarantee numerical accuracy.
+Intensity bounds are checked together during scenario loading and runtime edits,
+including defaults for omitted bounds. A rejected edit preserves the previous
+configuration. To move both bounds above the current maximum, raise the maximum
+first; to move both below the current minimum, lower the minimum first.
 
 ## Calibration limits and validation plan
 

@@ -73,13 +73,16 @@ TEST(FaultConfigSchema, ValidatesPlumeParametersThroughBothPaths)
     check(*field.default_value, true);
     check("1.25", true);
     const bool centre = field.key.find("plume_center_") == 0;
-    check("-1.0", centre);
-    check("0.0", centre || field.key == "plume_interaction_coefficient");
+    const bool signed_value = centre || field.key == "plume_intensity_median_intercept" ||
+      field.key == "plume_intensity_median_slope_per_m";
+    check("-1.0", signed_value);
+    check("0.0", signed_value || field.key == "plume_interaction_coefficient" ||
+      field.key == "plume_intensity_log_sigma");
     for (const auto * invalid : {"nan", "inf", "-inf", "1e999", "", "abc", "1.0m"}) {
       check(invalid, false);
     }
   }
-  EXPECT_EQ(checked, 8u);
+  EXPECT_EQ(checked, 13u);
 }
 
 TEST(FaultConfigSchema, ValidatesDustModelThroughBothPaths)
@@ -101,3 +104,19 @@ TEST(FaultConfigSchema, ValidatesDustModelThroughBothPaths)
 }
 
 }  // namespace ros2_fault_injection::config
+
+TEST(PlumeIntensityBounds, ChecksExplicitBoundsAndDefaults)
+{
+  using ros2_fault_injection::validate_config_combination;
+  EXPECT_FALSE(validate_config_combination("point_cloud", {}).has_value());
+  EXPECT_FALSE(validate_config_combination("point_cloud", {
+    {"plume_intensity_minimum_median", "20"},
+    {"plume_intensity_maximum_median", "20"}}).has_value());
+  EXPECT_TRUE(validate_config_combination("point_cloud", {
+    {"plume_intensity_minimum_median", "30"}}).has_value());
+  EXPECT_TRUE(validate_config_combination("point_cloud", {
+    {"plume_intensity_maximum_median", "5"}}).has_value());
+  EXPECT_TRUE(validate_config_combination("point_cloud", {
+    {"plume_intensity_minimum_median", "20"},
+    {"plume_intensity_maximum_median", "15"}}).has_value());
+}

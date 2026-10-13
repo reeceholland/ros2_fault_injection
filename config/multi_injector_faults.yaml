@@ -126,6 +126,14 @@ faults:
       plume_sigma_z: 0.3
       plume_interaction_coefficient: 2.0  # Peak rate in inverse metres.
       plume_step_size: 0.1  # Maximum integration segment length in metres.
+      # Illustrative intensity parameters, not a fitted Carén/OS0 calibration.
+      # Bounds clamp the median only; lognormal samples may exceed them.
+      # Set log_sigma to 0.0 for deterministic intensity at the sampled range.
+      plume_intensity_median_intercept: 30.0
+      plume_intensity_median_slope_per_m: -2.0
+      plume_intensity_minimum_median: 10.0
+      plume_intensity_maximum_median: 25.0
+      plume_intensity_log_sigma: 0.63
 
   # Scheduled motor feedback velocity drift.
   - id: motor_velocity_bias

@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -716,6 +717,7 @@ TEST_F(PlumeDustTest, SameSeedReproducesPlumeCloudSequence)
 
   PointCloudFaultInjector second(*node_, second_config);
   auto fault = plume_fault("10.0");
+  fault.config["plume_intensity_log_sigma"] = "0.5";
   injector_->add_fault(fault);
   injector_->activate_fault(fault.id);
   fault.injector_id = second_config.id;
@@ -763,6 +765,16 @@ TEST_F(PlumeDustTest, SameSeedReproducesPlumeCloudSequence)
       std::this_thread::sleep_for(5ms);
     }
     ASSERT_TRUE(complete()) << "Missing matching cloud from one of the injectors";
+    const auto output_points = read_points(received_.value());
+    bool intensity_changed = false;
+    for (const auto & point : output_points) {
+      EXPECT_TRUE(std::isfinite(point.intensity));
+      EXPECT_GT(point.intensity, 0.0F);
+      if (point.x < 5.0F && point.intensity != 100.0F) {
+        intensity_changed = true;
+      }
+    }
+    EXPECT_TRUE(intensity_changed) << "Must compare sampled dust intensities";
     EXPECT_EQ(received_.value(), second_received.value());
     EXPECT_NE(received_->data, input.data) << "Must compare actual plume mutations";
     if (previous) {
@@ -770,6 +782,124 @@ TEST_F(PlumeDustTest, SameSeedReproducesPlumeCloudSequence)
     }
     previous = received_;
   }
+}
+
+TEST_F(PlumeDustTest, ZeroSpreadUsesMedianIntensityAtDustRange)
+{
+  auto fault = plume_fault("20.0");
+  fault.config["plume_intensity_median_intercept"] = "40.0";
+  fault.config["plume_intensity_median_slope_per_m"] = "-3.0";
+  fault.config["plume_intensity_minimum_median"] = "1.0";
+  fault.config["plume_intensity_maximum_median"] = "50.0";
+  fault.config["plume_intensity_log_sigma"] = "0.0";
+
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+
+  ASSERT_TRUE(wait_for_connections()) << "ROS discovery timed out";
+
+  auto input = make_cloud({{5.0F, 0.0F, 0.0F, 100.0F}});
+  input.header.stamp.sec = 1;
+
+  ASSERT_TRUE(publish_once_and_wait(input)) << "No input cloud";
+
+  const auto points = read_points(received_.value());
+  ASSERT_EQ(points.size(), 1u);
+
+  const auto & point = points.front();
+  const double range = std::hypot(
+    static_cast<double>(point.x),
+    static_cast<double>(point.y),
+    static_cast<double>(point.z)
+  );
+
+  ASSERT_GT(range, 0.0);
+  ASSERT_LT(range, 5.0);
+
+  const double expected_intensity = std::clamp(40.0 - 3.0 * range, 1.0, 50.0);
+
+  EXPECT_NEAR(point.intensity, expected_intensity, 1e-4);
+
+}
+
+
+TEST_F(PlumeDustTest, NonInteractingPointsKeepOriginalIntensity)
+{
+  auto fault = plume_fault("20.0");
+  fault.config["plume_intensity_log_sigma"] = "0.5";
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections());
+
+  // Interleave misses and hits to exercise intensity iterator advancement.
+  const std::vector<Point> inputs = {
+    {0.0F, 5.0F, 0.0F, 71.0F},
+    {5.0F, 0.0F, 0.0F, 100.0F},
+    {0.0F, 0.0F, 0.0F, 83.0F},
+    {5.0F, 0.0F, 0.0F, 100.0F},
+    {0.0F, -5.0F, 0.0F, 97.0F}
+  };
+  auto input = make_cloud(inputs);
+  input.header.stamp.sec = 1;
+  ASSERT_TRUE(publish_once_and_wait(input));
+  const auto points = read_points(received_.value());
+  ASSERT_EQ(points.size(), inputs.size());
+
+  // Distant Gaussian tails are nonzero; these misses use the fixture's fixed seed.
+  for (const std::size_t i : {0u, 2u, 4u}) {
+    SCOPED_TRACE(i);
+    EXPECT_FLOAT_EQ(points[i].x, inputs[i].x);
+    EXPECT_FLOAT_EQ(points[i].y, inputs[i].y);
+    EXPECT_FLOAT_EQ(points[i].z, inputs[i].z);
+    EXPECT_FLOAT_EQ(points[i].intensity, inputs[i].intensity);
+  }
+  for (const std::size_t i : {1u, 3u}) {
+    SCOPED_TRACE(i);
+    EXPECT_LT(points[i].x, inputs[i].x);
+    EXPECT_NE(points[i].intensity, inputs[i].intensity);
+  }
+}
+
+TEST_F(PlumeDustTest, CloudWithoutIntensityStillReceivesDustReturns)
+{
+  const auto fault = plume_fault("20.0");
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections());
+
+  Cloud input;
+  input.header.frame_id = "lidar";
+  input.header.stamp.sec = 1;
+  input.height = 1;
+  sensor_msgs::PointCloud2Modifier modifier(input);
+  modifier.setPointCloud2Fields(
+    3,
+    "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32);
+  modifier.resize(1);
+  sensor_msgs::PointCloud2Iterator<float> x(input, "x");
+  sensor_msgs::PointCloud2Iterator<float> y(input, "y");
+  sensor_msgs::PointCloud2Iterator<float> z(input, "z");
+  *x = 5.0F;
+  *y = 0.0F;
+  *z = 0.0F;
+
+  ASSERT_TRUE(publish_once_and_wait(input));
+  auto output = received_.value();
+  EXPECT_EQ(output.fields, input.fields);
+  EXPECT_EQ(output.point_step, input.point_step);
+  EXPECT_EQ(output.row_step, input.row_step);
+  EXPECT_EQ(output.width, input.width);
+  EXPECT_EQ(output.height, input.height);
+  EXPECT_EQ(output.data.size(), input.data.size());
+  sensor_msgs::PointCloud2ConstIterator<float> out_x(output, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> out_y(output, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> out_z(output, "z");
+  EXPECT_GT(*out_x, 0.0F);
+  EXPECT_LT(*out_x, 5.0F);
+  EXPECT_FLOAT_EQ(*out_y, 0.0F);
+  EXPECT_FLOAT_EQ(*out_z, 0.0F);
 }
 
 }  // namespace ros2_fault_injection::injectors

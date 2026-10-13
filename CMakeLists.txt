@@ -85,6 +85,7 @@ add_library(${PROJECT_NAME}_core
   src/assertions/scenario_monitor.cpp
   src/core/fault_scenario_runner.cpp
   src/core/dust_plume.cpp
+  src/core/dust_intensity_model.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_core
@@ -382,6 +383,13 @@ if(BUILD_TESTING)
   test/core/test_dust_plume.cpp
   )
   target_link_libraries(test_dust_plume
+    ${PROJECT_NAME}_core
+  )
+
+  ament_add_gtest(test_dust_intensity_model
+    test/core/test_dust_intensity_model.cpp
+  )
+  target_link_libraries(test_dust_intensity_model
     ${PROJECT_NAME}_core
   )
   

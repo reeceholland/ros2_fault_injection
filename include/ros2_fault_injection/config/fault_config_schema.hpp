@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 namespace ros2_fault_injection::config
@@ -43,7 +44,12 @@ const std::unordered_set<std::string> & allowed_config_keys_for_injector_type(
    */
 bool is_allowed_config_key(const std::string & injector_type, const std::string & key);
 
-  /**
+  /// Validate relationships between supplied values, including omitted-value defaults.
+std::optional<std::string> validate_config_combination(
+  const std::string & injector_type,
+  const std::unordered_map<std::string, std::string> & values);
+
+/**
    * @brief Validate one runtime config value for an injector type.
    *
    * This is used by runtime services before mutating a stored fault config. It
@@ -72,5 +78,6 @@ using config::FaultConfigField;
 using config::allowed_config_keys_for_injector_type;
 using config::is_allowed_config_key;
 using config::validate_config_value;
+using config::validate_config_combination;
 }  // namespace ros2_fault_injection
 #endif // ROS2_FAULT_INJECTION__FAULT_CONFIG_SCHEMA_HPP_

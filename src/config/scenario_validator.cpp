@@ -232,6 +232,9 @@ void validate_fault(
     const auto schema = schema_for_builtin_injector_type(injector.type);
     validate_fault_config_against_schema(fault, schema, result);
     validate_required_schema_fields(fault, schema, result);
+    if (const auto error = validate_config_combination(injector.type, fault.config)) {
+      result.errors.push_back("fault '" + fault.id + "' " + *error);
+    }
   }
 }
 

@@ -298,6 +298,19 @@ void FaultServiceManager::handle_set_fault_config(
     return;
   }
 
+  auto candidate = injector->get_fault_config(request->fault_id);
+  if (!candidate) {
+    response->success = false;
+    response->message = "fault configuration unavailable: " + request->fault_id;
+    return;
+  }
+  candidate->config[request->key] = request->value;
+  if (const auto error = validate_config_combination(injector->type(), candidate->config)) {
+    response->success = false;
+    response->message = *error;
+    return;
+  }
+
   if (!injector->set_fault_config_value(request->fault_id, request->key, request->value)) {
     response->success = false;
     response->message =

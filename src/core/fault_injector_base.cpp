@@ -113,7 +113,13 @@ bool FaultInjectorBase::set_fault_config_value(
     return false;
   }
 
-  it->second.config[key] = value;
+  auto candidate = it->second.config;
+  candidate[key] = value;
+  if (const auto error = validate_config_combination(type(), candidate)) {
+    RCLCPP_WARN(node_.get_logger(), "Rejected config update: %s", error->c_str());
+    return false;
+  }
+  it->second.config = std::move(candidate);
   return true;
 }
 

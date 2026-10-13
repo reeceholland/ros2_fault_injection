@@ -20,6 +20,7 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include "ros2_fault_injection/core/dust_plume.hpp"
+#include "ros2_fault_injection/core/dust_intensity_model.hpp"
 
 namespace ros2_fault_injection::injectors
 {
@@ -144,8 +145,19 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
     "Peak interaction rate in inverse metres; zero disables plume interactions.",
     0.0, std::nullopt, "0.0");
   add_field("plume_step_size", "double",
-    "Maximum ray integration step in metres; must be greater than zero.",
-    0.0, std::nullopt, "0.1");
+    "Maximum ray integration step in metres; must be greater than zero.", 0.0, std::nullopt, "0.1");
+  add_field("plume_intensity_median_intercept", "double",
+  "Median dust intensity at zero range before clamping.", std::nullopt, std::nullopt, "30.0");
+  add_field("plume_intensity_median_slope_per_m", "double",
+  "Change in median dust intensity per metre.", std::nullopt, std::nullopt, "-2.0");
+  add_field("plume_intensity_minimum_median", "double",
+  "Lower bound for median dust intensity; must be greater than zero.", 0.0, std::nullopt, "10.0");
+  add_field("plume_intensity_maximum_median", "double",
+  "Upper bound for median dust intensity; must be at least the lower bound.",
+  0.0, std::nullopt, "25.0");
+  add_field("plume_intensity_log_sigma", "double",
+  "Standard deviation in log-intensity space; zero disables random variation.",
+  0.0, std::nullopt, "0.63");
 
   return schema;
 }
@@ -602,7 +614,22 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
   sensor_msgs::PointCloud2Iterator<float> y(msg, "y");
   sensor_msgs::PointCloud2Iterator<float> z(msg, "z");
 
-  for (; x != x.end(); ++x, ++y, ++z) {
+  core::DustIntensityModel intensity_model(
+    fault_double(fault, "plume_intensity_median_intercept", 30.0),
+    fault_double(fault, "plume_intensity_median_slope_per_m", -2.0),
+    fault_double(fault, "plume_intensity_minimum_median", 10.0),
+    fault_double(fault, "plume_intensity_maximum_median", 25.0),
+    fault_double(fault, "plume_intensity_log_sigma", 0.63)
+  );
+
+  using FloatIterator = sensor_msgs::PointCloud2Iterator<float>;
+
+  std::optional<FloatIterator> intensity;
+  if(has_float32_field(msg, "intensity")) {
+    intensity.emplace(msg, "intensity");
+  }
+
+  for (; x != x.end(); ++x, ++y, ++z, (intensity ? ++(*intensity), 0 : 0)) {
     if (!std::isfinite(*x) ||
       !std::isfinite(*y) ||
       !std::isfinite(*z))
@@ -639,6 +666,11 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
     *x = static_cast<float>(*x * scale);
     *y = static_cast<float>(*y * scale);
     *z = static_cast<float>(*z * scale);
+
+    if (intensity) {
+      **intensity = static_cast<float>(intensity_model.sample_intensity(distance.value(), rng_));
+    }
+
   }
 }
 

@@ -479,3 +479,19 @@ TEST(ScenarioValidator, RejectsTwistStoppedAssertionWithInvalidTimingOrFault)
   EXPECT_FALSE(result.ok());
   EXPECT_GE(result.errors.size(), 4u);
 }
+
+TEST(ScenarioValidator, RejectsReversedPlumeIntensityBounds)
+{
+  auto scenario = valid_odom_scenario();
+  scenario.injector.type = "point_cloud";
+  scenario.injectors.front().type = "point_cloud";
+  scenario.faults.front().config = {
+    {"dust_model", "plume"},
+    {"plume_intensity_minimum_median", "30"}
+  };
+  auto result = ros2_fault_injection::validate_scenario(scenario);
+  ASSERT_FALSE(result.ok());
+  EXPECT_NE(result.errors.front().find("plume_intensity_maximum_median"), std::string::npos);
+  scenario.faults.front().config["plume_intensity_maximum_median"] = "30";
+  EXPECT_TRUE(ros2_fault_injection::validate_scenario(scenario).ok());
+}

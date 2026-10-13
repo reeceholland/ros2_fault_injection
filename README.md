@@ -152,14 +152,37 @@ consumer-facing `/ouster/points` topic.
 | `dust_return_probability` | Randomly convert points into short-range dust-like returns. Range: `0.0` to `1.0`. |
 | `dust_min_range` | Minimum range, in metres, for generated dust returns. |
 | `dust_max_range` | Maximum range, in metres, for generated dust returns. |
-| `dust_intensity_scale` | Intensity multiplier applied only to points converted into dust returns. |
+| `dust_intensity_scale` | Intensity multiplier for random-dust returns only (`dust_model: random`). |
 | `intensity_scale` | Intensity multiplier applied to every point in the cloud. Use this for broad signal attenuation, not dust-only dimming. |
 | `drop_probability` | Randomly drop complete point cloud messages. Range: `0.0` to `1.0`. |
 | `delay_ms` | Delay point cloud messages by this many milliseconds. |
 
-For dust testing, prefer `dust_intensity_scale` when only false/near dust
+For random-dust testing, prefer `dust_intensity_scale` when only false/near dust
 returns should be dimmed. Leave `intensity_scale` unset, or set it to `1.0`, if
 the unaffected background points should keep their original intensity.
+
+### Plume intensity
+
+Set `dust_model: plume` to use spatial Gaussian dust and range-dependent
+lognormal intensity instead of the random-dust multiplier. A positive
+`plume_interaction_coefficient` is required to generate interactions.
+
+| Field | Default | Meaning and constraints |
+| --- | --- | --- |
+| `plume_intensity_median_intercept` | 30.0 | Finite intensity intercept; signed values allowed. |
+| `plume_intensity_median_slope_per_m` | -2.0 | Finite intensity change per metre; signed values allowed. |
+| `plume_intensity_minimum_median` | 10.0 | Finite, strictly positive lower median bound. |
+| `plume_intensity_maximum_median` | 25.0 | Finite, strictly positive upper median bound, at least the minimum. |
+| `plume_intensity_log_sigma` | 0.63 | Finite, non-negative standard deviation in log space; zero returns the median exactly. |
+
+Only replaced points with a FLOAT32 intensity field receive new intensity values.
+XYZ-only clouds remain supported. Bounds apply to the median, not individual
+samples. Reversed bounds are rejected on loading and runtime edits, including
+omitted-value defaults. The whole-cloud `intensity_scale` still applies afterwards.
+These defaults are illustrative and are not calibrated to Carén or the OS0.
+
+See [dust model theory and assumptions](docs/dust_model.md) and the plume
+example in [multi_injector_faults.yaml](config/multi_injector_faults.yaml).
 
 ### Trigger Service
 

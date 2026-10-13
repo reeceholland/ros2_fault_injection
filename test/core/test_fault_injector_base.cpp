@@ -341,3 +341,33 @@ TEST(FaultInjectorBase, GeneratedSeedCanReplaySequence)
   }
   rclcpp::shutdown();
 }
+
+TEST(FaultInjectorBase, RejectsReversedIntensityBoundsWithoutMutation)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_intensity_bounds");
+    rfi_config::InjectorConfig config;
+    config.id = "cloud";
+    config.type = "point_cloud";
+    TestFaultInjector injector(*node, config);
+    rfi_config::FaultConfig fault;
+    fault.id = "plume";
+    fault.injector_id = "cloud";
+    fault.config["dust_model"] = "plume";
+    injector.add_fault(fault);
+
+    EXPECT_FALSE(injector.set_fault_config_value(
+      "plume", "plume_intensity_minimum_median", "30"));
+    EXPECT_EQ(injector.get_fault_config("plume")->config, fault.config);
+    EXPECT_TRUE(injector.set_fault_config_value(
+      "plume", "plume_intensity_maximum_median", "40"));
+    EXPECT_TRUE(injector.set_fault_config_value(
+      "plume", "plume_intensity_minimum_median", "30"));
+    const auto before = injector.get_fault_config("plume")->config;
+    EXPECT_FALSE(injector.set_fault_config_value(
+      "plume", "plume_intensity_maximum_median", "20"));
+    EXPECT_EQ(injector.get_fault_config("plume")->config, before);
+  }
+  rclcpp::shutdown();
+}

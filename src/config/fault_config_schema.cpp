@@ -47,7 +47,10 @@ bool is_plume_numeric_key(const std::string & key)
   return key == "plume_center_x" || key == "plume_center_y" ||
          key == "plume_center_z" || key == "plume_sigma_x" ||
          key == "plume_sigma_y" || key == "plume_sigma_z" ||
-         key == "plume_interaction_coefficient" || key == "plume_step_size";
+         key == "plume_interaction_coefficient" || key == "plume_step_size" ||
+         key == "plume_intensity_median_intercept" || key == "plume_intensity_median_slope_per_m" ||
+         key == "plume_intensity_minimum_median" || key == "plume_intensity_maximum_median" ||
+         key == "plume_intensity_log_sigma";
 }
 
 std::optional<std::string> validate_plume_value(
@@ -57,11 +60,14 @@ std::optional<std::string> validate_plume_value(
   if (!parse_double(value, parsed) || !std::isfinite(parsed)) {
     return "config '" + key + "' must be a finite number";
   }
-  if (key == "plume_interaction_coefficient" && parsed < 0.0) {
+  if ((key == "plume_interaction_coefficient" || key == "plume_intensity_log_sigma") &&
+    parsed < 0.0)
+  {
     return "config '" + key + "' must be non-negative";
   }
   if ((key == "plume_sigma_x" || key == "plume_sigma_y" ||
-    key == "plume_sigma_z" || key == "plume_step_size") && parsed <= 0.0)
+    key == "plume_sigma_z" || key == "plume_step_size" || key == "plume_intensity_minimum_median" ||
+    key == "plume_intensity_maximum_median") && parsed <= 0.0)
   {
     return "config '" + key + "' must be greater than zero";
   }
@@ -175,6 +181,11 @@ const std::unordered_set<std::string> kPointCloudKeys = {
   "dust_intensity_scale",
   "intensity_scale",
   "dust_model",
+  "plume_intensity_median_intercept",
+  "plume_intensity_median_slope_per_m",
+  "plume_intensity_minimum_median",
+  "plume_intensity_maximum_median",
+  "plume_intensity_log_sigma"
 };
 
 const std::unordered_set<std::string> kImuKeys = {
@@ -255,6 +266,39 @@ bool is_allowed_config_key(const std::string & injector_type, const std::string 
 {
   const auto & keys = allowed_config_keys_for_injector_type(injector_type);
   return keys.find(key) != keys.end();
+}
+
+std::optional<std::string> validate_config_combination(
+  const std::string & injector_type,
+  const std::unordered_map<std::string, std::string> & values)
+{
+  if (injector_type != "point_cloud") {
+    return std::nullopt;
+  }
+  double minimum = 10.0;
+  double maximum = 25.0;
+  const auto read_bound = [&](const std::string & key, double & bound)
+    -> std::optional<std::string> {
+      const auto it = values.find(key);
+      if (it == values.end()) {
+        return std::nullopt;
+      }
+      if (const auto error = validate_plume_value(key, it->second)) {
+        return error;
+      }
+      parse_double(it->second, bound);
+      return std::nullopt;
+    };
+  if (const auto error = read_bound("plume_intensity_minimum_median", minimum)) {
+    return error;
+  }
+  if (const auto error = read_bound("plume_intensity_maximum_median", maximum)) {
+    return error;
+  }
+  if (maximum < minimum) {
+    return "plume_intensity_maximum_median must be >= plume_intensity_minimum_median";
+  }
+  return std::nullopt;
 }
 
 std::optional<std::string> validate_config_value(
