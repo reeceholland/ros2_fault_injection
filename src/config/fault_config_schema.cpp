@@ -50,7 +50,9 @@ bool is_plume_numeric_key(const std::string & key)
          key == "plume_interaction_coefficient" || key == "plume_step_size" ||
          key == "plume_intensity_median_intercept" || key == "plume_intensity_median_slope_per_m" ||
          key == "plume_intensity_minimum_median" || key == "plume_intensity_maximum_median" ||
-         key == "plume_intensity_log_sigma";
+         key == "plume_intensity_log_sigma" || key == "plume_velocity_x" ||
+         key == "plume_velocity_y" || key == "plume_velocity_z";
+
 }
 
 std::optional<std::string> validate_plume_value(
@@ -185,7 +187,10 @@ const std::unordered_set<std::string> kPointCloudKeys = {
   "plume_intensity_median_slope_per_m",
   "plume_intensity_minimum_median",
   "plume_intensity_maximum_median",
-  "plume_intensity_log_sigma"
+  "plume_intensity_log_sigma",
+  "plume_velocity_x",
+  "plume_velocity_y",
+  "plume_velocity_z"
 };
 
 const std::unordered_set<std::string> kImuKeys = {

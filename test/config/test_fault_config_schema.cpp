@@ -73,7 +73,9 @@ TEST(FaultConfigSchema, ValidatesPlumeParametersThroughBothPaths)
     check(*field.default_value, true);
     check("1.25", true);
     const bool centre = field.key.find("plume_center_") == 0;
-    const bool signed_value = centre || field.key == "plume_intensity_median_intercept" ||
+    const bool velocity = field.key.find("plume_velocity_") == 0;
+    const bool signed_value = centre || velocity ||
+      field.key == "plume_intensity_median_intercept" ||
       field.key == "plume_intensity_median_slope_per_m";
     check("-1.0", signed_value);
     check("0.0", signed_value || field.key == "plume_interaction_coefficient" ||
@@ -82,7 +84,7 @@ TEST(FaultConfigSchema, ValidatesPlumeParametersThroughBothPaths)
       check(invalid, false);
     }
   }
-  EXPECT_EQ(checked, 13u);
+  EXPECT_EQ(checked, 16u);
 }
 
 TEST(FaultConfigSchema, ValidatesDustModelThroughBothPaths)

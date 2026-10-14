@@ -158,6 +158,12 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
   add_field("plume_intensity_log_sigma", "double",
   "Standard deviation in log-intensity space; zero disables random variation.",
   0.0, std::nullopt, "0.63");
+  add_field("plume_velocity_x", "double",
+    "Plume velocity along X in metres per second.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_velocity_y", "double",
+    "Plume velocity along Y in metres per second.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_velocity_z", "double",
+    "Plume velocity along Z in metres per second.", std::nullopt, std::nullopt, "0.0");
 
   return schema;
 }
@@ -586,7 +592,7 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
   sensor_msgs::msg::PointCloud2 & msg,
   const FaultConfig & fault)
 {
-  const auto plume = plume_for(fault);
+  auto plume = plume_for(fault);
 
   const double coefficient =
     fault_double(fault, "plume_interaction_coefficient", 0.0);
@@ -607,6 +613,26 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
       "PointCloud2 requires float32 x, y, z fields; skipping plume dust");
     return;
   }
+
+  const std::int64_t stamp_ns = static_cast<std::int64_t>(msg.header.stamp.sec) * 1000000000LL +
+    static_cast<std::int64_t>(msg.header.stamp.nanosec);
+
+  const auto [it, inserted] = plume_start_stamp_ns_.try_emplace(fault.id, stamp_ns);
+
+  if(stamp_ns < it->second) {
+    it->second = stamp_ns;
+  }
+
+  const double elapsed_seconds = static_cast<double>(stamp_ns - it->second) * 1e-9;
+
+  plume.center_x +=
+    fault_double(fault, "plume_velocity_x", 0.0) * elapsed_seconds;
+  plume.center_y +=
+    fault_double(fault, "plume_velocity_y", 0.0) * elapsed_seconds;
+  plume.center_z +=
+    fault_double(fault, "plume_velocity_z", 0.0) * elapsed_seconds;
+
+  plume.validate();
 
   std::uniform_real_distribution<double> uniform(0.0, 1.0);
 
@@ -672,6 +698,16 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
     }
 
   }
+}
+void PointCloudFaultInjector::reset_fault_state(
+  const std::string & fault_id)
+{
+  plume_start_stamp_ns_.erase(fault_id);
+}
+
+void PointCloudFaultInjector::reset_all_fault_states()
+{
+  plume_start_stamp_ns_.clear();
 }
 
 }  // namespace ros2_fault_injection::injectors

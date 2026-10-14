@@ -57,6 +57,7 @@ void FaultInjectorBase::add_fault(const FaultConfig & fault_config)
 
   faults_[fault_config.id] = fault_config;
   active_[fault_config.id] = false;
+  reset_fault_state(fault_config.id);
 }
 
 void FaultInjectorBase::activate_fault(const std::string & fault_id)
@@ -81,6 +82,7 @@ void FaultInjectorBase::deactivate_fault(const std::string & fault_id)
   }
 
   active_[fault_id] = false;
+  reset_fault_state(fault_id);
 }
 
 bool FaultInjectorBase::has_fault(const std::string & fault_id) const
@@ -250,6 +252,7 @@ void FaultInjectorBase::clear_faults()
 
   faults_.clear();
   active_.clear();
+  reset_all_fault_states();
 }
 
 std::vector<FaultConfigField> FaultInjectorBase::config_schema() const

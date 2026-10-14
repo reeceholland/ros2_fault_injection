@@ -62,6 +62,9 @@ public:
   std::uint32_t effective_seed() const override;
 
 protected:
+
+  virtual void reset_fault_state(const std::string &){}
+  virtual void reset_all_fault_states(){}
     /**
      * @brief Get the largest active numeric config value for a key.
      *

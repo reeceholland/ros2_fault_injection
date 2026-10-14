@@ -134,6 +134,9 @@ faults:
       plume_intensity_minimum_median: 10.0
       plume_intensity_maximum_median: 25.0
       plume_intensity_log_sigma: 0.63
+      plume_velocity_x: 0.0
+      plume_velocity_y: 0.2   # metres per second 
+      plume_velocity_z: 0.0
 
   # Scheduled motor feedback velocity drift.
   - id: motor_velocity_bias

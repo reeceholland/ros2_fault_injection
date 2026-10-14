@@ -6,8 +6,10 @@
 
 #pragma once
 
+#include <cstdint>
 #include <deque>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <rclcpp/node.hpp>
@@ -72,11 +74,14 @@ private:
   double active_random_dust_max(const std::string & key, double fallback) const;
   double active_random_dust_min(const std::string & key, double fallback) const;
   void apply_plume_dust_returns(sensor_msgs::msg::PointCloud2 & msg, const FaultConfig & fault);
+  void reset_fault_state(const std::string & fault_id) override;
+  void reset_all_fault_states() override;
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::deque<DelayedPointCloud> delayed_;
+  std::unordered_map<std::string, std::int64_t> plume_start_stamp_ns_;
 };
 
 } // namespace ros2_fault_injection::injectors
