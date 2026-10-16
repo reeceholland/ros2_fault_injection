@@ -902,4 +902,32 @@ TEST_F(PlumeDustTest, CloudWithoutIntensityStillReceivesDustReturns)
   EXPECT_FLOAT_EQ(*out_z, 0.0F);
 }
 
+
+TEST_F(PlumeDustTest, MissingTransformPreservesCloud)
+{
+  auto fault = plume_fault("20.0");
+  fault.config["plume_frame"] = "unavailable_plume_frame";
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections());
+  auto input = make_cloud({{5.0F, 0.0F, 0.0F, 100.0F}});
+  input.header.stamp.sec = 1;
+  ASSERT_TRUE(publish_once_and_wait(input));
+  EXPECT_EQ(received_.value(), input);
+}
+
+TEST_F(PlumeDustTest, UnstampedCrossFrameCloudIsForwardedUnchanged)
+{
+  auto fault = plume_fault("20.0");
+  fault.config["plume_frame"] = "odom";
+  injector_->add_fault(fault);
+  injector_->activate_fault(fault.id);
+  ASSERT_TRUE(wait_for_connections());
+  auto input = make_cloud({{5.0F, 0.0F, 0.0F, 100.0F}});
+  input.header.stamp.sec = 0;
+  input.header.stamp.nanosec = 0;
+  ASSERT_TRUE(publish_once_and_wait(input));
+  EXPECT_EQ(received_.value(), input);
+}
+
 }  // namespace ros2_fault_injection::injectors

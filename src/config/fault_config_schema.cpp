@@ -190,7 +190,8 @@ const std::unordered_set<std::string> kPointCloudKeys = {
   "plume_intensity_log_sigma",
   "plume_velocity_x",
   "plume_velocity_y",
-  "plume_velocity_z"
+  "plume_velocity_z",
+  "plume_frame",
 };
 
 const std::unordered_set<std::string> kImuKeys = {

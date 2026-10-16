@@ -50,13 +50,17 @@ double DustPlume::relative_density(double x, double y, double z) const
  * Density times distance has units of metres; k [inverse metres] makes tau dimensionless.
  */
 double DustPlume::optical_depth(
-  double x, double y, double z, double interaction_coefficient,
+  double origin_x, double origin_y, double origin_z,
+  double endpoint_x, double endpoint_y, double endpoint_z,
+  double interaction_coefficient,
   double step_size) const
 {
   validate();
 
-  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
-    throw std::invalid_argument("DustPlume: x, y, and z must be finite.");
+  if (!std::isfinite(origin_x) || !std::isfinite(origin_y) || !std::isfinite(origin_z) ||
+    !std::isfinite(endpoint_x) || !std::isfinite(endpoint_y) || !std::isfinite(endpoint_z))
+  {
+    throw std::invalid_argument("DustPlume: origin and endpoint coordinates must be finite.");
   }
 
   if (!std::isfinite(interaction_coefficient) || interaction_coefficient < 0.0) {
@@ -68,13 +72,17 @@ double DustPlume::optical_depth(
     throw std::invalid_argument("DustPlume: step_size must be positive and finite.");
   }
 
-  if(interaction_coefficient == 0.0) {
-    return 0.0;
+  const double dx = endpoint_x - origin_x;
+  const double dy = endpoint_y - origin_y;
+  const double dz = endpoint_z - origin_z;
+
+  const double length = std::hypot(dx, dy, dz);
+
+  if (!std::isfinite(length)) {
+    throw std::invalid_argument("DustPlume: ray length must be finite.");
   }
 
-  const double length = std::hypot(x, y, z);
-
-  if(length == 0.0) {
+  if(length == 0.0 || interaction_coefficient == 0.0) {
     return 0.0;
   }
 
@@ -96,7 +104,8 @@ double DustPlume::optical_depth(
   for(std::size_t i = 0; i < segment_count; ++i) {
     const double fraction = (static_cast<double>(i) + 0.5) / static_cast<double>(segment_count);
 
-    density_sum += relative_density(x * fraction, y * fraction, z * fraction);
+    density_sum += relative_density(origin_x + fraction * dx, origin_y + fraction * dy,
+        origin_z + fraction * dz);
   }
 
   return interaction_coefficient * segment_length * density_sum;
@@ -107,10 +116,14 @@ double DustPlume::optical_depth(
  * when subtracting nearly equal floating-point numbers at small optical depths.
  */
 double DustPlume::interaction_probability(
-  double x, double y, double z,
+  double origin_x, double origin_y, double origin_z,
+  double endpoint_x, double endpoint_y, double endpoint_z,
   double interaction_coefficient, double step_size) const
 {
-  const double depth = optical_depth(x, y, z, interaction_coefficient, step_size);
+  const double depth = optical_depth(
+    origin_x, origin_y, origin_z,
+    endpoint_x, endpoint_y, endpoint_z,
+    interaction_coefficient, step_size);
   return -std::expm1(-depth);
 }
 
@@ -122,15 +135,20 @@ double DustPlume::interaction_probability(
  * If the threshold is not crossed, no interaction occurs before the surface.
  */
 std::optional<double> DustPlume::first_interaction_distance(
-  double x, double y, double z,
+  double origin_x, double origin_y, double origin_z,
+  double endpoint_x, double endpoint_y, double endpoint_z,
   double interaction_coefficient,
   double step_size,
   double uniform_sample) const
 {
   validate();
 
-  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
-    throw std::invalid_argument("DustPlume: x, y, and z must be finite.");
+  if (!std::isfinite(origin_x) || !std::isfinite(origin_y) || !std::isfinite(origin_z)) {
+    throw std::invalid_argument("DustPlume: origin_x, origin_y, and origin_z must be finite.");
+  }
+  if (!std::isfinite(endpoint_x) || !std::isfinite(endpoint_y) || !std::isfinite(endpoint_z)) {
+    throw std::invalid_argument(
+        "DustPlume: endpoint_x, endpoint_y, and endpoint_z must be finite.");
   }
 
   if (!std::isfinite(interaction_coefficient) || interaction_coefficient < 0.0) {
@@ -149,7 +167,15 @@ std::optional<double> DustPlume::first_interaction_distance(
 
   const double target_depth = -std::log1p(-uniform_sample);
 
-  const double length = std::hypot(x, y, z);
+  const double dx = endpoint_x - origin_x;
+  const double dy = endpoint_y - origin_y;
+  const double dz = endpoint_z - origin_z;
+
+  const double length = std::hypot(dx, dy, dz);
+
+  if (!std::isfinite(length)) {
+    throw std::invalid_argument("DustPlume: ray length must be finite.");
+  }
 
   if (length == 0.0 || interaction_coefficient == 0.0) {
     return std::nullopt;
@@ -178,7 +204,7 @@ std::optional<double> DustPlume::first_interaction_distance(
       static_cast<double>(segment_count);
 
     const double density = relative_density(
-    fraction * x, fraction * y, fraction * z);
+    origin_x + fraction * dx, origin_y + fraction * dy, origin_z + fraction * dz);
 
     const double segment_depth =
       interaction_coefficient * density * segment_length;

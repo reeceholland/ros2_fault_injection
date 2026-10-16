@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,6 +18,8 @@
 #include <rclcpp/subscription.hpp>
 #include <rclcpp/timer.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
 #include "ros2_fault_injection/core/fault_injector_base.hpp"
 
@@ -82,6 +85,8 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   std::deque<DelayedPointCloud> delayed_;
   std::unordered_map<std::string, std::int64_t> plume_start_stamp_ns_;
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 } // namespace ros2_fault_injection::injectors

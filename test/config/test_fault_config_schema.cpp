@@ -57,7 +57,7 @@ TEST(FaultConfigSchema, ValidatesPlumeParametersThroughBothPaths)
   const auto schema = injectors::PointCloudFaultInjector::static_config_schema();
   std::size_t checked = 0;
   for (const auto & field : schema) {
-    if (field.key.find("plume_") != 0) {
+    if (field.key.find("plume_") != 0 || field.key == "plume_frame") {
       continue;
     }
     ++checked;

@@ -16,8 +16,8 @@ namespace ros2_fault_injection::core
  * @brief Stationary, axis-aligned Gaussian plume with unit peak relative density.
  * Widths are standard deviations in metres, not hard boundaries. The Gaussian
  * shape is a modelling assumption, not a measured concentration law.
- * Ray methods start at the sensor origin (0, 0, 0). Endpoints and plume centres
- * must use that same frame; this class applies no TF transforms or motion.
+ * Ray methods take explicit origins and endpoints. Both and the plume centre
+ * must use the same frame; this class applies no TF transforms or motion.
  * Models interactions only, not detection, intensity, or multiple returns.
  * No RNG is owned: callers supply samples. Public parameters remain mutable.
  */
@@ -51,9 +51,12 @@ public:
 
   /**
    * @brief Approximate integrated interaction rate using the midpoint rule.
-   * @param x Ray endpoint X in metres relative to the sensor origin.
-   * @param y Ray endpoint Y in metres relative to the sensor origin.
-   * @param z Ray endpoint Z in metres relative to the sensor origin.
+   * @param origin_x Ray origin X in metres in the plume frame.
+   * @param endpoint_x Ray endpoint X in metres in the plume frame.
+   * @param origin_y Ray origin Y in metres in the plume frame.
+   * @param endpoint_y Ray endpoint Y in metres in the plume frame.
+   * @param origin_z Ray origin Z in metres in the plume frame.
+   * @param endpoint_z Ray endpoint Z in metres in the plume frame.
    * @param interaction_coefficient Finite non-negative peak interaction rate in inverse metres.
    * @param step_size Finite positive maximum integration segment length in metres.
    * @return Dimensionless optical depth; zero for zero length or zero coefficient.
@@ -63,35 +66,45 @@ public:
    * Step size controls resolution; it is not a guaranteed integration error bound.
    */
   double optical_depth(
-    double x, double y, double z, double interaction_coefficient,
+    double origin_x, double origin_y, double origin_z,
+    double endpoint_x, double endpoint_y, double endpoint_z,
+    double interaction_coefficient,
     double step_size) const;
 
   /**
    * @brief Compute the probability of at least one interaction before the endpoint.
    * Uses 1 - exp(-optical_depth), not a calibrated detected-return probability.
-   * @param x Ray endpoint X in metres relative to the sensor origin.
-   * @param y Ray endpoint Y in metres relative to the sensor origin.
-   * @param z Ray endpoint Z in metres relative to the sensor origin.
+   * @param origin_x Ray origin X in metres in the plume frame.
+   * @param endpoint_x Ray endpoint X in metres in the plume frame.
+   * @param origin_y Ray origin Y in metres in the plume frame.
+   * @param endpoint_y Ray endpoint Y in metres in the plume frame.
+   * @param origin_z Ray origin Z in metres in the plume frame.
+   * @param endpoint_z Ray endpoint Z in metres in the plume frame.
    * @param interaction_coefficient Finite non-negative peak interaction rate in inverse metres.
    * @param step_size Finite positive maximum integration segment length in metres.
    * @return Probability in [0, 1] for a valid numerical optical depth.
    * @throws std::invalid_argument Under the same conditions as optical_depth().
    */
   double interaction_probability(
-    double x, double y, double z, double interaction_coefficient,
+    double origin_x, double origin_y, double origin_z,
+    double endpoint_x, double endpoint_y, double endpoint_z,
+    double interaction_coefficient,
     double step_size) const;
 
   /**
    * @brief Sample the first interaction using accumulated optical depth.
    * Uses a constant midpoint interaction rate within each integration segment.
    * Do not precede this sampling with a separate probability coin flip.
-   * @param x Ray endpoint X in metres relative to the sensor origin.
-   * @param y Ray endpoint Y in metres relative to the sensor origin.
-   * @param z Ray endpoint Z in metres relative to the sensor origin.
+   * @param origin_x Ray origin X in metres in the plume frame.
+   * @param endpoint_x Ray endpoint X in metres in the plume frame.
+   * @param origin_y Ray origin Y in metres in the plume frame.
+   * @param endpoint_y Ray endpoint Y in metres in the plume frame.
+   * @param origin_z Ray origin Z in metres in the plume frame.
+   * @param endpoint_z Ray endpoint Z in metres in the plume frame.
    * @param interaction_coefficient Finite non-negative peak interaction rate in inverse metres.
    * @param step_size Finite positive maximum integration segment length in metres.
    * @param uniform_sample Finite uniform sample in [0, 1), supplied by the caller.
-   * @return Distance in metres, or std::nullopt when the threshold is not crossed
+   * @return Distance from the supplied ray origin in metres, or std::nullopt when the threshold is not crossed
    * before the endpoint, the ray has zero length, or the coefficient is zero.
    * A zero sample may produce a zero-distance interaction.
    * @throws std::invalid_argument If plume or ray inputs, the sample, or the segment
@@ -99,7 +112,8 @@ public:
    * @note Zero-length and zero-coefficient cases skip segment-count calculation.
    */
   std::optional<double> first_interaction_distance(
-    double x, double y, double z,
+    double origin_x, double origin_y, double origin_z,
+    double endpoint_x, double endpoint_y, double endpoint_z,
     double interaction_coefficient,
     double step_size,
     double uniform_sample) const;

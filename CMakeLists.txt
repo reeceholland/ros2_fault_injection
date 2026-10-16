@@ -22,6 +22,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(Doxygen)
 
 if(BUILD_TESTING)
@@ -111,6 +112,7 @@ ament_target_dependencies(${PROJECT_NAME}_core
   tf2
   tf2_geometry_msgs
   tf2_msgs
+  tf2_ros
 )
 
 add_executable(fault_injector_node
@@ -429,6 +431,7 @@ ament_export_dependencies(
   tf2
   tf2_geometry_msgs
   tf2_msgs
+  tf2_ros
   yaml-cpp
 )
 

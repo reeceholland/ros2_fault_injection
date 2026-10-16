@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <random>
@@ -18,6 +19,12 @@
 
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2/exceptions.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include "ros2_fault_injection/core/dust_plume.hpp"
 #include "ros2_fault_injection/core/dust_intensity_model.hpp"
@@ -70,6 +77,9 @@ PointCloudFaultInjector::PointCloudFaultInjector(rclcpp::Node & node, const Inje
 : FaultInjectorBase(node, config)
 {
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(config_.topic->qos_depth));
+
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node.get_clock());
+  tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
   pub_ = node_.create_publisher<sensor_msgs::msg::PointCloud2>(config_.topic->output_topic, qos);
 
@@ -164,6 +174,8 @@ std::vector<FaultConfigField> PointCloudFaultInjector::static_config_schema()
     "Plume velocity along Y in metres per second.", std::nullopt, std::nullopt, "0.0");
   add_field("plume_velocity_z", "double",
     "Plume velocity along Z in metres per second.", std::nullopt, std::nullopt, "0.0");
+  add_field("plume_frame", "string", "Frame for plume center; empty uses the input cloud frame.",
+    std::nullopt, std::nullopt, "");
 
   return schema;
 }
@@ -655,6 +667,47 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
     intensity.emplace(msg, "intensity");
   }
 
+  const auto frame_it = fault.config.find("plume_frame");
+  const std::string plume_frame =
+    frame_it == fault.config.end() || frame_it->second.empty() ?
+    msg.header.frame_id :
+    frame_it->second;
+
+  geometry_msgs::msg::TransformStamped transform;
+
+  if (plume_frame != msg.header.frame_id) {
+    if (msg.header.stamp.sec == 0 && msg.header.stamp.nanosec == 0) {
+      RCLCPP_WARN_THROTTLE(
+        node_.get_logger(), *node_.get_clock(), 5000,
+        "Skipping plume '%s': cross-frame lookup requires a nonzero cloud timestamp",
+        fault.id.c_str());
+      return;
+    }
+    try {
+      transform = tf_buffer_->lookupTransform(
+      plume_frame,           // Target: plume coordinates.
+      msg.header.frame_id,   // Source: cloud coordinates.
+      rclcpp::Time(msg.header.stamp),
+      rclcpp::Duration::from_seconds(0.1));
+    } catch (const tf2::TransformException & error) {
+      RCLCPP_WARN_THROTTLE(
+      node_.get_logger(), *node_.get_clock(), 5000,
+      "Skipping plume '%s': %s",
+      fault.id.c_str(), error.what());
+      return;
+    }
+  }
+
+  tf2::Transform cloud_to_plume;
+  cloud_to_plume.setIdentity();
+
+  if (plume_frame != msg.header.frame_id) {
+    tf2::fromMsg(transform.transform, cloud_to_plume);
+  }
+
+// The cloud-frame origin transformed into the plume frame.
+  const tf2::Vector3 origin = cloud_to_plume.getOrigin();
+
   for (; x != x.end(); ++x, ++y, ++z, (intensity ? ++(*intensity), 0 : 0)) {
     if (!std::isfinite(*x) ||
       !std::isfinite(*y) ||
@@ -671,12 +724,14 @@ void PointCloudFaultInjector::apply_plume_dust_returns(
     if (range <= std::numeric_limits<float>::epsilon()) {
       continue;
     }
-
+    const tf2::Vector3 endpoint = cloud_to_plume * tf2::Vector3(*x, *y, *z);
     std::optional<double> distance;
 
     try {
       distance = plume.first_interaction_distance(
-    *x, *y, *z, coefficient, step_size, uniform(rng_));
+  origin.x(), origin.y(), origin.z(),
+  endpoint.x(), endpoint.y(), endpoint.z(),
+  coefficient, step_size, uniform(rng_));
     } catch (const std::invalid_argument & error) {
       RCLCPP_WARN_THROTTLE(
     node_.get_logger(), *node_.get_clock(), 5000,

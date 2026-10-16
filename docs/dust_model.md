@@ -75,10 +75,15 @@ mass concentration nor a spatial probability density normalised to integrate
 to one. Detected dust-point density is also not automatically physical dust
 concentration: beam geometry, occlusion, and detection affect what is observed.
 
-The sensor is assumed to be at (0, 0, 0), with the endpoint and plume centre
-expressed in the same sensor frame. No TF conversion is implemented. Fixed
-sensor-frame coordinates move with the sensor; a stationary world-space plume
-will require transforms at the cloud timestamp.
+The ray helpers accept an explicit origin and endpoint in the same frame as
+the plume centre. Set `plume_frame` to a fixed frame such as `odom` to express
+the centre, axes and velocity in that frame. An empty value uses the input cloud
+frame. The injector looks up cloud-to-plume TF at the cloud timestamp once per
+plume operation, transforms the ray origin and endpoint, and keeps output points
+in the original cloud frame. Missing TF or a zero timestamp when crossing frames
+skips that plume with a throttled warning; other enabled faults may still apply.
+With zero velocity a plume in `odom` stays fixed as the rover moves; a plume in
+the cloud frame moves with the sensor.
 
 Rotation, wind, diffusion, source emission, and decay are outside this first
 implementation. If spreading is added later, peak density must account for
@@ -175,8 +180,9 @@ starting values, not a fitted Carén calibration.
 
 | Field | Default | Meaning and constraints |
 | --- | --- | --- |
+| `plume_frame` | empty | Frame for centre, axes and velocity; empty uses the cloud frame. |
 | `dust_model` | `random` | Either `random` or `plume`; plume replaces points at sampled interaction distances. |
-| `plume_center_x/y/z` | 0.0 | Finite centre coordinates in metres in the sensor frame. |
+| `plume_center_x/y/z` | 0.0 | Finite centre coordinates in metres in `plume_frame` (cloud frame when empty). |
 | `plume_sigma_x/y/z` | 1.0 | Finite, strictly positive Gaussian widths in metres. |
 | `plume_interaction_coefficient` | 0.0 | Finite non-negative peak rate in inverse metres; zero means no interactions. |
 | `plume_step_size` | 0.1 | Finite, strictly positive maximum integration segment length in metres. |
