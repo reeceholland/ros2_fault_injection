@@ -239,3 +239,82 @@ TEST(FaultScheduler, ManualOnlyTestStaysInactive)
 
     rclcpp::shutdown();
 }
+
+TEST(FaultScheduler, ClearCancelsPendingActivation)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_clear_activation");
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder recorder;
+    FakeFaultInjector injector;
+    rfi_core::FaultScheduler scheduler(*node, events, recorder);
+
+    auto fault = make_fault("pending_start");
+    fault.start = 50ms;
+    injector.add_fault(fault);
+    scheduler.schedule({fault}, injector, {});
+    scheduler.clear();
+
+    // No callbacks are spun until after clearing the schedule.
+    spin_for(node, 150ms);
+    EXPECT_FALSE(injector.is_active(fault.id));
+    EXPECT_TRUE(recorder.events().empty());
+  }
+  rclcpp::shutdown();
+}
+
+TEST(FaultScheduler, ClearCancelsPendingDeactivation)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_clear_deactivation");
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder recorder;
+    FakeFaultInjector injector;
+    rfi_core::FaultScheduler scheduler(*node, events, recorder);
+
+    auto fault = make_fault("pending_stop");
+    fault.duration = 50ms;
+    injector.add_fault(fault);
+    scheduler.schedule({fault}, injector, {fault.id});
+    EXPECT_TRUE(injector.is_active(fault.id));
+    const auto events_before_clear = recorder.events().size();
+
+    scheduler.clear();
+    spin_for(node, 150ms);
+    EXPECT_TRUE(injector.is_active(fault.id));
+    EXPECT_EQ(recorder.events().size(), events_before_clear);
+  }
+  rclcpp::shutdown();
+}
+
+TEST(FaultScheduler, ClearedStopCannotDeactivateReplacementFault)
+{
+  rclcpp::init(0, nullptr);
+  {
+    auto node = std::make_shared<rclcpp::Node>("test_replacement_schedule");
+    rfi_core::FaultEventPublisher events(*node);
+    rfi_core::FaultEventRecorder recorder;
+    FakeFaultInjector injector;
+    rfi_core::FaultScheduler scheduler(*node, events, recorder);
+
+    auto original = make_fault("dust");
+    original.duration = 50ms;
+    injector.add_fault(original);
+    scheduler.schedule({original}, injector, {original.id});
+
+    scheduler.clear();
+    injector.clear_faults();
+    auto replacement = make_fault("dust");
+    injector.add_fault(replacement);
+    scheduler.schedule({replacement}, injector, {});
+    injector.activate_fault(replacement.id);
+
+    const auto events_before_wait = recorder.events().size();
+    spin_for(node, 150ms);
+    EXPECT_TRUE(injector.is_active(replacement.id));
+    EXPECT_EQ(recorder.events().size(), events_before_wait);
+  }
+  rclcpp::shutdown();
+}

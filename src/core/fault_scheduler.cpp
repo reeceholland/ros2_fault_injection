@@ -71,11 +71,16 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
 {
   const auto start_delay = std::max(*fault.start, std::chrono::milliseconds{1});
 
-  auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto timer_holder = std::make_shared<std::weak_ptr<rclcpp::TimerBase>>();
 
-  *timer_holder = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
+  auto timer = node_.create_wall_timer(start_delay, [this, &injector, fault, timer_holder]()
       {
-        (*timer_holder)->cancel();
+        const auto timer = timer_holder->lock();
+        if(!timer){
+          return;
+        }
+
+        timer->cancel();
 
         injector.activate_fault(fault.id);
 
@@ -90,7 +95,8 @@ void FaultScheduler::schedule_start(FaultInjector & injector, const FaultConfig 
         RCLCPP_INFO(node_.get_logger(), "Activated scheduled fault '%s'", fault.id.c_str());
                                                                                              });
 
-  timers_.push_back(*timer_holder);
+  *timer_holder = timer;
+  timers_.push_back(timer);
 }
 
 void FaultScheduler::schedule_stop(FaultInjector & injector, const FaultConfig & fault)
@@ -104,11 +110,15 @@ void FaultScheduler::schedule_stop_after(
 {
   const auto stop_delay = std::max(delay, std::chrono::milliseconds{1});
 
-  auto timer_holder = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto timer_holder = std::make_shared<std::weak_ptr<rclcpp::TimerBase>>();
 
-  *timer_holder = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
+  auto timer = node_.create_wall_timer(stop_delay, [this, &injector, fault, timer_holder]()
       {
-        (*timer_holder)->cancel();
+        const auto timer = timer_holder->lock();
+        if(!timer){
+          return;
+        }
+        timer->cancel();
 
         injector.deactivate_fault(fault.id);
 
@@ -123,7 +133,8 @@ void FaultScheduler::schedule_stop_after(
         RCLCPP_INFO(node_.get_logger(), "Deactivated scheduled fault '%s'", fault.id.c_str());
                                                                                                });
 
-  timers_.push_back(*timer_holder);
+  *timer_holder = timer;
+  timers_.push_back(timer);
 }
 
 void FaultScheduler::publish_event(const FaultEvent & event)
@@ -134,7 +145,15 @@ void FaultScheduler::publish_event(const FaultEvent & event)
 
 void FaultScheduler::clear()
 {
+  for(const auto & timer : timers_){
+    timer->cancel();
+  }
   timers_.clear();
+}
+
+FaultScheduler::~FaultScheduler()
+{
+  clear();  
 }
 
 } // namespace ros2_fault_injection::core

@@ -53,6 +53,8 @@ public:
     const std::vector<std::string> & initially_active_faults);
   void clear();
 
+  ~FaultScheduler();
+
 private:
   bool is_initially_active(
     const FaultConfig & fault,
